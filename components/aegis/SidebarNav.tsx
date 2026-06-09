@@ -19,6 +19,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Overview",
     items: [
       { label: "Dashboard", href: "/dashboard", description: "Shield overview" },
+      { label: "Profile", href: "/profile", description: "Account & client record" },
     ],
   },
   {

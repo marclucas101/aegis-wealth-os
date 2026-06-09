@@ -7,6 +7,7 @@ import {
 
 const PROTECTED_PREFIXES = [
   "/dashboard",
+  "/profile",
   "/discover",
   "/shield-diagnostic",
   "/stress-testing",
