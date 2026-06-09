@@ -8,10 +8,24 @@ import {
   loadDiscoverProfile,
   type DiscoverStoredProfile,
 } from "@/lib/aegis/localProfile";
+import type { ShieldDiagnosticSnapshot } from "@/lib/supabase/moduleQueries";
 import type { ShieldScoreResult } from "@/src/lib/scoring/types";
 import ShieldDiagnosticSummary from "./ShieldDiagnosticSummary";
 import ShieldPillarCards from "./ShieldPillarCards";
 import ShieldReadinessPanel from "./ShieldReadinessPanel";
+
+type ShieldMode = "loading" | "empty" | "cloud" | "local";
+type ProfileSource = "cloud" | "local";
+
+function ProfileSourceBadge({ source }: { source: ProfileSource }) {
+  const label = source === "cloud" ? "Cloud Profile" : "Local Profile";
+
+  return (
+    <span className="inline-flex items-center rounded-sm border border-[#D1A866]/35 bg-[#D1A866]/10 px-2.5 py-1 text-[9px] font-medium uppercase tracking-[0.18em] text-[#D1A866]">
+      {label}
+    </span>
+  );
+}
 
 function EmptyState() {
   return (
@@ -59,26 +73,83 @@ function EmptyState() {
   );
 }
 
+function resolveLocalFallback(): {
+  mode: "local" | "empty";
+  profile: DiscoverStoredProfile | null;
+} {
+  const saved = loadDiscoverProfile();
+  if (saved) {
+    return { mode: "local", profile: saved };
+  }
+  return { mode: "empty", profile: null };
+}
+
 export default function ShieldDiagnosticClient() {
+  const [mode, setMode] = useState<ShieldMode>("loading");
   const [profile, setProfile] = useState<DiscoverStoredProfile | null>(null);
-  const [ready, setReady] = useState(false);
+  const [cloudSnapshot, setCloudSnapshot] =
+    useState<ShieldDiagnosticSnapshot | null>(null);
 
   useEffect(() => {
-    setProfile(loadDiscoverProfile());
-    setReady(true);
+    let cancelled = false;
+
+    async function loadDiagnostic() {
+      try {
+        const response = await fetch("/api/shield-diagnostic/current", {
+          cache: "no-store",
+        });
+
+        if (cancelled) return;
+
+        if (response.status === 401) {
+          const fallback = resolveLocalFallback();
+          setProfile(fallback.profile);
+          setMode(fallback.mode);
+          return;
+        }
+
+        const data = (await response.json()) as
+          | ({ ok: true } & ShieldDiagnosticSnapshot)
+          | { ok: false; reason?: string };
+
+        if (data.ok) {
+          setCloudSnapshot(data);
+          setProfile(null);
+          setMode("cloud");
+          return;
+        }
+
+        const fallback = resolveLocalFallback();
+        setCloudSnapshot(null);
+        setProfile(fallback.profile);
+        setMode(fallback.mode);
+      } catch {
+        if (cancelled) return;
+        const fallback = resolveLocalFallback();
+        setCloudSnapshot(null);
+        setProfile(fallback.profile);
+        setMode(fallback.mode);
+      }
+    }
+
+    void loadDiagnostic();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const shield: ShieldScoreResult | null = useMemo(() => {
-    if (!profile) return null;
+  const localShield: ShieldScoreResult | null = useMemo(() => {
+    if (mode !== "local" || !profile) return null;
     return computeShieldDiagnosticResult(profile);
-  }, [profile]);
+  }, [mode, profile]);
 
-  const weakestPillars = useMemo(() => {
-    if (!shield) return [];
-    return getWeakestPillars(shield.pillarScores, 3);
-  }, [shield]);
+  const localWeakestPillars = useMemo(() => {
+    if (!localShield) return [];
+    return getWeakestPillars(localShield.pillarScores, 3);
+  }, [localShield]);
 
-  if (!ready) {
+  if (mode === "loading") {
     return (
       <div className="rounded-sm border border-[#D1A866]/10 bg-[#10283A]/30 p-12 text-center">
         <p className="text-[10px] uppercase tracking-[0.2em] text-[#F3F1EA]/30">
@@ -88,12 +159,27 @@ export default function ShieldDiagnosticClient() {
     );
   }
 
-  if (!profile || !shield) {
+  if (mode === "empty") {
     return <EmptyState />;
   }
 
+  const isCloud = mode === "cloud";
+  const shield = isCloud ? cloudSnapshot!.shield : localShield!;
+  const weakestPillars = isCloud
+    ? cloudSnapshot!.weakestPillars
+    : localWeakestPillars;
+  const completedAt = isCloud
+    ? cloudSnapshot!.completedAt
+    : profile!.completedAt;
+  const profileSource: ProfileSource = isCloud ? "cloud" : "local";
+  const footerLabel = isCloud ? "Cloud Profile" : "Local Profile";
+
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex justify-end">
+        <ProfileSourceBadge source={profileSource} />
+      </div>
+
       <ShieldDiagnosticSummary shield={shield} />
       <ShieldPillarCards
         pillarScores={shield.pillarScores}
@@ -102,8 +188,8 @@ export default function ShieldDiagnosticClient() {
       <ShieldReadinessPanel weakestPillars={weakestPillars} />
 
       <p className="text-center text-[10px] uppercase tracking-[0.18em] text-[#F3F1EA]/20">
-        Preliminary diagnostic · Profile captured{" "}
-        {new Date(profile.completedAt).toLocaleDateString("en-SG", {
+        Preliminary diagnostic · {footerLabel} · Profile captured{" "}
+        {new Date(completedAt).toLocaleDateString("en-SG", {
           day: "numeric",
           month: "short",
           year: "numeric",

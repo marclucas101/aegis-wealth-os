@@ -9,15 +9,155 @@ import AnnualReviewScoreCard from "@/components/aegis/annual/AnnualReviewScoreCa
 import AnnualReviewStressSummary from "@/components/aegis/annual/AnnualReviewStressSummary";
 import AnnualReviewTimeline from "@/components/aegis/annual/AnnualReviewTimeline";
 import {
+  applyRoadmapStatuses,
   computeAnnualReviewFromProfile,
   loadDiscoverProfile,
   loadRoadmapStatuses,
   PILLAR_LABELS,
   type AnnualReviewPageResults,
+  type AnnualReviewTimelineYear,
   type DiscoverStoredProfile,
+  type RoadmapItemStatus,
 } from "@/lib/aegis/localProfile";
+import type { AnnualReviewSnapshot } from "@/lib/supabase/moduleQueries";
+import { calculateProjectedShield } from "@/src/lib/scoring";
+import type { RoadmapItem, ShieldRating, ShieldScoreResult } from "@/src/lib/scoring/types";
 
-type AnnualReviewMode = "loading" | "empty" | "live";
+type AnnualReviewMode = "loading" | "empty" | "cloud" | "local";
+type ProfileSource = "cloud" | "local";
+
+function ProfileSourceBadge({ source }: { source: ProfileSource }) {
+  const label = source === "cloud" ? "Cloud Profile" : "Local Profile";
+
+  return (
+    <span className="inline-flex items-center rounded-sm border border-[#D1A866]/35 bg-[#D1A866]/10 px-2.5 py-1 text-[9px] font-medium uppercase tracking-[0.18em] text-[#D1A866]">
+      {label}
+    </span>
+  );
+}
+
+function roadmapAtYearOffset(
+  items: RoadmapItem[],
+  yearOffset: number,
+): RoadmapItem[] {
+  if (yearOffset === 0) {
+    return items;
+  }
+
+  const monthsCutoff = yearOffset * 12;
+  const includeAll = yearOffset >= 3;
+
+  return items.map((item) => {
+    if (item.status === "completed") {
+      return item;
+    }
+    if (includeAll || item.timelineMonths <= monthsCutoff) {
+      return { ...item, status: "completed" as const };
+    }
+    return item;
+  });
+}
+
+function buildTimeline(
+  currentScore: number,
+  shield: ShieldScoreResult,
+  roadmap: RoadmapItem[],
+): AnnualReviewTimelineYear[] {
+  const currentYear = new Date().getFullYear();
+  const targetRoadmap = roadmapAtYearOffset(roadmap, 3);
+  const targetProjected = calculateProjectedShield(
+    shield.pillarScores,
+    targetRoadmap,
+    shield.dataConfidenceFactor,
+  );
+  const targetScore = targetProjected.projectedAdjustedShieldScore;
+  const scoreRange = targetScore - currentScore;
+  const labels = ["Current Year", "Year +1", "Year +2", "Year +3 Target"];
+
+  return [0, 1, 2, 3].map((yearOffset) => {
+    let score: number;
+    let rating: ShieldRating;
+    let actionsCompleted: number;
+
+    if (yearOffset === 0) {
+      score = currentScore;
+      rating = shield.rating;
+      actionsCompleted = roadmap.filter((item) => item.status === "completed").length;
+    } else {
+      const yearRoadmap = roadmapAtYearOffset(roadmap, yearOffset);
+      const projected = calculateProjectedShield(
+        shield.pillarScores,
+        yearRoadmap,
+        shield.dataConfidenceFactor,
+      );
+      score = projected.projectedAdjustedShieldScore;
+      rating = projected.projectedRating;
+      actionsCompleted = yearRoadmap.filter(
+        (item) => item.status === "completed",
+      ).length;
+    }
+
+    const progressPercent =
+      scoreRange > 0
+        ? Math.round(((score - currentScore) / scoreRange) * 100)
+        : 100;
+
+    return {
+      calendarYear: currentYear + yearOffset,
+      yearOffset,
+      label: labels[yearOffset],
+      adjustedShieldScore: score,
+      rating,
+      progressPercent: Math.max(0, Math.min(100, progressPercent)),
+      actionsCompleted,
+    };
+  });
+}
+
+function cloudSnapshotToResults(
+  snapshot: AnnualReviewSnapshot,
+  statuses: Record<string, RoadmapItemStatus>,
+): AnnualReviewPageResults {
+  const roadmap = applyRoadmapStatuses(snapshot.roadmap, statuses);
+  const projected = calculateProjectedShield(
+    snapshot.shield.pillarScores,
+    roadmap.map((item) => ({ ...item, status: "completed" as const })),
+    snapshot.shield.dataConfidenceFactor,
+  );
+
+  return {
+    shield: snapshot.shield,
+    awri: snapshot.awri,
+    projected,
+    roadmap,
+    timeline: buildTimeline(
+      snapshot.shield.adjustedShieldScore,
+      snapshot.shield,
+      roadmap,
+    ),
+    topStressExposures: snapshot.topStressExposures,
+    weakestPillars: snapshot.weakestPillars,
+    discoverScore: snapshot.discoverScore,
+    dataConfidenceFactor: snapshot.dataConfidenceFactor,
+    totalImprovement:
+      projected.projectedAdjustedShieldScore -
+      snapshot.shield.adjustedShieldScore,
+    client: snapshot.client,
+    formData: snapshot.formData,
+    completedAt: snapshot.completedAt,
+  };
+}
+
+function resolveLocalFallback(): {
+  mode: "local" | "empty";
+  profile: DiscoverStoredProfile | null;
+} {
+  const saved = loadDiscoverProfile();
+  if (saved) {
+    return { mode: "local", profile: saved };
+  }
+  return { mode: "empty", profile: null };
+}
 
 function buildAnnualReviewNarrative(results: AnnualReviewPageResults): string[] {
   const {
@@ -82,19 +222,74 @@ function buildAnnualReviewNarrative(results: AnnualReviewPageResults): string[] 
 export default function AnnualReviewClient() {
   const [mode, setMode] = useState<AnnualReviewMode>("loading");
   const [profile, setProfile] = useState<DiscoverStoredProfile | null>(null);
-  const [statuses, setStatuses] = useState(loadRoadmapStatuses);
+  const [cloudSnapshot, setCloudSnapshot] =
+    useState<AnnualReviewSnapshot | null>(null);
+  const [statuses, setStatuses] = useState<Record<string, RoadmapItemStatus>>(
+    {},
+  );
 
   useEffect(() => {
-    const saved = loadDiscoverProfile();
-    setProfile(saved);
     setStatuses(loadRoadmapStatuses());
-    setMode(saved ? "live" : "empty");
   }, []);
 
-  const results: AnnualReviewPageResults | null = useMemo(() => {
-    if (mode !== "live" || !profile) return null;
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAnnualReview() {
+      try {
+        const response = await fetch("/api/annual-review/current", {
+          cache: "no-store",
+        });
+
+        if (cancelled) return;
+
+        if (response.status === 401) {
+          const fallback = resolveLocalFallback();
+          setProfile(fallback.profile);
+          setMode(fallback.mode);
+          return;
+        }
+
+        const data = (await response.json()) as
+          | ({ ok: true } & AnnualReviewSnapshot)
+          | { ok: false; reason?: string };
+
+        if (data.ok) {
+          setCloudSnapshot(data);
+          setProfile(null);
+          setMode("cloud");
+          return;
+        }
+
+        const fallback = resolveLocalFallback();
+        setCloudSnapshot(null);
+        setProfile(fallback.profile);
+        setMode(fallback.mode);
+      } catch {
+        if (cancelled) return;
+        const fallback = resolveLocalFallback();
+        setCloudSnapshot(null);
+        setProfile(fallback.profile);
+        setMode(fallback.mode);
+      }
+    }
+
+    void loadAnnualReview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const localResults: AnnualReviewPageResults | null = useMemo(() => {
+    if (mode !== "local" || !profile) return null;
     return computeAnnualReviewFromProfile(profile, statuses);
   }, [mode, profile, statuses]);
+
+  const cloudResults: AnnualReviewPageResults | null = useMemo(() => {
+    if (mode !== "cloud" || !cloudSnapshot) return null;
+    return cloudSnapshotToResults(cloudSnapshot, statuses);
+  }, [mode, cloudSnapshot, statuses]);
 
   if (mode === "loading") {
     return (
@@ -106,9 +301,14 @@ export default function AnnualReviewClient() {
     );
   }
 
+  const results = mode === "cloud" ? cloudResults : localResults;
+
   if (mode === "empty" || !results) {
     return <AnnualReviewEmptyState />;
   }
+
+  const profileSource: ProfileSource = mode === "cloud" ? "cloud" : "local";
+  const badgeLabel = mode === "cloud" ? "Cloud Profile" : "Local Profile";
 
   const narrative = buildAnnualReviewNarrative(results);
   const reviewDate = new Date(results.completedAt).toLocaleDateString("en-SG", {
@@ -163,9 +363,7 @@ export default function AnnualReviewClient() {
           </div>
 
           <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-[#D1A866]/10 pt-6">
-            <span className="inline-flex items-center rounded-sm border border-[#D1A866]/35 bg-[#D1A866]/10 px-2.5 py-1 text-[9px] font-medium uppercase tracking-[0.18em] text-[#D1A866]">
-              Live Discover Profile
-            </span>
+            <ProfileSourceBadge source={profileSource} />
             <span className="text-xs text-[#F3F1EA]/35">
               Shield Rating {results.shield.rating} · Confidential
             </span>
@@ -230,7 +428,8 @@ export default function AnnualReviewClient() {
 
       <footer className="mt-12 border-t border-[#D1A866]/15 pt-8 sm:mt-16">
         <p className="text-center text-[10px] uppercase tracking-[0.2em] text-[#F3F1EA]/25">
-          AEGIS Annual Shield Review™ · Confidential · For architectural review only
+          AEGIS Annual Shield Review™ · {badgeLabel} · Confidential · For
+          architectural review only
         </p>
         <p className="mt-2 text-center text-xs font-light text-[#F3F1EA]/30">
           This document does not constitute financial, legal, or tax advice.

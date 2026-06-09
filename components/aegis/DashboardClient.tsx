@@ -16,43 +16,130 @@ import {
   type DashboardResults,
   type DiscoverStoredProfile,
 } from "@/lib/aegis/localProfile";
+import type { DashboardSnapshot } from "@/lib/supabase/dashboardQueries";
 import {
   mockClientProfile,
   runMockScoringDemo,
 } from "@/src/lib/scoring/mockExample";
 
-type DashboardMode = "loading" | "empty" | "live" | "demo";
+type DashboardMode = "loading" | "empty" | "cloud" | "local" | "demo";
+type ProfileSource = "cloud" | "local" | "demo";
 
-function ProfileSourceBadge({ mode }: { mode: "live" | "demo" }) {
-  const isLive = mode === "live";
+function ProfileSourceBadge({ source }: { source: ProfileSource }) {
+  const styles: Record<ProfileSource, string> = {
+    cloud: "border-[#D1A866]/35 bg-[#D1A866]/10 text-[#D1A866]",
+    local: "border-[#D1A866]/35 bg-[#D1A866]/10 text-[#D1A866]",
+    demo: "border-[#F3F1EA]/15 bg-[#F3F1EA]/5 text-[#F3F1EA]/45",
+  };
+
+  const labels: Record<ProfileSource, string> = {
+    cloud: "Cloud Profile",
+    local: "Local Profile",
+    demo: "Demo Profile",
+  };
 
   return (
     <span
-      className={`inline-flex items-center rounded-sm border px-2.5 py-1 text-[9px] font-medium uppercase tracking-[0.18em] ${
-        isLive
-          ? "border-[#D1A866]/35 bg-[#D1A866]/10 text-[#D1A866]"
-          : "border-[#F3F1EA]/15 bg-[#F3F1EA]/5 text-[#F3F1EA]/45"
-      }`}
+      className={`inline-flex items-center rounded-sm border px-2.5 py-1 text-[9px] font-medium uppercase tracking-[0.18em] ${styles[source]}`}
     >
-      {isLive ? "Live Discover Profile" : "Demo Profile"}
+      {labels[source]}
     </span>
   );
+}
+
+function cloudSnapshotToResults(snapshot: DashboardSnapshot): DashboardResults {
+  return {
+    shield: snapshot.shield,
+    awri: snapshot.awri,
+    benchmark: snapshot.benchmark,
+    stressTests: snapshot.stressTests,
+    roadmap: snapshot.roadmap,
+    client: snapshot.client,
+    insights: {
+      weakestPillar: snapshot.insights.weakestPillar,
+      strongestPillar: snapshot.insights.strongestPillar,
+      weakestPillars: [],
+    },
+    completedAt: snapshot.completedAt,
+  };
+}
+
+function resolveLocalFallback(): {
+  mode: "local" | "empty";
+  profile: DiscoverStoredProfile | null;
+} {
+  const saved = loadDiscoverProfile();
+  if (saved) {
+    return { mode: "local", profile: saved };
+  }
+  return { mode: "empty", profile: null };
 }
 
 export default function DashboardClient() {
   const [mode, setMode] = useState<DashboardMode>("loading");
   const [profile, setProfile] = useState<DiscoverStoredProfile | null>(null);
+  const [cloudSnapshot, setCloudSnapshot] = useState<DashboardSnapshot | null>(
+    null,
+  );
 
   useEffect(() => {
-    const saved = loadDiscoverProfile();
-    setProfile(saved);
-    setMode(saved ? "live" : "empty");
+    let cancelled = false;
+
+    async function loadDashboard() {
+      try {
+        const response = await fetch("/api/dashboard/current", {
+          cache: "no-store",
+        });
+
+        if (cancelled) return;
+
+        if (response.status === 401) {
+          const fallback = resolveLocalFallback();
+          setProfile(fallback.profile);
+          setMode(fallback.mode);
+          return;
+        }
+
+        const data = (await response.json()) as
+          | ({ ok: true } & DashboardSnapshot)
+          | { ok: false; reason?: string };
+
+        if (data.ok) {
+          setCloudSnapshot(data);
+          setProfile(null);
+          setMode("cloud");
+          return;
+        }
+
+        const fallback = resolveLocalFallback();
+        setCloudSnapshot(null);
+        setProfile(fallback.profile);
+        setMode(fallback.mode);
+      } catch {
+        if (cancelled) return;
+        const fallback = resolveLocalFallback();
+        setCloudSnapshot(null);
+        setProfile(fallback.profile);
+        setMode(fallback.mode);
+      }
+    }
+
+    void loadDashboard();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const liveResults: DashboardResults | null = useMemo(() => {
-    if (mode !== "live" || !profile) return null;
+  const localResults: DashboardResults | null = useMemo(() => {
+    if (mode !== "local" || !profile) return null;
     return computeDashboardFromProfile(profile);
   }, [mode, profile]);
+
+  const cloudResults: DashboardResults | null = useMemo(() => {
+    if (mode !== "cloud" || !cloudSnapshot) return null;
+    return cloudSnapshotToResults(cloudSnapshot);
+  }, [mode, cloudSnapshot]);
 
   const demoResults = useMemo(() => runMockScoringDemo(), []);
 
@@ -70,28 +157,41 @@ export default function DashboardClient() {
     return <DashboardEmptyState onViewDemo={() => setMode("demo")} />;
   }
 
-  const isLive = mode === "live";
-  const shield = isLive && liveResults ? liveResults.shield : demoResults.shield;
-  const awri = isLive && liveResults ? liveResults.awri : demoResults.awri;
-  const benchmark =
-    isLive && liveResults ? liveResults.benchmark : demoResults.benchmark;
-  const stressTests =
-    isLive && liveResults ? liveResults.stressTests : demoResults.stressTests;
-  const roadmap =
-    isLive && liveResults ? liveResults.roadmap : demoResults.roadmap;
-  const insights =
-    isLive && liveResults ? liveResults.insights : demoResults.insights;
-  const client =
-    isLive && liveResults ? liveResults.client : mockClientProfile;
-  const completedAt =
-    isLive && liveResults ? liveResults.completedAt : null;
+  const isCloud = mode === "cloud";
+  const isLocal = mode === "local";
+  const activeResults = isCloud
+    ? cloudResults
+    : isLocal
+      ? localResults
+      : null;
+
+  const shield = activeResults?.shield ?? demoResults.shield;
+  const awri = activeResults?.awri ?? demoResults.awri;
+  const benchmark = activeResults?.benchmark ?? demoResults.benchmark;
+  const stressTests = activeResults?.stressTests ?? demoResults.stressTests;
+  const roadmap = activeResults?.roadmap ?? demoResults.roadmap;
+  const insights = activeResults?.insights ?? demoResults.insights;
+  const client = activeResults?.client ?? mockClientProfile;
+  const completedAt = activeResults?.completedAt ?? null;
+
+  const profileSource: ProfileSource = isCloud
+    ? "cloud"
+    : isLocal
+      ? "local"
+      : "demo";
+
+  const footerLabel = isCloud
+    ? "Cloud Profile"
+    : isLocal
+      ? "Local Profile"
+      : "Mock Demo";
 
   return (
     <>
       <header className="mb-8 border-b border-[#D1A866]/15 pb-6 sm:mb-10">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-3">
-            <ProfileSourceBadge mode={isLive ? "live" : "demo"} />
+            <ProfileSourceBadge source={profileSource} />
             <p className="text-sm text-[#F3F1EA]/45">
               Composite shield overview and architecture monitoring
             </p>
@@ -133,7 +233,7 @@ export default function DashboardClient() {
 
       <footer className="mt-10 border-t border-[#D1A866]/10 pt-6 text-center">
         <p className="text-[10px] uppercase tracking-[0.2em] text-[#F3F1EA]/25">
-          AEGIS Shield Diagnostic™ · {isLive ? "Live Profile" : "Mock Demo"}
+          AEGIS Shield Diagnostic™ · {footerLabel}
           {completedAt
             ? ` · Captured ${new Date(completedAt).toLocaleDateString("en-SG", {
                 day: "numeric",

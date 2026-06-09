@@ -7,6 +7,7 @@ import RoadmapEmptyState from "@/components/aegis/roadmap/RoadmapEmptyState";
 import RoadmapProgressPanel from "@/components/aegis/roadmap/RoadmapProgressPanel";
 import RoadmapTimeline from "@/components/aegis/roadmap/RoadmapTimeline";
 import {
+  applyRoadmapStatuses,
   computeRoadmapFromProfile,
   loadDiscoverProfile,
   loadRoadmapStatuses,
@@ -15,30 +16,133 @@ import {
   type RoadmapItemStatus,
   type RoadmapPageResults,
 } from "@/lib/aegis/localProfile";
+import type { RoadmapSnapshot } from "@/lib/supabase/moduleQueries";
+import { calculateProjectedShield } from "@/src/lib/scoring";
 
-type RoadmapMode = "loading" | "empty" | "live";
+type RoadmapMode = "loading" | "empty" | "cloud" | "local";
+type ProfileSource = "cloud" | "local";
+
+function ProfileSourceBadge({ source }: { source: ProfileSource }) {
+  const label = source === "cloud" ? "Cloud Profile" : "Local Profile";
+
+  return (
+    <span className="inline-flex items-center rounded-sm border border-[#D1A866]/35 bg-[#D1A866]/10 px-2.5 py-1 text-[9px] font-medium uppercase tracking-[0.18em] text-[#D1A866]">
+      {label}
+    </span>
+  );
+}
+
+function cloudSnapshotToResults(
+  snapshot: RoadmapSnapshot,
+  statuses: Record<string, RoadmapItemStatus>,
+): RoadmapPageResults {
+  const roadmap = applyRoadmapStatuses(snapshot.roadmap, statuses);
+  const projected = calculateProjectedShield(
+    snapshot.shield.pillarScores,
+    roadmap,
+    snapshot.shield.dataConfidenceFactor,
+  );
+
+  return {
+    shield: snapshot.shield,
+    roadmap,
+    projected,
+    client: snapshot.client,
+    completedAt: snapshot.completedAt,
+  };
+}
+
+function resolveLocalFallback(): {
+  mode: "local" | "empty";
+  profile: DiscoverStoredProfile | null;
+} {
+  const saved = loadDiscoverProfile();
+  if (saved) {
+    return { mode: "local", profile: saved };
+  }
+  return { mode: "empty", profile: null };
+}
 
 export default function RoadmapClient() {
   const [mode, setMode] = useState<RoadmapMode>("loading");
   const [profile, setProfile] = useState<DiscoverStoredProfile | null>(null);
-  const [statuses, setStatuses] = useState<Record<string, RoadmapItemStatus>>({});
+  const [cloudSnapshot, setCloudSnapshot] = useState<RoadmapSnapshot | null>(
+    null,
+  );
+  const [statuses, setStatuses] = useState<Record<string, RoadmapItemStatus>>(
+    {},
+  );
 
   useEffect(() => {
-    const saved = loadDiscoverProfile();
-    setProfile(saved);
     setStatuses(loadRoadmapStatuses());
-    setMode(saved ? "live" : "empty");
   }, []);
 
-  const results: RoadmapPageResults | null = useMemo(() => {
-    if (mode !== "live" || !profile) return null;
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRoadmap() {
+      try {
+        const response = await fetch("/api/roadmap/current", {
+          cache: "no-store",
+        });
+
+        if (cancelled) return;
+
+        if (response.status === 401) {
+          const fallback = resolveLocalFallback();
+          setProfile(fallback.profile);
+          setMode(fallback.mode);
+          return;
+        }
+
+        const data = (await response.json()) as
+          | ({ ok: true } & RoadmapSnapshot)
+          | { ok: false; reason?: string };
+
+        if (data.ok) {
+          setCloudSnapshot(data);
+          setProfile(null);
+          setMode("cloud");
+          return;
+        }
+
+        const fallback = resolveLocalFallback();
+        setCloudSnapshot(null);
+        setProfile(fallback.profile);
+        setMode(fallback.mode);
+      } catch {
+        if (cancelled) return;
+        const fallback = resolveLocalFallback();
+        setCloudSnapshot(null);
+        setProfile(fallback.profile);
+        setMode(fallback.mode);
+      }
+    }
+
+    void loadRoadmap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const localResults: RoadmapPageResults | null = useMemo(() => {
+    if (mode !== "local" || !profile) return null;
     return computeRoadmapFromProfile(profile, statuses);
   }, [mode, profile, statuses]);
 
-  const handleStatusChange = useCallback((id: string, status: RoadmapItemStatus) => {
-    saveRoadmapStatus(id, status);
-    setStatuses((current) => ({ ...current, [id]: status }));
-  }, []);
+  const cloudResults: RoadmapPageResults | null = useMemo(() => {
+    if (mode !== "cloud" || !cloudSnapshot) return null;
+    return cloudSnapshotToResults(cloudSnapshot, statuses);
+  }, [mode, cloudSnapshot, statuses]);
+
+  const handleStatusChange = useCallback(
+    (id: string, status: RoadmapItemStatus) => {
+      saveRoadmapStatus(id, status);
+      setStatuses((current) => ({ ...current, [id]: status }));
+    },
+    [],
+  );
 
   if (mode === "loading") {
     return (
@@ -50,15 +154,20 @@ export default function RoadmapClient() {
     );
   }
 
+  const results = mode === "cloud" ? cloudResults : localResults;
+
   if (mode === "empty" || !results) {
     return <RoadmapEmptyState />;
   }
 
+  const profileSource: ProfileSource = mode === "cloud" ? "cloud" : "local";
+  const footerLabel = mode === "cloud" ? "Cloud Profile" : "Local Profile";
+
   const completedCount = results.roadmap.filter(
-    (item) => item.status === "completed"
+    (item) => item.status === "completed",
   ).length;
   const inProgressCount = results.roadmap.filter(
-    (item) => item.status === "in_progress"
+    (item) => item.status === "in_progress",
   ).length;
 
   return (
@@ -66,9 +175,7 @@ export default function RoadmapClient() {
       <header className="mb-8 border-b border-[#D1A866]/15 pb-6 sm:mb-10">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <span className="inline-flex items-center rounded-sm border border-[#D1A866]/35 bg-[#D1A866]/10 px-2.5 py-1 text-[9px] font-medium uppercase tracking-[0.18em] text-[#D1A866]">
-              Live Discover Profile
-            </span>
+            <ProfileSourceBadge source={profileSource} />
             <p className="mt-3 text-sm text-[#F3F1EA]/45">
               Prioritised architecture actions derived from your weakest shield
               pillars
@@ -128,7 +235,7 @@ export default function RoadmapClient() {
 
       <footer className="mt-10 border-t border-[#D1A866]/10 pt-6 text-center">
         <p className="text-[10px] uppercase tracking-[0.2em] text-[#F3F1EA]/25">
-          AEGIS Roadmap™ · Live Profile · Captured{" "}
+          AEGIS Roadmap™ · {footerLabel} · Captured{" "}
           {new Date(results.completedAt).toLocaleDateString("en-SG", {
             day: "numeric",
             month: "short",

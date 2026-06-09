@@ -14,23 +14,113 @@ import {
   type BlueprintPageResults,
   type DiscoverStoredProfile,
 } from "@/lib/aegis/localProfile";
+import type { WealthBlueprintSnapshot } from "@/lib/supabase/moduleQueries";
 
-type BlueprintMode = "loading" | "empty" | "live";
+type BlueprintMode = "loading" | "empty" | "cloud" | "local";
+type ProfileSource = "cloud" | "local";
+
+function ProfileSourceBadge({ source }: { source: ProfileSource }) {
+  const label = source === "cloud" ? "Cloud Profile" : "Local Profile";
+
+  return (
+    <span className="inline-flex items-center rounded-sm border border-[#D1A866]/35 bg-[#D1A866]/10 px-2.5 py-1 text-[9px] font-medium uppercase tracking-[0.18em] text-[#D1A866]">
+      {label}
+    </span>
+  );
+}
+
+function cloudSnapshotToResults(
+  snapshot: WealthBlueprintSnapshot,
+): BlueprintPageResults {
+  return {
+    shield: snapshot.shield,
+    awri: snapshot.awri,
+    stressTests: snapshot.stressTests,
+    topStressExposures: snapshot.topStressExposures,
+    roadmap: snapshot.roadmap,
+    projected: snapshot.projected,
+    weakestPillars: snapshot.weakestPillars,
+    client: snapshot.client,
+    formData: snapshot.formData,
+    completedAt: snapshot.completedAt,
+  };
+}
+
+function resolveLocalFallback(): {
+  mode: "local" | "empty";
+  profile: DiscoverStoredProfile | null;
+} {
+  const saved = loadDiscoverProfile();
+  if (saved) {
+    return { mode: "local", profile: saved };
+  }
+  return { mode: "empty", profile: null };
+}
 
 export default function WealthBlueprintClient() {
   const [mode, setMode] = useState<BlueprintMode>("loading");
   const [profile, setProfile] = useState<DiscoverStoredProfile | null>(null);
+  const [cloudSnapshot, setCloudSnapshot] =
+    useState<WealthBlueprintSnapshot | null>(null);
 
   useEffect(() => {
-    const saved = loadDiscoverProfile();
-    setProfile(saved);
-    setMode(saved ? "live" : "empty");
+    let cancelled = false;
+
+    async function loadBlueprint() {
+      try {
+        const response = await fetch("/api/wealth-blueprint/current", {
+          cache: "no-store",
+        });
+
+        if (cancelled) return;
+
+        if (response.status === 401) {
+          const fallback = resolveLocalFallback();
+          setProfile(fallback.profile);
+          setMode(fallback.mode);
+          return;
+        }
+
+        const data = (await response.json()) as
+          | ({ ok: true } & WealthBlueprintSnapshot)
+          | { ok: false; reason?: string };
+
+        if (data.ok) {
+          setCloudSnapshot(data);
+          setProfile(null);
+          setMode("cloud");
+          return;
+        }
+
+        const fallback = resolveLocalFallback();
+        setCloudSnapshot(null);
+        setProfile(fallback.profile);
+        setMode(fallback.mode);
+      } catch {
+        if (cancelled) return;
+        const fallback = resolveLocalFallback();
+        setCloudSnapshot(null);
+        setProfile(fallback.profile);
+        setMode(fallback.mode);
+      }
+    }
+
+    void loadBlueprint();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const results: BlueprintPageResults | null = useMemo(() => {
-    if (mode !== "live" || !profile) return null;
+  const localResults: BlueprintPageResults | null = useMemo(() => {
+    if (mode !== "local" || !profile) return null;
     return computeBlueprintFromProfile(profile);
   }, [mode, profile]);
+
+  const cloudResults: BlueprintPageResults | null = useMemo(() => {
+    if (mode !== "cloud" || !cloudSnapshot) return null;
+    return cloudSnapshotToResults(cloudSnapshot);
+  }, [mode, cloudSnapshot]);
 
   if (mode === "loading") {
     return (
@@ -42,9 +132,14 @@ export default function WealthBlueprintClient() {
     );
   }
 
+  const results = mode === "cloud" ? cloudResults : localResults;
+
   if (mode === "empty" || !results) {
     return <BlueprintEmptyState />;
   }
+
+  const profileSource: ProfileSource = mode === "cloud" ? "cloud" : "local";
+  const badgeLabel = mode === "cloud" ? "Cloud Profile" : "Local Profile";
 
   const reportDate = new Date(results.completedAt).toLocaleDateString("en-SG", {
     day: "numeric",
@@ -62,7 +157,6 @@ export default function WealthBlueprintClient() {
 
   return (
     <article className="mx-auto max-w-5xl">
-      {/* Report header */}
       <header className="relative mb-10 overflow-hidden rounded-sm border border-[#D1A866]/20 bg-[#10283A]/80 pb-8 pt-10 sm:mb-12 sm:pb-10 sm:pt-12">
         <div className="absolute inset-0 bg-gradient-to-br from-[#D1A866]/8 via-transparent to-[#1A2A2B]/20" />
         <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-[#D1A866]/60 to-transparent" />
@@ -94,9 +188,7 @@ export default function WealthBlueprintClient() {
           </div>
 
           <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-[#D1A866]/10 pt-6">
-            <span className="inline-flex items-center rounded-sm border border-[#D1A866]/35 bg-[#D1A866]/10 px-2.5 py-1 text-[9px] font-medium uppercase tracking-[0.18em] text-[#D1A866]">
-              Live Discover Profile
-            </span>
+            <ProfileSourceBadge source={profileSource} />
             <span className="text-xs text-[#F3F1EA]/35">
               Shield Rating {results.shield.rating} · Confidential
             </span>
@@ -104,7 +196,6 @@ export default function WealthBlueprintClient() {
         </div>
       </header>
 
-      {/* Report sections */}
       <div className="flex flex-col gap-8 sm:gap-10">
         <BlueprintClientProfile
           client={results.client}
@@ -136,12 +227,12 @@ export default function WealthBlueprintClient() {
         />
       </div>
 
-      {/* Report footer & export */}
       <footer className="mt-12 border-t border-[#D1A866]/15 pt-8 sm:mt-16">
         <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
           <div className="text-center sm:text-left">
             <p className="text-[10px] uppercase tracking-[0.2em] text-[#F3F1EA]/25">
-              AEGIS Wealth Blueprint™ · Confidential · For architectural review only
+              AEGIS Wealth Blueprint™ · {badgeLabel} · Confidential · For
+              architectural review only
             </p>
             <p className="mt-2 text-xs font-light text-[#F3F1EA]/30">
               This document does not constitute financial, legal, or tax advice.
