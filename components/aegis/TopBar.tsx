@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import AuthStatus from "@/components/aegis/auth/AuthStatus";
 import { NAV_ITEMS } from "@/components/aegis/SidebarNav";
 
 interface TopBarProps {
@@ -76,11 +77,7 @@ export default function TopBar({
           </span>
         </div>
         <div className="hidden h-8 w-px bg-[#D1A866]/10 sm:block" />
-        <div className="flex h-8 w-8 items-center justify-center rounded-sm border border-[#D1A866]/15 bg-[#10283A]/50">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-[#D1A866]/70">
-            —
-          </span>
-        </div>
+        <AuthStatus />
       </div>
     </header>
   );

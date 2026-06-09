@@ -1,0 +1,65 @@
+import { type NextRequest, NextResponse } from "next/server";
+
+import {
+  applySessionCookies,
+  updateSession,
+} from "@/lib/supabase/middleware";
+
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/discover",
+  "/shield-diagnostic",
+  "/stress-testing",
+  "/roadmap",
+  "/wealth-blueprint",
+  "/annual-review",
+  "/document-vault",
+  "/advisor",
+] as const;
+
+const AUTH_PAGES = ["/login", "/signup"] as const;
+
+function matchesPrefix(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
+function isProtectedRoute(pathname: string): boolean {
+  return PROTECTED_PREFIXES.some((prefix) => matchesPrefix(pathname, prefix));
+}
+
+function isAuthPage(pathname: string): boolean {
+  return AUTH_PAGES.some((page) => pathname === page);
+}
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const { response, user } = await updateSession(request);
+
+  if (!user && isProtectedRoute(pathname)) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.searchParams.set("next", pathname);
+    return applySessionCookies(
+      response,
+      NextResponse.redirect(loginUrl),
+    );
+  }
+
+  if (user && isAuthPage(pathname)) {
+    const dashboardUrl = request.nextUrl.clone();
+    dashboardUrl.pathname = "/dashboard";
+    dashboardUrl.search = "";
+    return applySessionCookies(
+      response,
+      NextResponse.redirect(dashboardUrl),
+    );
+  }
+
+  return response;
+}
+
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};
