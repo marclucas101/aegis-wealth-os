@@ -5,10 +5,12 @@ import type { AnnualReviewPageResults } from "@/lib/aegis/localProfile";
 
 interface AnnualReviewProgressPanelProps {
   results: AnnualReviewPageResults;
+  saveState?: "idle" | "saving" | "saved" | "error";
 }
 
 export default function AnnualReviewProgressPanel({
   results,
+  saveState,
 }: AnnualReviewProgressPanelProps) {
   const { shield, projected, roadmap, totalImprovement } = results;
 
@@ -31,6 +33,11 @@ export default function AnnualReviewProgressPanel({
         </p>
         <h3 className="mt-0.5 text-sm font-light text-[#F3F1EA]">
           Current architecture to projected target
+          {saveState === "saved"
+            ? " · Snapshot saved"
+            : saveState === "error"
+              ? " · Save failed"
+              : ""}
         </h3>
       </div>
 

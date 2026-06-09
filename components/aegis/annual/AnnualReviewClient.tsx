@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatCurrency, formatScore } from "@/components/aegis/ShieldScoreCard";
 import AnnualReviewEmptyState from "@/components/aegis/annual/AnnualReviewEmptyState";
 import AnnualReviewProgressPanel from "@/components/aegis/annual/AnnualReviewProgressPanel";
@@ -25,6 +25,17 @@ import type { RoadmapItem, ShieldRating, ShieldScoreResult } from "@/src/lib/sco
 
 type AnnualReviewMode = "loading" | "empty" | "cloud" | "local";
 type ProfileSource = "cloud" | "local";
+type SnapshotSaveState = "idle" | "saving" | "saved" | "error";
+
+function formatSavedTimestamp(iso: string): string {
+  return new Date(iso).toLocaleString("en-SG", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 function ProfileSourceBadge({ source }: { source: ProfileSource }) {
   const label = source === "cloud" ? "Cloud Profile" : "Local Profile";
@@ -227,6 +238,8 @@ export default function AnnualReviewClient() {
   const [statuses, setStatuses] = useState<Record<string, RoadmapItemStatus>>(
     {},
   );
+  const [saveState, setSaveState] = useState<SnapshotSaveState>("idle");
+  const [latestSavedAt, setLatestSavedAt] = useState<string | null>(null);
 
   useEffect(() => {
     setStatuses(loadRoadmapStatuses());
@@ -280,6 +293,69 @@ export default function AnnualReviewClient() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (mode !== "cloud") {
+      setLatestSavedAt(null);
+      setSaveState("idle");
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadHistory() {
+      try {
+        const response = await fetch("/api/annual-review/history", {
+          cache: "no-store",
+        });
+
+        if (cancelled || !response.ok) return;
+
+        const data = (await response.json()) as
+          | { ok: true; snapshots: Array<{ generated_at: string }> }
+          | { ok: false };
+
+        if (data.ok && data.snapshots.length > 0) {
+          setLatestSavedAt(data.snapshots[0].generated_at);
+        }
+      } catch {
+        // History is optional for display; ignore fetch errors.
+      }
+    }
+
+    void loadHistory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mode]);
+
+  const handleSaveSnapshot = useCallback(async () => {
+    if (mode !== "cloud") return;
+
+    setSaveState("saving");
+
+    try {
+      const response = await fetch("/api/annual-review/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const data = (await response.json()) as
+        | { ok: true; generated_at: string }
+        | { ok: false; reason?: string; error?: string };
+
+      if (!response.ok || !data.ok) {
+        setSaveState("error");
+        return;
+      }
+
+      setLatestSavedAt(data.generated_at);
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
+    }
+  }, [mode]);
 
   const localResults: AnnualReviewPageResults | null = useMemo(() => {
     if (mode !== "local" || !profile) return null;
@@ -367,6 +443,11 @@ export default function AnnualReviewClient() {
             <span className="text-xs text-[#F3F1EA]/35">
               Shield Rating {results.shield.rating} · Confidential
             </span>
+            {mode === "cloud" && latestSavedAt && (
+              <span className="text-xs text-[#F3F1EA]/35">
+                Last saved {formatSavedTimestamp(latestSavedAt)}
+              </span>
+            )}
           </div>
         </div>
       </header>
@@ -376,7 +457,10 @@ export default function AnnualReviewClient() {
 
         <AnnualReviewScoreCard results={results} />
 
-        <AnnualReviewProgressPanel results={results} />
+        <AnnualReviewProgressPanel
+          results={results}
+          saveState={mode === "cloud" ? saveState : undefined}
+        />
 
         <section className="relative overflow-hidden rounded-sm border border-[#D1A866]/20 bg-[#1A2A2B]/40">
           <div className="absolute inset-0 bg-gradient-to-br from-[#D1A866]/5 via-transparent to-transparent" />
@@ -427,6 +511,25 @@ export default function AnnualReviewClient() {
       </div>
 
       <footer className="mt-12 border-t border-[#D1A866]/15 pt-8 sm:mt-16">
+        {mode === "cloud" && (
+          <div className="mb-6 flex justify-center">
+            <button
+              type="button"
+              onClick={() => void handleSaveSnapshot()}
+              disabled={saveState === "saving"}
+              className="inline-flex items-center gap-2 rounded-sm border border-[#D1A866]/40 bg-[#D1A866]/10 px-6 py-3 text-[11px] font-medium uppercase tracking-[0.15em] text-[#D1A866] transition-colors hover:bg-[#D1A866]/20 disabled:cursor-wait disabled:opacity-60"
+            >
+              {saveState === "saving"
+                ? "Saving Snapshot…"
+                : saveState === "saved"
+                  ? "Snapshot Saved"
+                  : saveState === "error"
+                    ? "Save Failed — Retry"
+                    : "Save Annual Review Snapshot"}
+            </button>
+          </div>
+        )}
+
         <p className="text-center text-[10px] uppercase tracking-[0.2em] text-[#F3F1EA]/25">
           AEGIS Annual Shield Review™ · {badgeLabel} · Confidential · For
           architectural review only

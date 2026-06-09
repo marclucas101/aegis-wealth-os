@@ -5,6 +5,7 @@ import { PILLAR_LABELS, type BlueprintPageResults } from "@/lib/aegis/localProfi
 
 interface BlueprintExecutiveSummaryProps {
   results: BlueprintPageResults;
+  saveState?: "idle" | "saving" | "saved" | "error";
 }
 
 function buildExecutiveSummary(results: BlueprintPageResults): string[] {
@@ -49,9 +50,17 @@ function buildExecutiveSummary(results: BlueprintPageResults): string[] {
 
 export default function BlueprintExecutiveSummary({
   results,
+  saveState,
 }: BlueprintExecutiveSummaryProps) {
   const paragraphs = buildExecutiveSummary(results);
   const primaryGap = results.weakestPillars[0];
+
+  const saveHint =
+    saveState === "saved"
+      ? "Latest snapshot saved to cloud"
+      : saveState === "error"
+        ? "Cloud snapshot save failed"
+        : null;
 
   return (
     <section className="relative overflow-hidden rounded-sm border border-[#D1A866]/20 bg-[#1A2A2B]/40">
@@ -67,6 +76,7 @@ export default function BlueprintExecutiveSummary({
         </h3>
         <p className="mt-1 text-xs text-[#F3F1EA]/40">
           Institutional diagnostic overview · Wealth Architecture Blueprint™
+          {saveHint ? ` · ${saveHint}` : ""}
         </p>
       </div>
 

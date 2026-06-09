@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import BlueprintClientProfile from "@/components/aegis/blueprint/BlueprintClientProfile";
 import BlueprintEmptyState from "@/components/aegis/blueprint/BlueprintEmptyState";
 import BlueprintExecutiveSummary from "@/components/aegis/blueprint/BlueprintExecutiveSummary";
@@ -18,6 +18,17 @@ import type { WealthBlueprintSnapshot } from "@/lib/supabase/moduleQueries";
 
 type BlueprintMode = "loading" | "empty" | "cloud" | "local";
 type ProfileSource = "cloud" | "local";
+type SnapshotSaveState = "idle" | "saving" | "saved" | "error";
+
+function formatSavedTimestamp(iso: string): string {
+  return new Date(iso).toLocaleString("en-SG", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 function ProfileSourceBadge({ source }: { source: ProfileSource }) {
   const label = source === "cloud" ? "Cloud Profile" : "Local Profile";
@@ -62,6 +73,8 @@ export default function WealthBlueprintClient() {
   const [profile, setProfile] = useState<DiscoverStoredProfile | null>(null);
   const [cloudSnapshot, setCloudSnapshot] =
     useState<WealthBlueprintSnapshot | null>(null);
+  const [saveState, setSaveState] = useState<SnapshotSaveState>("idle");
+  const [latestSavedAt, setLatestSavedAt] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,6 +124,69 @@ export default function WealthBlueprintClient() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (mode !== "cloud") {
+      setLatestSavedAt(null);
+      setSaveState("idle");
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadHistory() {
+      try {
+        const response = await fetch("/api/wealth-blueprint/history", {
+          cache: "no-store",
+        });
+
+        if (cancelled || !response.ok) return;
+
+        const data = (await response.json()) as
+          | { ok: true; snapshots: Array<{ generated_at: string }> }
+          | { ok: false };
+
+        if (data.ok && data.snapshots.length > 0) {
+          setLatestSavedAt(data.snapshots[0].generated_at);
+        }
+      } catch {
+        // History is optional for display; ignore fetch errors.
+      }
+    }
+
+    void loadHistory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mode]);
+
+  const handleSaveSnapshot = useCallback(async () => {
+    if (mode !== "cloud") return;
+
+    setSaveState("saving");
+
+    try {
+      const response = await fetch("/api/wealth-blueprint/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const data = (await response.json()) as
+        | { ok: true; generated_at: string }
+        | { ok: false; reason?: string; error?: string };
+
+      if (!response.ok || !data.ok) {
+        setSaveState("error");
+        return;
+      }
+
+      setLatestSavedAt(data.generated_at);
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
+    }
+  }, [mode]);
 
   const localResults: BlueprintPageResults | null = useMemo(() => {
     if (mode !== "local" || !profile) return null;
@@ -192,6 +268,11 @@ export default function WealthBlueprintClient() {
             <span className="text-xs text-[#F3F1EA]/35">
               Shield Rating {results.shield.rating} · Confidential
             </span>
+            {mode === "cloud" && latestSavedAt && (
+              <span className="text-xs text-[#F3F1EA]/35">
+                Last saved {formatSavedTimestamp(latestSavedAt)}
+              </span>
+            )}
           </div>
         </div>
       </header>
@@ -203,7 +284,10 @@ export default function WealthBlueprintClient() {
           completedAt={results.completedAt}
         />
 
-        <BlueprintExecutiveSummary results={results} />
+        <BlueprintExecutiveSummary
+          results={results}
+          saveState={mode === "cloud" ? saveState : undefined}
+        />
 
         <BlueprintScoreOverview
           shield={results.shield}
@@ -239,29 +323,48 @@ export default function WealthBlueprintClient() {
             </p>
           </div>
 
-          <button
-            type="button"
-            disabled
-            className="inline-flex cursor-not-allowed items-center gap-2 rounded-sm border border-[#D1A866]/20 bg-[#1A2A2B]/40 px-6 py-3 text-[11px] font-medium uppercase tracking-[0.15em] text-[#F3F1EA]/35"
-            aria-disabled="true"
-            title="PDF export will be available in a future release"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              className="h-4 w-4 opacity-50"
-              aria-hidden
+          <div className="flex flex-col items-center gap-3 sm:flex-row">
+            {mode === "cloud" && (
+              <button
+                type="button"
+                onClick={() => void handleSaveSnapshot()}
+                disabled={saveState === "saving"}
+                className="inline-flex items-center gap-2 rounded-sm border border-[#D1A866]/40 bg-[#D1A866]/10 px-6 py-3 text-[11px] font-medium uppercase tracking-[0.15em] text-[#D1A866] transition-colors hover:bg-[#D1A866]/20 disabled:cursor-wait disabled:opacity-60"
+              >
+                {saveState === "saving"
+                  ? "Saving Snapshot…"
+                  : saveState === "saved"
+                    ? "Snapshot Saved"
+                    : saveState === "error"
+                      ? "Save Failed — Retry"
+                      : "Save Blueprint Snapshot"}
+              </button>
+            )}
+
+            <button
+              type="button"
+              disabled
+              className="inline-flex cursor-not-allowed items-center gap-2 rounded-sm border border-[#D1A866]/20 bg-[#1A2A2B]/40 px-6 py-3 text-[11px] font-medium uppercase tracking-[0.15em] text-[#F3F1EA]/35"
+              aria-disabled="true"
+              title="PDF export will be available in a future release"
             >
-              <path
-                d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            PDF Export Coming Soon
-          </button>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                className="h-4 w-4 opacity-50"
+                aria-hidden
+              >
+                <path
+                  d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              PDF Export Coming Soon
+            </button>
+          </div>
         </div>
       </footer>
     </article>
