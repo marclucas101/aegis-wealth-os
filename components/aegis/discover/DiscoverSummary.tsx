@@ -13,6 +13,8 @@ interface DiscoverSummaryProps {
   result: DiscoverScoreResult;
   sections: SectionSummary[];
   onBack: () => void;
+  saveWarning?: string | null;
+  isSavingRemote?: boolean;
 }
 
 function formatScore(value: number): string {
@@ -74,6 +76,8 @@ export default function DiscoverSummary({
   result,
   sections,
   onBack,
+  saveWarning,
+  isSavingRemote = false,
 }: DiscoverSummaryProps) {
   const completed = sections.filter((section) => section.completeness >= 80);
   const missing = sections.filter((section) => section.completeness < 50);
@@ -98,6 +102,19 @@ export default function DiscoverSummary({
           </p>
         </div>
       </header>
+
+      {saveWarning ? (
+        <div
+          role="status"
+          className="rounded-sm border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-light text-amber-200/90"
+        >
+          {saveWarning}
+        </div>
+      ) : isSavingRemote ? (
+        <p className="text-center text-xs font-light text-[#F3F1EA]/35">
+          Syncing profile to your account…
+        </p>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
         <ScoreRing score={result.discoverScore} label="Discover Score™" />

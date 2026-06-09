@@ -415,7 +415,7 @@ function diversificationFromAllocation(allocation: string): {
   }
 }
 
-function buildClientFinancialProfile(
+export function buildClientFinancialProfile(
   stored: DiscoverStoredProfile
 ): ClientFinancialProfile {
   const { formData, completeness } = stored;

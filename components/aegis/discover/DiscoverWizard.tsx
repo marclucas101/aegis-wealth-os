@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { calculateDiscoverScore } from "@/src/lib/scoring";
 import type { DiscoverCompleteness } from "@/src/lib/scoring/types";
 import {
   computeCompleteness,
+  loadDiscoverProfile,
+  loadRoadmapStatuses,
   saveDiscoverProfile,
   type DiscoverFormData,
 } from "@/lib/aegis/localProfile";
@@ -138,6 +140,47 @@ export default function DiscoverWizard() {
   const [formData, setFormData] = useState<DiscoverFormData>(DEFAULT_FORM_DATA);
   const [currentStep, setCurrentStep] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  const [saveWarning, setSaveWarning] = useState<string | null>(null);
+  const [isSavingRemote, setIsSavingRemote] = useState(false);
+  const remoteSaveAttempted = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function hydrateProfile() {
+      try {
+        const response = await fetch("/api/discover/current");
+        if (response.ok) {
+          const data = (await response.json()) as {
+            ok?: boolean;
+            profile?: { formData: DiscoverFormData };
+          };
+          if (!cancelled && data.ok && data.profile?.formData) {
+            setFormData(data.profile.formData);
+            setHydrated(true);
+            return;
+          }
+        }
+      } catch {
+        // Fall back to localStorage below.
+      }
+
+      const local = loadDiscoverProfile();
+      if (!cancelled && local?.formData) {
+        setFormData(local.formData);
+      }
+      if (!cancelled) {
+        setHydrated(true);
+      }
+    }
+
+    void hydrateProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const completeness = useMemo(
     () => computeCompleteness(formData),
@@ -150,7 +193,7 @@ export default function DiscoverWizard() {
   );
 
   useEffect(() => {
-    if (!showSummary) return;
+    if (!showSummary || !hydrated) return;
 
     saveDiscoverProfile({
       formData,
@@ -158,7 +201,60 @@ export default function DiscoverWizard() {
       discoverScore: scoreResult.discoverScore,
       dataConfidenceFactor: scoreResult.dataConfidenceFactor,
     });
-  }, [showSummary, formData, completeness, scoreResult]);
+  }, [showSummary, hydrated, formData, completeness, scoreResult]);
+
+  useEffect(() => {
+    if (!showSummary || !hydrated || remoteSaveAttempted.current) return;
+
+    remoteSaveAttempted.current = true;
+    let cancelled = false;
+
+    async function saveRemote() {
+      setIsSavingRemote(true);
+      setSaveWarning(null);
+
+      try {
+        const response = await fetch("/api/discover/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            formData,
+            completeness,
+            discoverScore: scoreResult.discoverScore,
+            dataConfidenceFactor: scoreResult.dataConfidenceFactor,
+            roadmapStatuses: loadRoadmapStatuses(),
+          }),
+        });
+
+        const data = (await response.json()) as { ok?: boolean; error?: string };
+
+        if (cancelled) return;
+
+        if (!response.ok || !data.ok) {
+          setSaveWarning(
+            data.error ??
+              "Cloud save unavailable — your profile is saved locally on this device.",
+          );
+        }
+      } catch {
+        if (!cancelled) {
+          setSaveWarning(
+            "Cloud save unavailable — your profile is saved locally on this device.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsSavingRemote(false);
+        }
+      }
+    }
+
+    void saveRemote();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showSummary, hydrated, formData, completeness, scoreResult]);
 
   const sectionCompleteness = useMemo(
     () => SECTION_META.map((section) => completeness[section.key]),
@@ -875,7 +971,12 @@ export default function DiscoverWizard() {
       <DiscoverSummary
         result={scoreResult}
         sections={sectionSummaries}
-        onBack={() => setShowSummary(false)}
+        onBack={() => {
+          remoteSaveAttempted.current = false;
+          setShowSummary(false);
+        }}
+        saveWarning={saveWarning}
+        isSavingRemote={isSavingRemote}
       />
     );
   }
