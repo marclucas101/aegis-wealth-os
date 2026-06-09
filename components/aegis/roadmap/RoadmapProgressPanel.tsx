@@ -6,11 +6,13 @@ import type { ProjectedShieldResult, ShieldScoreResult } from "@/src/lib/scoring
 interface RoadmapProgressPanelProps {
   shield: ShieldScoreResult;
   projected: ProjectedShieldResult;
+  saveWarning?: string | null;
 }
 
 export default function RoadmapProgressPanel({
   shield,
   projected,
+  saveWarning = null,
 }: RoadmapProgressPanelProps) {
   const improvement =
     projected.projectedAdjustedShieldScore - shield.adjustedShieldScore;
@@ -27,6 +29,11 @@ export default function RoadmapProgressPanel({
         <h3 className="mt-0.5 text-sm font-light text-[#F3F1EA]">
           Score progression on roadmap completion
         </h3>
+        {saveWarning && (
+          <p className="mt-3 rounded-sm border border-[#D1A866]/25 bg-[#D1A866]/8 px-3 py-2 text-xs text-[#D1A866]/90">
+            {saveWarning}
+          </p>
+        )}
       </div>
 
       <div className="relative grid gap-px bg-[#D1A866]/8 sm:grid-cols-2 lg:grid-cols-3">

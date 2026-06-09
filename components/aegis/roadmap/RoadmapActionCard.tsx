@@ -26,7 +26,11 @@ const STATUS_OPTIONS: { value: RoadmapItemStatus; label: string }[] = [
 interface RoadmapActionCardProps {
   item: RoadmapItem;
   index: number;
-  onStatusChange: (id: string, status: RoadmapItemStatus) => void;
+  onStatusChange: (
+    id: string,
+    status: RoadmapItemStatus,
+    previousStatus: RoadmapItemStatus,
+  ) => void;
 }
 
 export default function RoadmapActionCard({
@@ -78,7 +82,11 @@ export default function RoadmapActionCard({
             <select
               value={item.status}
               onChange={(event) =>
-                onStatusChange(item.id, event.target.value as RoadmapItemStatus)
+                onStatusChange(
+                  item.id,
+                  event.target.value as RoadmapItemStatus,
+                  item.status,
+                )
               }
               className="rounded-sm border border-[#D1A866]/20 bg-[#071B2A]/80 px-3 py-2 text-xs text-[#F3F1EA] outline-none transition-colors focus:border-[#D1A866]/40"
             >

@@ -72,10 +72,7 @@ export default function RoadmapClient() {
   const [statuses, setStatuses] = useState<Record<string, RoadmapItemStatus>>(
     {},
   );
-
-  useEffect(() => {
-    setStatuses(loadRoadmapStatuses());
-  }, []);
+  const [saveWarning, setSaveWarning] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,6 +88,7 @@ export default function RoadmapClient() {
         if (response.status === 401) {
           const fallback = resolveLocalFallback();
           setProfile(fallback.profile);
+          setStatuses(loadRoadmapStatuses());
           setMode(fallback.mode);
           return;
         }
@@ -102,6 +100,11 @@ export default function RoadmapClient() {
         if (data.ok) {
           setCloudSnapshot(data);
           setProfile(null);
+          setStatuses(
+            Object.fromEntries(
+              data.roadmap.map((item) => [item.id, item.status]),
+            ),
+          );
           setMode("cloud");
           return;
         }
@@ -109,12 +112,14 @@ export default function RoadmapClient() {
         const fallback = resolveLocalFallback();
         setCloudSnapshot(null);
         setProfile(fallback.profile);
+        setStatuses(loadRoadmapStatuses());
         setMode(fallback.mode);
       } catch {
         if (cancelled) return;
         const fallback = resolveLocalFallback();
         setCloudSnapshot(null);
         setProfile(fallback.profile);
+        setStatuses(loadRoadmapStatuses());
         setMode(fallback.mode);
       }
     }
@@ -137,11 +142,47 @@ export default function RoadmapClient() {
   }, [mode, cloudSnapshot, statuses]);
 
   const handleStatusChange = useCallback(
-    (id: string, status: RoadmapItemStatus) => {
+    async (
+      id: string,
+      status: RoadmapItemStatus,
+      previousStatus: RoadmapItemStatus,
+    ) => {
       saveRoadmapStatus(id, status);
       setStatuses((current) => ({ ...current, [id]: status }));
+      setSaveWarning(null);
+
+      if (mode !== "cloud") {
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/roadmap/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ item_key: id, status }),
+        });
+
+        const data = (await response.json()) as
+          | { ok: true; item_key: string; status: RoadmapItemStatus }
+          | { ok: false; error?: string };
+
+        if (!response.ok || !data.ok) {
+          setStatuses((current) => ({ ...current, [id]: previousStatus }));
+          setSaveWarning(
+            data.ok === false
+              ? (data.error ??
+                  "Cloud save unavailable — status saved locally on this device.")
+              : "Cloud save unavailable — status saved locally on this device.",
+          );
+        }
+      } catch {
+        setStatuses((current) => ({ ...current, [id]: previousStatus }));
+        setSaveWarning(
+          "Cloud save unavailable — status saved locally on this device.",
+        );
+      }
     },
-    [],
+    [mode],
   );
 
   if (mode === "loading") {
@@ -200,6 +241,7 @@ export default function RoadmapClient() {
         <RoadmapProgressPanel
           shield={results.shield}
           projected={results.projected}
+          saveWarning={saveWarning}
         />
 
         <div className="flex flex-wrap items-center gap-4 rounded-sm border border-[#D1A866]/10 bg-[#1A2A2B]/30 px-5 py-3">
