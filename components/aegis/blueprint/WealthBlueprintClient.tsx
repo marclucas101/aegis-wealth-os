@@ -130,8 +130,6 @@ export default function WealthBlueprintClient() {
 
   useEffect(() => {
     if (mode !== "cloud") {
-      setLatestSavedAt(null);
-      setSaveState("idle");
       return;
     }
 

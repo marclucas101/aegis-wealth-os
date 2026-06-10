@@ -42,29 +42,44 @@ function StatusRow({
   );
 }
 
+async function requestSupabaseHealth(): Promise<HealthState> {
+  try {
+    const response = await fetch("/api/health/supabase", {
+      cache: "no-store",
+    });
+
+    const data = (await response.json()) as SupabaseHealthResponse;
+    return { status: "loaded", data };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Failed to reach health endpoint";
+    return { status: "error", message };
+  }
+}
+
 export default function SupabaseHealthCheck() {
   const [health, setHealth] = useState<HealthState>({ status: "loading" });
 
   const fetchHealth = useCallback(async () => {
     setHealth({ status: "loading" });
 
-    try {
-      const response = await fetch("/api/health/supabase", {
-        cache: "no-store",
-      });
-
-      const data = (await response.json()) as SupabaseHealthResponse;
-      setHealth({ status: "loaded", data });
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to reach health endpoint";
-      setHealth({ status: "error", message });
-    }
+    const nextHealth = await requestSupabaseHealth();
+    setHealth(nextHealth);
   }, []);
 
   useEffect(() => {
-    void fetchHealth();
-  }, [fetchHealth]);
+    let cancelled = false;
+
+    void requestSupabaseHealth().then((nextHealth) => {
+      if (!cancelled) {
+        setHealth(nextHealth);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const loaded = health.status === "loaded" ? health.data : null;
   const connectionOk = loaded?.ok ?? false;

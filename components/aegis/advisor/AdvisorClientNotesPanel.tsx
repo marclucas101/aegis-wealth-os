@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import AdvisorNoteComposer, {
   noteToComposerValues,
@@ -27,7 +27,7 @@ export default function AdvisorClientNotesPanel({
   onRetry,
 }: AdvisorClientNotesPanelProps) {
   const [notes, setNotes] = useState<AdvisorNoteRecord[]>(initialNotes ?? []);
-  const [loadError, setLoadError] = useState<string | null>(error);
+  const [prevInitialNotes, setPrevInitialNotes] = useState(initialNotes);
 
   const [creating, setCreating] = useState(false);
   const [createSaveState, setCreateSaveState] = useState<SaveState>("idle");
@@ -48,12 +48,14 @@ export default function AdvisorClientNotesPanel({
   const currentUserId = viewer?.userId ?? null;
   const isAdmin = viewer?.role === "admin";
 
-  useEffect(() => {
+  if (initialNotes !== prevInitialNotes) {
+    setPrevInitialNotes(initialNotes);
     if (initialNotes !== null) {
       setNotes(initialNotes);
     }
-    setLoadError(error);
-  }, [initialNotes, error]);
+  }
+
+  const loadError = error;
 
   async function handleCreate(values: NoteComposerValues) {
     setCreating(true);

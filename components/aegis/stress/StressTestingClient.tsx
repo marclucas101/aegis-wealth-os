@@ -74,6 +74,22 @@ function resolveLocalFallback(): {
   return { mode: "empty", profile: null };
 }
 
+async function fetchStressHistoryRuns(): Promise<StressTestHistoryEntry[]> {
+  const response = await fetch("/api/stress-testing/history", {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return [];
+  }
+
+  const data = (await response.json()) as
+    | { ok: true; runs: StressTestHistoryEntry[] }
+    | { ok: false };
+
+  return data.ok ? data.runs : [];
+}
+
 export default function StressTestingClient() {
   const [mode, setMode] = useState<StressMode>("loading");
   const [profile, setProfile] = useState<DiscoverStoredProfile | null>(null);
@@ -94,19 +110,8 @@ export default function StressTestingClient() {
     setHistoryLoading(true);
 
     try {
-      const response = await fetch("/api/stress-testing/history", {
-        cache: "no-store",
-      });
-
-      if (!response.ok) return;
-
-      const data = (await response.json()) as
-        | { ok: true; runs: StressTestHistoryEntry[] }
-        | { ok: false };
-
-      if (data.ok) {
-        setHistory(data.runs);
-      }
+      const runs = await fetchStressHistoryRuns();
+      setHistory(runs);
     } catch {
       // History is optional for display; ignore fetch errors.
     } finally {
@@ -165,15 +170,36 @@ export default function StressTestingClient() {
 
   useEffect(() => {
     if (mode !== "cloud") {
-      setHistory([]);
-      setCloudRunOverrides({});
-      setRunState("idle");
-      setRunError(null);
       return;
     }
 
-    void loadHistory();
-  }, [mode, loadHistory]);
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setHistoryLoading(true);
+      }
+    });
+
+    void fetchStressHistoryRuns()
+      .then((runs) => {
+        if (!cancelled) {
+          setHistory(runs);
+        }
+      })
+      .catch(() => {
+        // History is optional for display; ignore fetch errors.
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setHistoryLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mode]);
 
   const handleRunStressTest = useCallback(async () => {
     if (mode !== "cloud") return;

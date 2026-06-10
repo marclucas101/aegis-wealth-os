@@ -13,7 +13,6 @@ import type {
   AWRIResult,
   ClientProfile,
   PillarScores,
-  ProjectedShieldResult,
   RoadmapItem,
   ShieldRating,
   StressTestResult,

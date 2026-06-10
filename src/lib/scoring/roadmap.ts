@@ -11,7 +11,6 @@ import {
   calculateRawShieldScore,
   clamp,
   getRating,
-  weightedAverage,
 } from "./utils";
 
 export function calculateRoadmapPriorityScore(item: RoadmapItem): number {

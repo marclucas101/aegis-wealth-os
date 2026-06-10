@@ -30,7 +30,7 @@ export default function AdvisorClientTasksPanel({
   onOpenTaskCountChange,
 }: AdvisorClientTasksPanelProps) {
   const [tasks, setTasks] = useState<AdvisorTaskRecord[]>(initialTasks ?? []);
-  const [loadError, setLoadError] = useState<string | null>(error);
+  const [prevInitialTasks, setPrevInitialTasks] = useState(initialTasks);
 
   const [creating, setCreating] = useState(false);
   const [createSaveState, setCreateSaveState] = useState<SaveState>("idle");
@@ -48,12 +48,14 @@ export default function AdvisorClientTasksPanel({
   const currentUserId = viewer?.userId ?? null;
   const isAdmin = viewer?.role === "admin";
 
-  useEffect(() => {
+  if (initialTasks !== prevInitialTasks) {
+    setPrevInitialTasks(initialTasks);
     if (initialTasks !== null) {
       setTasks(initialTasks);
     }
-    setLoadError(error);
-  }, [initialTasks, error]);
+  }
+
+  const loadError = error;
 
   useEffect(() => {
     if (!onOpenTaskCountChange) return;

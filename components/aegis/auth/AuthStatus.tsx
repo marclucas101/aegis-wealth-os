@@ -41,9 +41,11 @@ export default function AuthStatus() {
         subscription.unsubscribe();
       };
     } catch {
-      if (active) {
-        setLoading(false);
-      }
+      queueMicrotask(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
       return undefined;
     }
   }, []);

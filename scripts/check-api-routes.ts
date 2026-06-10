@@ -4,7 +4,7 @@
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { join, relative } from "node:path";
 
 type RouteRecord = {
   file: string;

@@ -11,10 +11,7 @@ import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
 import PillarBreakdown from "@/components/aegis/PillarBreakdown";
 import PriorityGaps from "@/components/aegis/PriorityGaps";
 import ShieldRadarChart from "@/components/aegis/ShieldRadarChart";
-import ShieldScoreCard, {
-  formatCurrency,
-  formatScore,
-} from "@/components/aegis/ShieldScoreCard";
+import ShieldScoreCard, { formatScore } from "@/components/aegis/ShieldScoreCard";
 import StressTestPreview from "@/components/aegis/StressTestPreview";
 import {
   buildJourneySteps,

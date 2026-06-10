@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export const ADVISOR_NOTE_TYPES = [
   "general",
@@ -65,13 +65,16 @@ export default function AdvisorNoteComposer({
   onSubmit,
   onCancel,
 }: AdvisorNoteComposerProps) {
-  const [values, setValues] = useState<NoteComposerValues>(
-    initialValues ?? EMPTY_VALUES,
-  );
+  const resolvedInitial = initialValues ?? EMPTY_VALUES;
+  const [values, setValues] = useState<NoteComposerValues>(resolvedInitial);
+  const [prevInitialValues, setPrevInitialValues] = useState(initialValues);
+  const [prevMode, setPrevMode] = useState(mode);
 
-  useEffect(() => {
-    setValues(initialValues ?? EMPTY_VALUES);
-  }, [initialValues, mode]);
+  if (initialValues !== prevInitialValues || mode !== prevMode) {
+    setPrevInitialValues(initialValues);
+    setPrevMode(mode);
+    setValues(resolvedInitial);
+  }
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();

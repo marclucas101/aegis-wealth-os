@@ -58,8 +58,7 @@ function scrollToSection(id: string) {
 function extractCommandCenterData(
   data: Extract<AdvisorClientCommandCenterResponse, { ok: true }>,
 ): AdvisorClientCommandCenterPayload {
-  const { ok: _ok, ...payload } = data;
-  return payload;
+  return data as AdvisorClientCommandCenterPayload;
 }
 
 export default function AdvisorClientWorkspace({

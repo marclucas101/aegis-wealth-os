@@ -348,7 +348,7 @@ function WealthBlueprintPrintContent() {
           </p>
         ) : (
           <ul className="space-y-2">
-            {results.topStressExposures.map((test, index) => {
+            {results.topStressExposures.map((test) => {
               const impact = test.preStressScore - test.postStressScore;
               return (
                 <li

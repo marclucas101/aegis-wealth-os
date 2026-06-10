@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { OnboardingClientRecord } from "@/lib/supabase/clientOnboarding";
 
@@ -70,47 +70,66 @@ export default function AdvisorClientOnboardingPanel({
     "idle",
   );
 
-  const loadClients = useCallback(async () => {
-    setListState("loading");
-    setListError(null);
+  const [prevInitialClients, setPrevInitialClients] = useState(initialClients);
+  const [prevInitialError, setPrevInitialError] = useState(initialError);
 
-    try {
-      const response = await fetch("/api/advisor/client-invitations", {
-        cache: "no-store",
-      });
-
-      const data = (await response.json()) as
-        | { ok: true; clients: OnboardingClientRecord[] }
-        | { ok: false; error?: string };
-
-      if (!response.ok || !data.ok) {
-        setListState("error");
-        setListError(
-          data.ok
-            ? "Failed to load onboarding clients"
-            : (data.error ?? "Failed to load onboarding clients"),
-        );
-        return;
-      }
-
-      setClients(data.clients);
-      setListState("ready");
-    } catch {
-      setListState("error");
-      setListError("Failed to load onboarding clients");
-    }
-  }, []);
-
-  useEffect(() => {
+  if (
+    initialClients !== prevInitialClients ||
+    initialError !== prevInitialError
+  ) {
+    setPrevInitialClients(initialClients);
+    setPrevInitialError(initialError);
     if (initialClients !== undefined) {
       setClients(initialClients);
       setListState(initialError ? "error" : "ready");
       setListError(initialError);
+    }
+  }
+
+  useEffect(() => {
+    if (initialClients !== undefined) {
       return;
     }
 
+    let cancelled = false;
+
+    async function loadClients() {
+      try {
+        const response = await fetch("/api/advisor/client-invitations", {
+          cache: "no-store",
+        });
+
+        if (cancelled) return;
+
+        const data = (await response.json()) as
+          | { ok: true; clients: OnboardingClientRecord[] }
+          | { ok: false; error?: string };
+
+        if (!response.ok || !data.ok) {
+          setListState("error");
+          setListError(
+            data.ok
+              ? "Failed to load onboarding clients"
+              : (data.error ?? "Failed to load onboarding clients"),
+          );
+          return;
+        }
+
+        setClients(data.clients);
+        setListState("ready");
+      } catch {
+        if (cancelled) return;
+        setListState("error");
+        setListError("Failed to load onboarding clients");
+      }
+    }
+
     void loadClients();
-  }, [initialClients, initialError, loadClients]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialClients]);
 
   async function handleCreateProspective(event: React.FormEvent) {
     event.preventDefault();

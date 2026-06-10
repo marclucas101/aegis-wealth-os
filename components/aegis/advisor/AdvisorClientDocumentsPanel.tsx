@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import AdvisorClientDocumentUploadCard, {
   type AdvisorUploadState,
@@ -64,6 +64,8 @@ export default function AdvisorClientDocumentsPanel({
   onRetry,
 }: AdvisorClientDocumentsPanelProps) {
   const [documents, setDocuments] = useState<PanelDocument[]>(initialDocuments);
+  const [prevInitialDocuments, setPrevInitialDocuments] =
+    useState(initialDocuments);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [errorById, setErrorById] = useState<Record<string, string>>({});
@@ -71,9 +73,10 @@ export default function AdvisorClientDocumentsPanel({
   const [uploadState, setUploadState] = useState<AdvisorUploadState>("idle");
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  useEffect(() => {
+  if (initialDocuments !== prevInitialDocuments) {
+    setPrevInitialDocuments(initialDocuments);
     setDocuments(initialDocuments);
-  }, [initialDocuments]);
+  }
 
   const handleUpload = useCallback(
     async (file: File, category: string) => {

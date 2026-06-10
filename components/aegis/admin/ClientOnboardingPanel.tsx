@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { AdminUserRecord } from "@/lib/supabase/adminManagement";
 import type { OnboardingClientRecord } from "@/lib/supabase/clientOnboarding";
@@ -88,40 +88,46 @@ export default function ClientOnboardingPanel({
     [users],
   );
 
-  const loadClients = useCallback(async () => {
-    setListState("loading");
-    setListError(null);
-
-    try {
-      const response = await fetch("/api/admin/client-invitations", {
-        cache: "no-store",
-      });
-
-      const data = (await response.json()) as
-        | { ok: true; clients: OnboardingClientRecord[] }
-        | { ok: false; error?: string };
-
-      if (!response.ok || !data.ok) {
-        setListState("error");
-        setListError(
-          data.ok
-            ? "Failed to load onboarding clients"
-            : (data.error ?? "Failed to load onboarding clients"),
-        );
-        return;
-      }
-
-      setClients(data.clients);
-      setListState("ready");
-    } catch {
-      setListState("error");
-      setListError("Failed to load onboarding clients");
-    }
-  }, []);
-
   useEffect(() => {
+    let cancelled = false;
+
+    async function loadClients() {
+      try {
+        const response = await fetch("/api/admin/client-invitations", {
+          cache: "no-store",
+        });
+
+        if (cancelled) return;
+
+        const data = (await response.json()) as
+          | { ok: true; clients: OnboardingClientRecord[] }
+          | { ok: false; error?: string };
+
+        if (!response.ok || !data.ok) {
+          setListState("error");
+          setListError(
+            data.ok
+              ? "Failed to load onboarding clients"
+              : (data.error ?? "Failed to load onboarding clients"),
+          );
+          return;
+        }
+
+        setClients(data.clients);
+        setListState("ready");
+      } catch {
+        if (cancelled) return;
+        setListState("error");
+        setListError("Failed to load onboarding clients");
+      }
+    }
+
     void loadClients();
-  }, [loadClients]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleCreatePlaceholder(event: React.FormEvent) {
     event.preventDefault();

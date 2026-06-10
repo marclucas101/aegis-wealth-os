@@ -23,11 +23,7 @@ import {
   type RoadmapItemStatus,
 } from "@/lib/aegis/localProfile";
 import { SHIELD_PILLAR_WEIGHTS } from "@/src/lib/scoring/constants";
-import type {
-  RoadmapItem,
-  ShieldPillar,
-  ShieldRating,
-} from "@/src/lib/scoring/types";
+import type { RoadmapItem, ShieldPillar } from "@/src/lib/scoring/types";
 
 // ---------------------------------------------------------------------------
 // Demo constants — exported for clear-demo-data.ts

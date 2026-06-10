@@ -151,13 +151,9 @@ function AnnualReviewPrintContent() {
   const autoPrint = searchParams.get("print") === "1";
   const [mode, setMode] = useState<PrintMode>("loading");
   const [results, setResults] = useState<AnnualReviewPageResults | null>(null);
-  const [statuses, setStatuses] = useState<Record<string, RoadmapItemStatus>>(
-    {},
+  const [statuses] = useState<Record<string, RoadmapItemStatus>>(() =>
+    loadRoadmapStatuses(),
   );
-
-  useEffect(() => {
-    setStatuses(loadRoadmapStatuses());
-  }, []);
 
   useEffect(() => {
     let cancelled = false;

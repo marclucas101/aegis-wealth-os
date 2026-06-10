@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export const ADVISOR_TASK_TYPES = [
   "general",
@@ -101,13 +101,16 @@ export default function AdvisorTaskComposer({
   onSubmit,
   onCancel,
 }: AdvisorTaskComposerProps) {
-  const [values, setValues] = useState<TaskComposerValues>(
-    initialValues ?? EMPTY_VALUES,
-  );
+  const resolvedInitial = initialValues ?? EMPTY_VALUES;
+  const [values, setValues] = useState<TaskComposerValues>(resolvedInitial);
+  const [prevInitialValues, setPrevInitialValues] = useState(initialValues);
+  const [prevMode, setPrevMode] = useState(mode);
 
-  useEffect(() => {
-    setValues(initialValues ?? EMPTY_VALUES);
-  }, [initialValues, mode]);
+  if (initialValues !== prevInitialValues || mode !== prevMode) {
+    setPrevInitialValues(initialValues);
+    setPrevMode(mode);
+    setValues(resolvedInitial);
+  }
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();

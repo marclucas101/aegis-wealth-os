@@ -13,14 +13,16 @@ export default function ConsentBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    try {
-      const dismissed = localStorage.getItem(CONSENT_BANNER_STORAGE_KEY);
-      if (!dismissed) {
+    queueMicrotask(() => {
+      try {
+        const dismissed = localStorage.getItem(CONSENT_BANNER_STORAGE_KEY);
+        if (!dismissed) {
+          setVisible(true);
+        }
+      } catch {
         setVisible(true);
       }
-    } catch {
-      setVisible(true);
-    }
+    });
   }, []);
 
   function dismiss() {

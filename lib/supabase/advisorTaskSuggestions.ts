@@ -418,8 +418,6 @@ function buildScheduleReviewSuggestion(
 function buildPrepareAnnualReviewSuggestion(
   client: ReviewPipelineClient,
 ): AdvisorTaskSuggestion {
-  const today = todayDateString();
-
   return {
     id: buildSuggestionId("prepare_annual_review", client.clientId),
     client_id: client.clientId,

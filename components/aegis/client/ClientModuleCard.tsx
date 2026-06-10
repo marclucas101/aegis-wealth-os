@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ClientModuleCardData } from "@/lib/aegis/clientJourney";
 
-interface ClientModuleCardProps extends ClientModuleCardData {}
+type ClientModuleCardProps = ClientModuleCardData;
 
 const ACCENT_BORDER: Record<
   NonNullable<ClientModuleCardData["accent"]>,

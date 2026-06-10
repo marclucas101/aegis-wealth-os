@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import AdvisorReviewStatusBadge from "@/components/aegis/advisor/AdvisorReviewStatusBadge";
 import type { ClientReviewStatusDetail } from "@/lib/supabase/advisorReviewPipeline";
@@ -70,8 +70,9 @@ export default function AdvisorClientReviewPanel({
   const [review, setReview] = useState<ClientReviewStatusDetail | null>(
     initialReview,
   );
-  const [selectedStatus, setSelectedStatus] = useState<ManualReviewStatus>(
-    "active",
+  const [prevInitialReview, setPrevInitialReview] = useState(initialReview);
+  const [selectedStatus, setSelectedStatus] = useState<ManualReviewStatus>(() =>
+    initialReview ? resolveManualStatus(initialReview) : "active",
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -79,12 +80,13 @@ export default function AdvisorClientReviewPanel({
 
   const isLoading = initialReview === null && error === null;
 
-  useEffect(() => {
+  if (initialReview !== prevInitialReview) {
+    setPrevInitialReview(initialReview);
     setReview(initialReview);
     if (initialReview) {
       setSelectedStatus(resolveManualStatus(initialReview));
     }
-  }, [initialReview]);
+  }
 
   async function handleStatusUpdate() {
     if (!review || isSaving) return;

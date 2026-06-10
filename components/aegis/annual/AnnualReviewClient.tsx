@@ -305,15 +305,11 @@ export default function AnnualReviewClient() {
   const [profile, setProfile] = useState<DiscoverStoredProfile | null>(null);
   const [cloudSnapshot, setCloudSnapshot] =
     useState<AnnualReviewSnapshot | null>(null);
-  const [statuses, setStatuses] = useState<Record<string, RoadmapItemStatus>>(
-    {},
+  const [statuses] = useState<Record<string, RoadmapItemStatus>>(() =>
+    loadRoadmapStatuses(),
   );
   const [saveState, setSaveState] = useState<SnapshotSaveState>("idle");
   const [latestSavedAt, setLatestSavedAt] = useState<string | null>(null);
-
-  useEffect(() => {
-    setStatuses(loadRoadmapStatuses());
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -366,8 +362,6 @@ export default function AnnualReviewClient() {
 
   useEffect(() => {
     if (mode !== "cloud") {
-      setLatestSavedAt(null);
-      setSaveState("idle");
       return;
     }
 

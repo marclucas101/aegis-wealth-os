@@ -4,7 +4,6 @@ import type {
   AWRIResult,
   BenchmarkResult,
   ClientProfile,
-  PillarScores,
   RoadmapItem,
   ShieldPillar,
   ShieldRating,

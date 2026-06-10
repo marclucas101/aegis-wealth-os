@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import AdvisorReviewPipelineCard from "@/components/aegis/advisor/AdvisorReviewPipelineCard";
 import type { AdvisorReviewPipeline } from "@/lib/supabase/advisorReviewPipeline";
@@ -52,29 +52,35 @@ interface AdvisorReviewPipelinePanelProps {
   onRefresh?: () => Promise<void>;
 }
 
+function resolveDefaultSection(
+  pipeline: AdvisorReviewPipeline | null,
+): PipelineSection["key"] {
+  if (!pipeline) {
+    return "overdue";
+  }
+
+  const firstNonEmpty = SECTIONS.find(
+    (section) => pipeline[section.key].length > 0,
+  );
+  return firstNonEmpty?.key ?? "overdue";
+}
+
 export default function AdvisorReviewPipelinePanel({
   pipeline: initialPipeline = null,
   errorMessage = null,
   onRefresh,
 }: AdvisorReviewPipelinePanelProps) {
-  const [pipeline, setPipeline] = useState<AdvisorReviewPipeline | null>(
-    initialPipeline,
+  const pipeline = initialPipeline;
+  const [activeSection, setActiveSection] = useState<PipelineSection["key"]>(
+    () => resolveDefaultSection(initialPipeline),
   );
-  const [activeSection, setActiveSection] =
-    useState<PipelineSection["key"]>("overdue");
+  const [prevInitialPipeline, setPrevInitialPipeline] =
+    useState(initialPipeline);
 
-  useEffect(() => {
-    setPipeline(initialPipeline);
-
-    if (initialPipeline) {
-      const firstNonEmpty = SECTIONS.find(
-        (section) => initialPipeline[section.key].length > 0,
-      );
-      if (firstNonEmpty) {
-        setActiveSection(firstNonEmpty.key);
-      }
-    }
-  }, [initialPipeline]);
+  if (initialPipeline !== prevInitialPipeline) {
+    setPrevInitialPipeline(initialPipeline);
+    setActiveSection(resolveDefaultSection(initialPipeline));
+  }
 
   if (errorMessage) {
     return (

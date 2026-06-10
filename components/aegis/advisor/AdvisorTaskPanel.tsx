@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import AdvisorTaskComposer, {
   taskToComposerValues,
@@ -70,6 +70,8 @@ export default function AdvisorTaskPanel({
   const [dashboard, setDashboard] = useState<AdvisorTaskDashboard | null>(
     initialDashboard,
   );
+  const [prevInitialDashboard, setPrevInitialDashboard] =
+    useState(initialDashboard);
   const [activeSection, setActiveSection] =
     useState<TaskSection["key"]>("overdue");
 
@@ -89,8 +91,14 @@ export default function AdvisorTaskPanel({
     initialViewer?.userId ?? null,
   );
   const [isAdmin, setIsAdmin] = useState(initialViewer?.role === "admin");
+  const [prevInitialViewer, setPrevInitialViewer] = useState(initialViewer);
 
-  useEffect(() => {
+  if (
+    initialDashboard !== prevInitialDashboard ||
+    initialViewer !== prevInitialViewer
+  ) {
+    setPrevInitialDashboard(initialDashboard);
+    setPrevInitialViewer(initialViewer);
     setDashboard(initialDashboard);
     if (initialViewer) {
       setCurrentUserId(initialViewer.userId);
@@ -105,7 +113,7 @@ export default function AdvisorTaskPanel({
         setActiveSection(firstNonEmpty.key);
       }
     }
-  }, [initialDashboard, initialViewer]);
+  }
 
   const reloadTasks = useCallback(async () => {
     if (onRefresh) {

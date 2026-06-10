@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import AdvisorTaskSuggestionCard, {
   type AdvisorTaskSuggestionView,
@@ -21,14 +21,16 @@ export default function AdvisorClientTaskSuggestionsPanel({
   const [payload, setPayload] = useState<AdvisorTaskSuggestionsPayload | null>(
     initialPayload,
   );
+  const [prevInitialPayload, setPrevInitialPayload] = useState(initialPayload);
   const [cardStates, setCardStates] = useState<
     Record<string, "idle" | "creating" | "created" | "error">
   >({});
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
+  if (initialPayload !== prevInitialPayload) {
+    setPrevInitialPayload(initialPayload);
     setPayload(initialPayload);
-  }, [initialPayload]);
+  }
 
   const isLoading = initialPayload === null && error === null;
 

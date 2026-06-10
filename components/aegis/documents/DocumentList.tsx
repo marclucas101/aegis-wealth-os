@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  categoryLabel,
-  DOCUMENT_CATEGORY_OPTIONS,
-} from "@/components/aegis/documents/DocumentCategoryFilter";
+import { categoryLabel } from "@/components/aegis/documents/DocumentCategoryFilter";
 
 export type VaultDocumentItem = {
   id: string;
