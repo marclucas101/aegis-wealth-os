@@ -76,7 +76,7 @@ Browser (anon key + cookie session)
 
 | ID | Finding | Mitigation |
 |----|---------|------------|
-| C-1 | **`users_update_own` RLS allows column-level escalation** — Policy checks `id = auth.uid()` only; a user with direct Supabase browser access could `UPDATE users SET role = 'admin'`. | Add RLS column restriction or `WITH CHECK (role = (SELECT role FROM users WHERE id = auth.uid()))`. **Not fixed in 4X** (migration change deferred). App paths use service role; risk is direct PostgREST abuse. |
+| C-1 | **`users_update_own` RLS allowed column-level escalation** — Authenticated users could `UPDATE users SET role = 'admin'` via browser Supabase client. | **Fixed in Phase 4X.1** — migration `202606100014_fix_users_role_self_escalation.sql`: column-level `GRANT`, `users_update_own_profile` RLS with `users_protected_fields_unchanged()`, and `enforce_users_self_update_safety()` trigger. Service-role admin routes unchanged. |
 | — | No automated critical service-role import violations detected | `npm run security:service-role` |
 
 ### High
@@ -108,13 +108,14 @@ Browser (anon key + cookie session)
 
 ---
 
-## 5. Phase 4X Code Fixes Applied
+## 5. Phase 4X / 4X.1 Fixes Applied
 
 | File | Change |
 |------|--------|
-| `app/api/advisor/clients/create-placeholder/route.ts` | Added `writeHeavy` rate limit |
-| `app/api/admin/clients/create-placeholder/route.ts` | Added `writeHeavy` rate limit |
-| `app/api/advisor/clients/[clientId]/review-status/route.ts` | Added `writeHeavy` rate limit + `rejectUnexpectedFields` on PATCH |
+| `app/api/advisor/clients/create-placeholder/route.ts` | Added `writeHeavy` rate limit (4X) |
+| `app/api/admin/clients/create-placeholder/route.ts` | Added `writeHeavy` rate limit (4X) |
+| `app/api/advisor/clients/[clientId]/review-status/route.ts` | Added `writeHeavy` rate limit + `rejectUnexpectedFields` (4X) |
+| `supabase/migrations/202606100014_fix_users_role_self_escalation.sql` | C-1 RLS + column grants + trigger (4X.1) |
 
 ---
 
@@ -135,7 +136,7 @@ Browser (anon key + cookie session)
 
 ### Before private beta
 
-1. **Fix C-1** — Migration to prevent `users.role` self-escalation via RLS.
+1. ~~**Fix C-1**~~ — Applied in `202606100014_fix_users_role_self_escalation.sql`; verify with [Security Test Plan §12](./SECURITY_TEST_PLAN.md).
 2. Run manual tests in [Advisor & Admin Access Review](./ADVISOR_ADMIN_ACCESS_REVIEW.md).
 3. Run `npm run security:audit` and `npm run qa:smoke` on staging.
 4. Confirm `SUPABASE_SERVICE_ROLE_KEY` not in client bundle (`next build` + grep `.next`).
@@ -160,7 +161,7 @@ Browser (anon key + cookie session)
 | Storage policies documented | ✅ |
 | Service role usage documented | ✅ |
 | Automated scans added | ✅ |
-| Critical migration fixes | ☐ Deferred (C-1, M-3) |
+| Critical migration fixes | ✅ C-1 fixed (4X.1) · ☐ M-3 clients column UPDATE |
 | Manual advisor/admin tests | ☐ Operator |
 
 ---

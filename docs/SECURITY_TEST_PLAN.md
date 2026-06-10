@@ -162,7 +162,22 @@ Run `npm run qa:smoke` for basic JWT-leak check on health JSON.
 
 ---
 
-## 11. Audit Trail Verification
+## 11. Users Role Self-Escalation (RLS — Phase 4X.1)
+
+Requires migration `202606100014_fix_users_role_self_escalation.sql` applied (`npx supabase db push`).
+
+| ID | Check | Method | Expected |
+|----|-------|--------|----------|
+| S-RLS-1 | Policies on `public.users` | SQL in [RLS Policy Review](./RLS_POLICY_REVIEW.md) | `users_update_own_profile` present; `users_update_own` absent |
+| S-RLS-2 | Column grants | `information_schema.column_privileges` | `authenticated` has `UPDATE` on `full_name`, `avatar_url`, `organisation` only |
+| S-RLS-3 | Role self-escalation | Logged-in client via browser Supabase: `.from('users').update({ role: 'admin' }).eq('id', userId)` | Error (permission denied or policy/trigger) |
+| S-RLS-4 | Safe profile update | Same client: `.update({ full_name: 'Test' }).eq('id', userId)` | Success |
+| S-RLS-5 | Admin role change | `PATCH /api/admin/users/{id}/role` as admin with `{ "role": "advisor" }` | 200 + `user_role_updated` audit row |
+| S-RLS-6 | Email mutation blocked | Client `.update({ email: 'other@example.com' })` | Error |
+
+---
+
+## 12. Audit Trail Verification
 
 After performing one action from each category, confirm `audit_logs` row:
 
@@ -191,6 +206,7 @@ Failures to insert must not fail the HTTP request — check server logs for `[au
 - [ ] All 401/403/404 cases pass on staging
 - [ ] 429 verified on at least one write and health route
 - [ ] Sensitive field rejection verified on client and admin routes
+- [ ] **S-RLS-1 through S-RLS-6** pass after `202606100014` migration applied
 - [ ] Health endpoint passes leakage checks in production mode
 - [ ] Service-role import review completed
 - [ ] Findings documented; P0/P1 issues resolved before production

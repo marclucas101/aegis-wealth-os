@@ -1,7 +1,7 @@
 # RLS Policy Review — Phase 4X
 
 **Date:** 2026-06-10  
-**Source migrations:** `supabase/migrations/202606100009_rls_policies.sql`, `202606100011_audit_logs.sql`, `202606100013_advisor_tasks.sql`  
+**Source migrations:** `supabase/migrations/202606100009_rls_policies.sql`, `202606100011_audit_logs.sql`, `202606100013_advisor_tasks.sql`, `202606100014_fix_users_role_self_escalation.sql`  
 **Helpers:** `supabase/migrations/202606100003_users_and_clients.sql`
 
 **Related:** [Security Audit Report](./SECURITY_AUDIT_REPORT.md) · [Storage Policy Review](./STORAGE_POLICY_REVIEW.md) · [Service Role Usage Review](./SERVICE_ROLE_USAGE_REVIEW.md)
@@ -40,11 +40,21 @@ All helpers: `SECURITY DEFINER`, `SET search_path = public`, `STABLE`.
 | Operation | Policy | Intent |
 |-----------|--------|--------|
 | SELECT | own row or admin | Profile read |
-| UPDATE | own row | Profile edit |
+| UPDATE | `users_update_own_profile` — own row, protected fields unchanged | Safe profile edit only |
 | DELETE | admin only | Account removal |
 | INSERT | trigger `handle_new_user()` | Signup provisioning |
 
-**Gap (HIGH):** `users_update_own` does not prevent updating `role`. Direct browser Supabase client could escalate privileges. **Recommend:** `WITH CHECK` preserving existing role or column-level grant.
+**Phase 4X.1 protections (C-1 fixed):**
+
+| Layer | Mechanism |
+|-------|-----------|
+| Column grants | `authenticated` may `UPDATE` only `full_name`, `avatar_url`, `organisation` |
+| RLS | `users_update_own_profile` — `WITH CHECK` via `users_protected_fields_unchanged()` |
+| Trigger | `enforce_users_self_update_safety()` — blocks `role`, `id`, `email`, `created_at` changes unless `auth.role() = 'service_role'` |
+
+**Safe self-service fields:** `full_name`, `avatar_url`, `organisation`. `updated_at` is set by `users_set_updated_at` trigger.
+
+**Remaining caveat:** Service-role server routes (`PATCH /api/admin/users/[userId]/role`, provisioning) intentionally bypass RLS and may update `role`. This is required admin behavior.
 
 ---
 
@@ -217,7 +227,7 @@ Clients and advisors cannot read or tamper with audit trail via browser client.
 
 | Gap | Severity | Recommendation |
 |-----|----------|----------------|
-| Role column self-update on `users` | Critical | New migration: restrict `role` updates to admin/service role |
+| ~~Role column self-update on `users`~~ | ~~Critical~~ **Fixed (4X.1)** | `202606100014_fix_users_role_self_escalation.sql` |
 | Column-unrestricted `clients` UPDATE | Medium | Restrict sensitive columns or deny authenticated UPDATE |
 | Admin absent from some INSERT policies | Low | Acceptable — API uses service role |
 | No advisor SELECT on unassigned clients | — | Correct isolation |
@@ -226,13 +236,73 @@ Clients and advisors cannot read or tamper with audit trail via browser client.
 
 ## Manual verification SQL (staging)
 
-Run as authenticated test users via Supabase SQL editor with `set request.jwt.claim.sub` or client SDK:
+### Inspect `public.users` policies
+
+```sql
+SELECT polname, polcmd, pg_get_expr(polqual, polrelid) AS using_expr,
+       pg_get_expr(polwithcheck, polrelid) AS with_check_expr
+FROM pg_policy
+JOIN pg_class ON pg_class.oid = pg_policy.polrelid
+WHERE relname = 'users' AND relnamespace = 'public'::regnamespace
+ORDER BY polname;
+```
+
+Expect `users_update_own_profile` (not `users_update_own`) with `users_protected_fields_unchanged` in `WITH CHECK`.
+
+### Inspect column UPDATE privileges
+
+```sql
+SELECT grantee, privilege_type, column_name
+FROM information_schema.column_privileges
+WHERE table_schema = 'public' AND table_name = 'users' AND grantee = 'authenticated'
+ORDER BY column_name;
+```
+
+Expect `UPDATE` on `full_name`, `avatar_url`, `organisation` only.
+
+### Role self-escalation must fail (browser client or SDK)
+
+As a normal `client` user session:
+
+```sql
+-- Via Supabase JS (expected: permission denied or RLS/trigger error):
+-- await supabase.from('users').update({ role: 'admin' }).eq('id', userId)
+
+UPDATE public.users SET role = 'admin' WHERE id = auth.uid();
+-- Expected: ERROR permission denied for column role, or users.role cannot be changed...
+```
+
+Safe profile update must succeed:
+
+```sql
+UPDATE public.users SET full_name = 'Test User' WHERE id = auth.uid();
+-- Expected: SUCCESS (1 row)
+```
+
+### Admin role update must still work (service role / admin API)
+
+Service role (SQL editor as postgres / migration runner):
+
+```sql
+UPDATE public.users SET role = 'advisor' WHERE email = 'test-client@example.com';
+-- Expected: SUCCESS when executed with service_role / superuser
+```
+
+Admin API path (staging):
+
+```http
+PATCH /api/admin/users/{userId}/role
+{ "role": "advisor" }
+```
+
+Expected: **200** with audit log `user_role_updated` (uses service role server-side).
+
+### Other RLS checks
 
 1. Client cannot `SELECT` another client's `discover_profiles`.
 2. Unassigned advisor cannot `SELECT` `advisor_notes` for unassigned `client_id`.
 3. Client cannot `INSERT` into `audit_logs`.
-4. Client cannot `UPDATE users SET role = 'admin'` (should fail after C-1 fix; **currently may succeed** — documents C-1).
 
 ---
 
-**Conclusion:** RLS layout matches MVP intent for multi-role wealth app. Primary gap is **privilege escalation via `users` self-update** if users bypass the app and use Supabase client directly. Application API paths remain well-guarded.
+**Conclusion:** RLS layout matches MVP intent for multi-role wealth app. **C-1 (users role self-escalation) is fixed** at column-grant, RLS, and trigger layers. Service-role admin routes retain intentional role-update capability.

@@ -408,11 +408,42 @@ Existing write routes already emit audit events. No new audit actions were requi
 - `writeHeavy` rate limit on advisor/admin `create-placeholder` and advisor `review-status` PATCH
 - `rejectUnexpectedFields` on advisor `review-status` PATCH
 
-### Top findings (not fixed in 4X — migration deferred)
+### Top findings (post-4X)
 
-1. **Critical:** `users_update_own` RLS may allow `role` self-escalation via direct Supabase client
+1. ~~**Critical:** `users_update_own` role self-escalation~~ — **Fixed in 4X.1** (`202606100014_fix_users_role_self_escalation.sql`)
 2. **Medium:** In-memory rate limits not multi-instance safe
 3. **Medium:** `clients` UPDATE policy does not restrict sensitive columns at RLS layer
 
 See [Security Audit Report](./SECURITY_AUDIT_REPORT.md) for full severity table and manual test checklist.
+
+---
+
+## 17. Phase 4X.1 — Critical RLS Role-Escalation Fix
+
+**Date:** 2026-06-10  
+**Migration:** `supabase/migrations/202606100014_fix_users_role_self_escalation.sql`
+
+### Problem (C-1)
+
+`users_update_own` allowed any column update on the user's own row, including `role`.
+
+### Fix (defense in depth)
+
+| Layer | Implementation |
+|-------|----------------|
+| Column privileges | `REVOKE UPDATE ON users FROM authenticated`; `GRANT UPDATE (full_name, avatar_url, organisation)` |
+| RLS | `users_update_own_profile` with `users_protected_fields_unchanged()` in `WITH CHECK` |
+| Trigger | `enforce_users_self_update_safety()` — rejects `role`, `id`, `email`, `created_at` changes unless `auth.role() = 'service_role'` |
+
+### Intentional service-role behavior
+
+`PATCH /api/admin/users/[userId]/role` and provisioning paths use `createAdminSupabaseClient()` and **may** update `role`. This is required and unchanged.
+
+### Apply
+
+```bash
+npx supabase db push
+```
+
+Verification SQL: [RLS Policy Review § Manual verification](./RLS_POLICY_REVIEW.md#manual-verification-sql-staging) · [Security Test Plan §12](./SECURITY_TEST_PLAN.md).
 
