@@ -193,6 +193,23 @@ Before beta/demo, verify client-facing polish (no scoring or API changes):
 
 ---
 
+## 14. Report Export / Print (Phase 4U)
+
+Before client-ready report packaging sign-off:
+
+- [ ] `/wealth-blueprint` — **Export / Print Report** opens `/wealth-blueprint/print`
+- [ ] `/annual-review` — **Export / Print Review** opens `/annual-review/print`
+- [ ] Print pages show cover, scores, pillars, stress, roadmap, disclaimer
+- [ ] Browser **Print / Save PDF** produces clean white-background output
+- [ ] Print toolbar and navigation hidden in print preview
+- [ ] Advisor report modal — **Export / Print** opens advisor print route in new tab
+- [ ] `/advisor/clients/[clientId]/reports/wealth-blueprints/[id]/print` — advisor auth enforced
+- [ ] `/advisor/clients/[clientId]/reports/annual-reviews/[id]/print` — advisor auth enforced
+- [ ] Empty states when no profile / snapshot data
+- [ ] No server-side PDF generation or Supabase PDF storage in this phase
+
+---
+
 ## Sign-off
 
 | Area | Owner | Date | Pass |

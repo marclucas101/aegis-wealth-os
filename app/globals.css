@@ -24,3 +24,44 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Phase 4U — client-ready report print styles */
+@media print {
+  @page {
+    margin: 1.5cm;
+    size: A4;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #171717 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .report-no-print {
+    display: none !important;
+  }
+
+  .report-print-page-break {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .report-print-avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .report-print-root,
+  .report-print-body {
+    background: #ffffff !important;
+    color: #171717 !important;
+  }
+
+  .report-print-body a {
+    color: #171717 !important;
+    text-decoration: none !important;
+  }
+}

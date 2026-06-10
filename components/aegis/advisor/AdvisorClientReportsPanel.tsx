@@ -130,6 +130,13 @@ export default function AdvisorClientReportsPanel({
     viewState.kind === "blueprint" ||
     viewState.kind === "annual";
 
+  const printHref =
+    viewState.kind === "blueprint"
+      ? `/advisor/clients/${clientId}/reports/wealth-blueprints/${viewState.report.id}/print?print=1`
+      : viewState.kind === "annual"
+        ? `/advisor/clients/${clientId}/reports/annual-reviews/${viewState.report.id}/print?print=1`
+        : undefined;
+
   return (
     <>
       <section className="relative overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60">
@@ -301,6 +308,7 @@ export default function AdvisorClientReportsPanel({
                 : undefined
           }
           onClose={closeModal}
+          printHref={printHref}
         >
           {viewState.kind === "loading" ? (
             <p className="py-8 text-center text-sm font-light text-[#F3F1EA]/45">

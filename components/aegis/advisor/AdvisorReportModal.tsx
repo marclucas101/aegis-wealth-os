@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 interface AdvisorReportModalProps {
   title: string;
   subtitle?: string;
   onClose: () => void;
+  printHref?: string;
   children: ReactNode;
 }
 
@@ -13,6 +15,7 @@ export default function AdvisorReportModal({
   title,
   subtitle,
   onClose,
+  printHref,
   children,
 }: AdvisorReportModalProps) {
   return (
@@ -50,13 +53,26 @@ export default function AdvisorReportModal({
             ) : null}
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 rounded-sm border border-[#D1A866]/20 px-3 py-1.5 text-[10px] uppercase tracking-[0.12em] text-[#F3F1EA]/60 transition hover:border-[#D1A866]/35 hover:text-[#F3F1EA]"
-          >
-            Close
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {printHref ? (
+              <Link
+                href={printHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-sm border border-[#D1A866]/30 bg-[#D1A866]/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.12em] text-[#D1A866] transition hover:border-[#D1A866]/45 hover:bg-[#D1A866]/15"
+              >
+                Export / Print
+              </Link>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-sm border border-[#D1A866]/20 px-3 py-1.5 text-[10px] uppercase tracking-[0.12em] text-[#F3F1EA]/60 transition hover:border-[#D1A866]/35 hover:text-[#F3F1EA]"
+            >
+              Close
+            </button>
+          </div>
         </div>
 
         <div className="overflow-y-auto px-5 py-5 sm:px-6">{children}</div>

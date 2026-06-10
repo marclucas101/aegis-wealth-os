@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import Link from "next/link";
 import BlueprintClientProfile from "@/components/aegis/blueprint/BlueprintClientProfile";
 import BlueprintEmptyState from "@/components/aegis/blueprint/BlueprintEmptyState";
 import BlueprintExecutiveSummary from "@/components/aegis/blueprint/BlueprintExecutiveSummary";
@@ -381,17 +382,16 @@ export default function WealthBlueprintClient() {
               </button>
             )}
 
-            <button
-              type="button"
-              disabled
-              className="inline-flex cursor-not-allowed items-center gap-2 rounded-sm border border-[#D1A866]/20 bg-[#1A2A2B]/40 px-6 py-3 text-[11px] font-medium uppercase tracking-[0.15em] text-[#F3F1EA]/35"
-              aria-disabled="true"
-              title="PDF export will be available in a future release"
+            <Link
+              href="/wealth-blueprint/print?print=1"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-sm border border-[#D1A866]/40 bg-[#D1A866]/10 px-6 py-3 text-[11px] font-medium uppercase tracking-[0.15em] text-[#D1A866] transition-colors hover:bg-[#D1A866]/20"
             >
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
-                className="h-4 w-4 opacity-50"
+                className="h-4 w-4"
                 aria-hidden
               >
                 <path
@@ -402,8 +402,8 @@ export default function WealthBlueprintClient() {
                   strokeLinejoin="round"
                 />
               </svg>
-              PDF Export Coming Soon
-            </button>
+              Export / Print Report
+            </Link>
           </div>
         </div>
       </footer>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { formatCurrency, formatScore } from "@/components/aegis/ShieldScoreCard";
 import AnnualReviewEmptyState from "@/components/aegis/annual/AnnualReviewEmptyState";
 import AnnualReviewProgressPanel from "@/components/aegis/annual/AnnualReviewProgressPanel";
@@ -618,8 +619,8 @@ export default function AnnualReviewClient() {
       </div>
 
       <footer className="mt-12 border-t border-[#D1A866]/15 pt-8 sm:mt-16">
-        {mode === "cloud" && (
-          <div className="mb-6 flex justify-center">
+        <div className="mb-6 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+          {mode === "cloud" && (
             <button
               type="button"
               onClick={() => void handleSaveSnapshot()}
@@ -634,8 +635,31 @@ export default function AnnualReviewClient() {
                     ? "Save Failed — Retry"
                     : "Save Annual Review Snapshot"}
             </button>
-          </div>
-        )}
+          )}
+
+          <Link
+            href="/annual-review/print?print=1"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-sm border border-[#D1A866]/40 bg-[#D1A866]/10 px-6 py-3 text-[11px] font-medium uppercase tracking-[0.15em] text-[#D1A866] transition-colors hover:bg-[#D1A866]/20"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              className="h-4 w-4"
+              aria-hidden
+            >
+              <path
+                d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Export / Print Review
+          </Link>
+        </div>
 
         <p className="text-center text-[10px] uppercase tracking-[0.2em] text-[#F3F1EA]/25">
           AEGIS Annual Shield Review™ · {badgeLabel} · Confidential · For
