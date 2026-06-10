@@ -3,7 +3,7 @@ import "server-only";
 import type { ShieldRating } from "@/src/lib/scoring/types";
 
 import { createAdminSupabaseClient } from "./admin";
-import type { AppClientRow, ClientStatus, UserRole } from "./userProfile";
+import type { AppClientRow, ClientStatus } from "./userProfile";
 
 export type AdvisorRiskLevel = "low" | "medium" | "high";
 
@@ -282,45 +282,26 @@ function priorityScore(reasons: string[]): number {
 
 async function loadAccessibleClients(
   authUserId: string,
-  userRole: UserRole,
+  userRole: "advisor" | "admin",
 ): Promise<AppClientRow[]> {
   const admin = createAdminSupabaseClient();
 
-  const { data: advisorClients, error: advisorError } = await admin
+  let query = admin
     .from("clients")
     .select("*")
-    .eq("advisor_user_id", authUserId)
     .order("display_name", { ascending: true });
 
-  if (advisorError) {
-    throw new Error(`Failed to load advisor clients: ${advisorError.message}`);
+  if (userRole === "advisor") {
+    query = query.eq("advisor_user_id", authUserId);
   }
 
-  const clients = [...((advisorClients ?? []) as AppClientRow[])];
+  const { data, error } = await query;
 
-  if (userRole === "client") {
-    const { data: ownClient, error: ownError } = await admin
-      .from("clients")
-      .select("*")
-      .eq("user_id", authUserId)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (ownError) {
-      throw new Error(`Failed to load own client row: ${ownError.message}`);
-    }
-
-    const ownClientRow = ownClient as AppClientRow | null;
-    if (
-      ownClientRow &&
-      !clients.some((client) => client.id === ownClientRow.id)
-    ) {
-      clients.unshift(ownClientRow);
-    }
+  if (error) {
+    throw new Error(`Failed to load advisor clients: ${error.message}`);
   }
 
-  return clients;
+  return (data ?? []) as AppClientRow[];
 }
 
 /**
@@ -329,7 +310,7 @@ async function loadAccessibleClients(
  */
 export async function loadAdvisorOverview(
   authUserId: string,
-  userRole: UserRole,
+  userRole: "advisor" | "admin",
 ): Promise<AdvisorOverview> {
   const clients = await loadAccessibleClients(authUserId, userRole);
 

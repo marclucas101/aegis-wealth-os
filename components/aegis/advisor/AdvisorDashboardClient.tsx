@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import AdvisorAccessDenied from "@/components/aegis/advisor/AdvisorAccessDenied";
 import AdvisorClientTable from "@/components/aegis/advisor/AdvisorClientTable";
 import AdvisorEmptyState from "@/components/aegis/advisor/AdvisorEmptyState";
 import AdvisorMetricCard from "@/components/aegis/advisor/AdvisorMetricCard";
@@ -13,7 +14,7 @@ import AdvisorSearchFilters, {
 import { formatScore } from "@/components/aegis/ShieldScoreCard";
 import type { AdvisorOverview } from "@/lib/supabase/advisorQueries";
 
-type AdvisorMode = "loading" | "empty" | "ready" | "error";
+type AdvisorMode = "loading" | "empty" | "ready" | "error" | "forbidden";
 
 const DEFAULT_FILTERS: AdvisorFilters = {
   search: "",
@@ -55,6 +56,11 @@ export default function AdvisorDashboardClient() {
         if (response.status === 401) {
           setMode("error");
           setErrorMessage("Authentication required.");
+          return;
+        }
+
+        if (response.status === 403) {
+          setMode("forbidden");
           return;
         }
 
@@ -113,6 +119,10 @@ export default function AdvisorDashboardClient() {
         </p>
       </div>
     );
+  }
+
+  if (mode === "forbidden") {
+    return <AdvisorAccessDenied />;
   }
 
   if (mode === "error") {

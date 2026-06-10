@@ -1,6 +1,8 @@
 "use client";
 
-export default function AdvisorEmptyState() {
+import Link from "next/link";
+
+export default function AdvisorAccessDenied() {
   return (
     <div className="relative overflow-hidden rounded-sm border border-[#D1A866]/20 bg-[#10283A]/50 p-8 sm:p-12">
       <div className="absolute inset-0 bg-gradient-to-br from-[#D1A866]/5 via-transparent to-transparent" />
@@ -15,16 +17,18 @@ export default function AdvisorEmptyState() {
             aria-hidden
           >
             <path
-              d="M4 19V5h16v14H4z"
+              d="M12 3L4 7v6c0 5 3.5 9.5 8 11 4.5-1.5 8-6 8-11V7l-8-4z"
               stroke="currentColor"
               strokeWidth="1"
+              strokeLinejoin="round"
             />
             <path
-              d="M8 9h8M8 13h5"
+              d="M12 11v3"
               stroke="currentColor"
-              strokeWidth="1"
+              strokeWidth="1.2"
               strokeLinecap="round"
             />
+            <circle cx="12" cy="8" r="0.75" fill="currentColor" />
           </svg>
         </div>
 
@@ -32,17 +36,27 @@ export default function AdvisorEmptyState() {
           Advisor Console
         </p>
         <h2 className="mt-3 text-2xl font-light tracking-wide text-[#F3F1EA] sm:text-3xl">
-          No clients in your advisory portfolio yet.
+          Advisor access required
         </h2>
         <p className="mt-4 text-sm font-light leading-relaxed text-[#F3F1EA]/45">
-          When clients are assigned to your mandate, their Shield Scores, risk
-          exposures, roadmap progress, and activity will appear here for
-          institutional monitoring and follow-up.
+          The Advisor Console is restricted to wealth architecture advisors and
+          administrators. Client portal accounts cannot access multi-client
+          monitoring or advisory oversight tools.
         </p>
         <p className="mt-3 text-xs font-light leading-relaxed text-[#F3F1EA]/30">
-          Assign clients by setting clients.advisor_user_id in Supabase. Advisor
-          role assignment is also managed manually in public.users.role.
+          Advisor role assignment is currently managed manually in Supabase
+          (public.users.role). Contact your platform administrator if you
+          require advisor access.
         </p>
+
+        <div className="mt-8">
+          <Link
+            href="/dashboard"
+            className="inline-flex rounded-sm border border-[#D1A866]/40 bg-[#D1A866]/10 px-8 py-3 text-[11px] font-medium uppercase tracking-[0.15em] text-[#D1A866] transition-colors hover:bg-[#D1A866]/20"
+          >
+            Return to Dashboard →
+          </Link>
+        </div>
       </div>
     </div>
   );
