@@ -7,6 +7,7 @@ import AdvisorClientActionBar from "@/components/aegis/advisor/AdvisorClientActi
 import AdvisorClientActivityPanel from "@/components/aegis/advisor/AdvisorClientActivityPanel";
 import AdvisorClientCommandHeader from "@/components/aegis/advisor/AdvisorClientCommandHeader";
 import AdvisorClientDocumentsPanel from "@/components/aegis/advisor/AdvisorClientDocumentsPanel";
+import AdvisorClientFileQualityPanel from "@/components/aegis/advisor/AdvisorClientFileQualityPanel";
 import AdvisorClientNotesPanel from "@/components/aegis/advisor/AdvisorClientNotesPanel";
 import AdvisorClientPillarPanel from "@/components/aegis/advisor/AdvisorClientPillarPanel";
 import AdvisorClientReportsPanel from "@/components/aegis/advisor/AdvisorClientReportsPanel";
@@ -34,6 +35,7 @@ interface AdvisorClientWorkspaceProps {
 }
 
 const SECTION_NAV = [
+  { id: "client-file-quality", label: "File Quality" },
   { id: "client-overview", label: "Overview" },
   { id: "client-risk", label: "Risk" },
   { id: "client-roadmap", label: "Roadmap" },
@@ -212,6 +214,8 @@ export default function AdvisorClientWorkspace({
       />
 
       <AdvisorClientActionBar />
+
+      <AdvisorClientFileQualityPanel clientId={clientId} />
 
       <nav
         aria-label="Client file sections"

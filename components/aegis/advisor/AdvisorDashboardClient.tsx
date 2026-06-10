@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import AdvisorAccessDenied from "@/components/aegis/advisor/AdvisorAccessDenied";
 import AdvisorBookHealthPanel from "@/components/aegis/advisor/AdvisorBookHealthPanel";
+import AdvisorBookQualityPanel from "@/components/aegis/advisor/AdvisorBookQualityPanel";
 import AdvisorClientOnboardingPanel from "@/components/aegis/advisor/AdvisorClientOnboardingPanel";
 import AdvisorClientTable from "@/components/aegis/advisor/AdvisorClientTable";
 import AdvisorCommandHeader from "@/components/aegis/advisor/AdvisorCommandHeader";
@@ -20,6 +21,7 @@ import AdvisorSearchFilters, {
   type AdvisorFilters,
 } from "@/components/aegis/advisor/AdvisorSearchFilters";
 import type { AdvisorOverview } from "@/lib/supabase/advisorQueries";
+import type { ClientFileQualitySummary } from "@/lib/supabase/clientFileQuality";
 
 type AdvisorMode = "loading" | "empty" | "ready" | "error" | "forbidden";
 
@@ -63,30 +65,34 @@ export default function AdvisorDashboardClient() {
   const [overview, setOverview] = useState<AdvisorOverview | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [filters, setFilters] = useState<AdvisorFilters>(DEFAULT_FILTERS);
+  const [fileQualityByClientId, setFileQualityByClientId] = useState<
+    Map<string, ClientFileQualitySummary>
+  >(new Map());
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadOverview() {
       try {
-        const response = await fetch("/api/advisor/overview", {
-          cache: "no-store",
-        });
+        const [overviewResponse, fileQualityResponse] = await Promise.all([
+          fetch("/api/advisor/overview", { cache: "no-store" }),
+          fetch("/api/advisor/file-quality", { cache: "no-store" }),
+        ]);
 
         if (cancelled) return;
 
-        if (response.status === 401) {
+        if (overviewResponse.status === 401) {
           setMode("error");
           setErrorMessage("Authentication required.");
           return;
         }
 
-        if (response.status === 403) {
+        if (overviewResponse.status === 403) {
           setMode("forbidden");
           return;
         }
 
-        const data = (await response.json()) as
+        const data = (await overviewResponse.json()) as
           | ({ ok: true } & AdvisorOverview)
           | { ok: false; reason?: string; error?: string };
 
@@ -94,6 +100,20 @@ export default function AdvisorDashboardClient() {
           setMode("error");
           setErrorMessage(data.error ?? "Failed to load advisor overview.");
           return;
+        }
+
+        if (fileQualityResponse.ok) {
+          const qualityData = (await fileQualityResponse.json()) as
+            | { ok: true; clients: ClientFileQualitySummary[] }
+            | { ok: false };
+
+          if (qualityData.ok) {
+            setFileQualityByClientId(
+              new Map(
+                qualityData.clients.map((client) => [client.clientId, client]),
+              ),
+            );
+          }
         }
 
         setOverview(data);
@@ -220,6 +240,7 @@ export default function AdvisorDashboardClient() {
         </div>
         <div className="space-y-6">
           <AdvisorBookHealthPanel overview={overview} />
+          <AdvisorBookQualityPanel />
           <AdvisorPriorityClients clients={overview.priorityClients} />
         </div>
       </div>
@@ -242,7 +263,10 @@ export default function AdvisorDashboardClient() {
           resultCount={filteredClients.length}
           totalCount={overview.clients.length}
         />
-        <AdvisorClientTable clients={filteredClients} />
+        <AdvisorClientTable
+          clients={filteredClients}
+          fileQualityByClientId={fileQualityByClientId}
+        />
       </section>
 
       <AdvisorRecentActivity activity={overview.recentActivity} />

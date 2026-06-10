@@ -18,6 +18,20 @@ interface StressTestPreviewProps {
   stressTests: StressTestResult[];
 }
 
+type StressTestPreviewRow = StressTestResult & {
+  id?: string;
+  created_at?: string;
+};
+
+function stressTestKey(test: StressTestResult, index: number): string {
+  const row = test as StressTestPreviewRow;
+
+  return (
+    row.id ??
+    `${test.scenario}-${test.severity ?? "unknown"}-${row.created_at ?? index}-${index}`
+  );
+}
+
 export default function StressTestPreview({
   stressTests,
 }: StressTestPreviewProps) {
@@ -46,12 +60,12 @@ export default function StressTestPreview({
       </div>
 
       <div className="flex flex-1 flex-col divide-y divide-[#D1A866]/8">
-        {preview.map((test) => {
+        {preview.map((test, index) => {
           const drop = test.preStressScore - test.postStressScore;
 
           return (
             <div
-              key={test.scenario}
+              key={stressTestKey(test, index)}
               className="flex items-center justify-between gap-4 px-5 py-3.5"
             >
               <div className="min-w-0 flex-1">

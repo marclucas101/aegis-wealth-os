@@ -3,7 +3,9 @@
 import Link from "next/link";
 
 import { formatScore } from "@/components/aegis/ShieldScoreCard";
+import AdvisorFileQualityBadge from "@/components/aegis/advisor/AdvisorFileQualityBadge";
 import type { AdvisorClientRow } from "@/lib/supabase/advisorQueries";
+import type { ClientFileQualitySummary } from "@/lib/supabase/clientFileQuality";
 
 function formatPercent(value: number | null): string {
   if (value == null) return "—";
@@ -53,9 +55,13 @@ function riskStyles(riskLevel: AdvisorClientRow["riskLevel"]): string {
 
 interface AdvisorClientTableProps {
   clients: AdvisorClientRow[];
+  fileQualityByClientId?: Map<string, ClientFileQualitySummary>;
 }
 
-export default function AdvisorClientTable({ clients }: AdvisorClientTableProps) {
+export default function AdvisorClientTable({
+  clients,
+  fileQualityByClientId,
+}: AdvisorClientTableProps) {
   if (clients.length === 0) {
     return (
       <div className="rounded-sm border border-[#D1A866]/12 bg-[#10283A]/40 px-5 py-10 text-center">
@@ -80,6 +86,7 @@ export default function AdvisorClientTable({ clients }: AdvisorClientTableProps)
                 "Discover",
                 "DCF",
                 "Roadmap",
+                "Readiness",
                 "Docs",
                 "Last activity",
                 "Risk",
@@ -138,6 +145,24 @@ export default function AdvisorClientTable({ clients }: AdvisorClientTableProps)
                 </td>
                 <td className="px-4 py-4 font-mono text-sm tabular-nums text-[#F3F1EA]/75">
                   {client.roadmapCompletionPercent}%
+                </td>
+                <td className="px-4 py-4">
+                  {fileQualityByClientId?.get(client.id) ? (
+                    <AdvisorFileQualityBadge
+                      rating={
+                        fileQualityByClientId.get(client.id)!.readinessRating
+                      }
+                      score={
+                        fileQualityByClientId.get(client.id)!.readinessScore
+                      }
+                      reviewReady={
+                        fileQualityByClientId.get(client.id)!.reviewReady
+                      }
+                      compact
+                    />
+                  ) : (
+                    <span className="text-sm text-[#F3F1EA]/35">—</span>
+                  )}
                 </td>
                 <td className="px-4 py-4 font-mono text-sm tabular-nums text-[#F3F1EA]/75">
                   {client.documentCount}
@@ -208,6 +233,27 @@ export default function AdvisorClientTable({ clients }: AdvisorClientTableProps)
                 <p className="mt-0.5 font-mono text-[#F3F1EA]/70">
                   {client.roadmapCompletionPercent}%
                 </p>
+              </div>
+              <div>
+                <p className="text-[#F3F1EA]/35">Readiness</p>
+                <div className="mt-1">
+                  {fileQualityByClientId?.get(client.id) ? (
+                    <AdvisorFileQualityBadge
+                      rating={
+                        fileQualityByClientId.get(client.id)!.readinessRating
+                      }
+                      score={
+                        fileQualityByClientId.get(client.id)!.readinessScore
+                      }
+                      reviewReady={
+                        fileQualityByClientId.get(client.id)!.reviewReady
+                      }
+                      compact
+                    />
+                  ) : (
+                    <span className="text-[#F3F1EA]/35">—</span>
+                  )}
+                </div>
               </div>
               <div>
                 <p className="text-[#F3F1EA]/35">Last activity</p>
