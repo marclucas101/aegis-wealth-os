@@ -21,6 +21,8 @@ type PanelDocument = AdvisorDocumentMeta & {
 interface AdvisorClientDocumentsPanelProps {
   clientId: string;
   documents: AdvisorDocumentMeta[];
+  loadError?: string | null;
+  onRetry?: () => void;
 }
 
 function formatFileSize(bytes: number | null): string {
@@ -58,6 +60,8 @@ function mapUploadRecord(record: UploadedDocumentRecord): PanelDocument {
 export default function AdvisorClientDocumentsPanel({
   clientId,
   documents: initialDocuments,
+  loadError = null,
+  onRetry,
 }: AdvisorClientDocumentsPanelProps) {
   const [documents, setDocuments] = useState<PanelDocument[]>(initialDocuments);
   const [openingId, setOpeningId] = useState<string | null>(null);
@@ -193,6 +197,21 @@ export default function AdvisorClientDocumentsPanel({
           Secure vault — view, upload, and archive client records
         </p>
       </div>
+
+      {loadError ? (
+        <div className="relative mx-5 mt-5 rounded-sm border border-red-400/20 bg-red-400/5 px-4 py-3">
+          <p className="text-sm font-light text-red-200/80">{loadError}</p>
+          {onRetry ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
+            >
+              Retry
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <AdvisorClientDocumentUploadCard
         uploadState={uploadState}

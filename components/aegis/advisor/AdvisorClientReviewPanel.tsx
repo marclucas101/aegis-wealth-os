@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import AdvisorReviewStatusBadge from "@/components/aegis/advisor/AdvisorReviewStatusBadge";
 import type { ClientReviewStatusDetail } from "@/lib/supabase/advisorReviewPipeline";
@@ -16,10 +16,12 @@ type ManualReviewStatus = (typeof MANUAL_REVIEW_STATUSES)[number];
 
 interface AdvisorClientReviewPanelProps {
   clientId: string;
+  review: ClientReviewStatusDetail | null;
+  error: string | null;
+  onRetry?: () => void;
   onStatusUpdated?: (newStatus: ManualReviewStatus) => void;
+  onReviewRefreshed?: (review: ClientReviewStatusDetail) => void;
 }
-
-type PanelMode = "loading" | "ready" | "error";
 
 const MANUAL_STATUS_LABELS: Record<ManualReviewStatus, string> = {
   onboarding: "Onboarding",
@@ -41,12 +43,33 @@ function formatReviewDate(isoDate: string | null): string {
   });
 }
 
+function resolveManualStatus(
+  review: ClientReviewStatusDetail,
+): ManualReviewStatus {
+  if (
+    MANUAL_REVIEW_STATUSES.includes(review.dbStatus as ManualReviewStatus)
+  ) {
+    return review.dbStatus as ManualReviewStatus;
+  }
+
+  if (review.dbStatus === "prospect") {
+    return "onboarding";
+  }
+
+  return "active";
+}
+
 export default function AdvisorClientReviewPanel({
   clientId,
+  review: initialReview,
+  error,
+  onRetry,
   onStatusUpdated,
+  onReviewRefreshed,
 }: AdvisorClientReviewPanelProps) {
-  const [mode, setMode] = useState<PanelMode>("loading");
-  const [review, setReview] = useState<ClientReviewStatusDetail | null>(null);
+  const [review, setReview] = useState<ClientReviewStatusDetail | null>(
+    initialReview,
+  );
   const [selectedStatus, setSelectedStatus] = useState<ManualReviewStatus>(
     "active",
   );
@@ -54,46 +77,14 @@ export default function AdvisorClientReviewPanel({
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const loadReview = useCallback(async () => {
-    try {
-      const response = await fetch(
-        `/api/advisor/clients/${clientId}/review-status`,
-        { cache: "no-store" },
-      );
-
-      if (!response.ok) {
-        setMode("error");
-        return;
-      }
-
-      const data = (await response.json()) as
-        | { ok: true; review: ClientReviewStatusDetail }
-        | { ok: false };
-
-      if (!data.ok) {
-        setMode("error");
-        return;
-      }
-
-      setReview(data.review);
-      if (
-        MANUAL_REVIEW_STATUSES.includes(
-          data.review.dbStatus as ManualReviewStatus,
-        )
-      ) {
-        setSelectedStatus(data.review.dbStatus as ManualReviewStatus);
-      } else if (data.review.dbStatus === "prospect") {
-        setSelectedStatus("onboarding");
-      }
-      setMode("ready");
-    } catch {
-      setMode("error");
-    }
-  }, [clientId]);
+  const isLoading = initialReview === null && error === null;
 
   useEffect(() => {
-    void loadReview();
-  }, [loadReview]);
+    setReview(initialReview);
+    if (initialReview) {
+      setSelectedStatus(resolveManualStatus(initialReview));
+    }
+  }, [initialReview]);
 
   async function handleStatusUpdate() {
     if (!review || isSaving) return;
@@ -127,7 +118,23 @@ export default function AdvisorClientReviewPanel({
 
       setSaveMessage("Review status updated.");
       onStatusUpdated?.(data.newStatus);
-      await loadReview();
+
+      const refreshResponse = await fetch(
+        `/api/advisor/clients/${clientId}/review-status`,
+        { cache: "no-store" },
+      );
+
+      if (refreshResponse.ok) {
+        const refreshData = (await refreshResponse.json()) as
+          | { ok: true; review: ClientReviewStatusDetail }
+          | { ok: false };
+
+        if (refreshData.ok) {
+          setReview(refreshData.review);
+          setSelectedStatus(resolveManualStatus(refreshData.review));
+          onReviewRefreshed?.(refreshData.review);
+        }
+      }
     } catch {
       setSaveError("Failed to update review status.");
     } finally {
@@ -135,7 +142,7 @@ export default function AdvisorClientReviewPanel({
     }
   }
 
-  if (mode === "loading") {
+  if (isLoading) {
     return (
       <section className="rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-10 text-center">
         <p className="text-sm font-light text-[#F3F1EA]/45">
@@ -145,12 +152,21 @@ export default function AdvisorClientReviewPanel({
     );
   }
 
-  if (mode === "error" || !review) {
+  if (error || !review) {
     return (
       <section className="rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-8 text-center">
         <p className="text-sm font-light text-[#F3F1EA]/45">
-          Unable to load review status.
+          {error ?? "Unable to load review status."}
         </p>
+        {onRetry ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
+          >
+            Retry
+          </button>
+        ) : null}
       </section>
     );
   }

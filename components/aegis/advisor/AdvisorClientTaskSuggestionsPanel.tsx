@@ -1,64 +1,36 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import AdvisorTaskSuggestionCard, {
   type AdvisorTaskSuggestionView,
 } from "@/components/aegis/advisor/AdvisorTaskSuggestionCard";
-
-type PanelMode = "loading" | "ready" | "error";
-
-type CardState = "idle" | "creating" | "created" | "error";
-
-type SuggestionsPayload = {
-  suggestions: AdvisorTaskSuggestionView[];
-  summary: {
-    totalCount: number;
-    urgentCount: number;
-    highCount: number;
-    clientCount: number;
-  };
-};
+import type { AdvisorTaskSuggestionsPayload } from "@/lib/supabase/advisorTaskSuggestions";
 
 interface AdvisorClientTaskSuggestionsPanelProps {
-  clientId: string;
+  initialPayload: AdvisorTaskSuggestionsPayload | null;
+  error: string | null;
+  onRetry?: () => void;
 }
 
 export default function AdvisorClientTaskSuggestionsPanel({
-  clientId,
+  initialPayload,
+  error,
+  onRetry,
 }: AdvisorClientTaskSuggestionsPanelProps) {
-  const [mode, setMode] = useState<PanelMode>("loading");
-  const [payload, setPayload] = useState<SuggestionsPayload | null>(null);
-  const [cardStates, setCardStates] = useState<Record<string, CardState>>({});
+  const [payload, setPayload] = useState<AdvisorTaskSuggestionsPayload | null>(
+    initialPayload,
+  );
+  const [cardStates, setCardStates] = useState<
+    Record<string, "idle" | "creating" | "created" | "error">
+  >({});
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
 
-  const loadSuggestions = useCallback(async () => {
-    setMode("loading");
-
-    try {
-      const response = await fetch(
-        `/api/advisor/clients/${clientId}/task-suggestions`,
-        { cache: "no-store" },
-      );
-      const data = (await response.json()) as
-        | ({ ok: true } & SuggestionsPayload)
-        | { ok: false; error?: string };
-
-      if (!response.ok || !data.ok) {
-        setMode("error");
-        return;
-      }
-
-      setPayload(data);
-      setMode("ready");
-    } catch {
-      setMode("error");
-    }
-  }, [clientId]);
-
   useEffect(() => {
-    void loadSuggestions();
-  }, [loadSuggestions]);
+    setPayload(initialPayload);
+  }, [initialPayload]);
+
+  const isLoading = initialPayload === null && error === null;
 
   async function handleCreate(suggestion: AdvisorTaskSuggestionView) {
     setCardStates((current) => ({
@@ -137,7 +109,7 @@ export default function AdvisorClientTaskSuggestionsPanel({
     }
   }
 
-  if (mode === "loading") {
+  if (isLoading) {
     return (
       <section className="relative overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-10 text-center">
         <p className="text-sm font-light text-[#F3F1EA]/45">
@@ -147,19 +119,19 @@ export default function AdvisorClientTaskSuggestionsPanel({
     );
   }
 
-  if (mode === "error") {
+  if (error) {
     return (
       <section className="relative overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-8 text-center">
-        <p className="text-sm font-light text-[#F3F1EA]/45">
-          Unable to load suggested follow-ups.
-        </p>
-        <button
-          type="button"
-          onClick={() => void loadSuggestions()}
-          className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
-        >
-          Retry
-        </button>
+        <p className="text-sm font-light text-[#F3F1EA]/45">{error}</p>
+        {onRetry ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
+          >
+            Retry
+          </button>
+        ) : null}
       </section>
     );
   }

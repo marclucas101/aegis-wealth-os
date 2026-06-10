@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import AdvisorNoteComposer, {
   noteToComposerValues,
@@ -9,20 +9,25 @@ import AdvisorNoteComposer, {
 } from "@/components/aegis/advisor/AdvisorNoteComposer";
 import AdvisorNoteList from "@/components/aegis/advisor/AdvisorNoteList";
 
-type PanelMode = "loading" | "ready" | "error";
-
 type SaveState = "idle" | "saved" | "error";
 
 interface AdvisorClientNotesPanelProps {
   clientId: string;
+  initialNotes: AdvisorNoteRecord[] | null;
+  error: string | null;
+  viewer: { userId: string; role: "advisor" | "admin" } | null;
+  onRetry?: () => void;
 }
 
 export default function AdvisorClientNotesPanel({
   clientId,
+  initialNotes,
+  error,
+  viewer,
+  onRetry,
 }: AdvisorClientNotesPanelProps) {
-  const [panelMode, setPanelMode] = useState<PanelMode>("loading");
-  const [notes, setNotes] = useState<AdvisorNoteRecord[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [notes, setNotes] = useState<AdvisorNoteRecord[]>(initialNotes ?? []);
+  const [loadError, setLoadError] = useState<string | null>(error);
 
   const [creating, setCreating] = useState(false);
   const [createSaveState, setCreateSaveState] = useState<SaveState>("idle");
@@ -37,51 +42,18 @@ export default function AdvisorClientNotesPanel({
 
   const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [composerResetKey, setComposerResetKey] = useState(0);
 
-  const loadNotes = useCallback(async () => {
-    setPanelMode("loading");
-    setLoadError(null);
-
-    try {
-      const response = await fetch(`/api/advisor/clients/${clientId}/notes`, {
-        cache: "no-store",
-      });
-
-      const data = (await response.json()) as
-        | {
-            ok: true;
-            notes: AdvisorNoteRecord[];
-            viewer: { userId: string; role: "advisor" | "admin" };
-          }
-        | { ok: false; error?: string };
-
-      if (!response.ok || !data.ok) {
-        setPanelMode("error");
-        setLoadError(
-          !data.ok && data.error
-            ? data.error
-            : "Failed to load advisor notes.",
-        );
-        return;
-      }
-
-      setNotes(data.notes);
-      setCurrentUserId(data.viewer.userId);
-      setIsAdmin(data.viewer.role === "admin");
-      setPanelMode("ready");
-    } catch {
-      setPanelMode("error");
-      setLoadError("Failed to load advisor notes.");
-    }
-  }, [clientId]);
+  const isLoading = initialNotes === null && error === null;
+  const currentUserId = viewer?.userId ?? null;
+  const isAdmin = viewer?.role === "admin";
 
   useEffect(() => {
-    void loadNotes();
-  }, [loadNotes]);
+    if (initialNotes !== null) {
+      setNotes(initialNotes);
+    }
+    setLoadError(error);
+  }, [initialNotes, error]);
 
   async function handleCreate(values: NoteComposerValues) {
     setCreating(true);
@@ -252,28 +224,30 @@ export default function AdvisorClientNotesPanel({
       </div>
 
       <div className="relative space-y-6 px-5 py-5">
-        {panelMode === "loading" ? (
+        {isLoading ? (
           <p className="text-sm font-light text-[#F3F1EA]/45">
             Loading notes…
           </p>
         ) : null}
 
-        {panelMode === "error" ? (
+        {loadError ? (
           <div className="rounded-sm border border-red-400/20 bg-red-400/5 px-4 py-3">
             <p className="text-sm font-light text-red-200/80">
               {loadError ?? "Unable to load notes."}
             </p>
-            <button
-              type="button"
-              onClick={() => void loadNotes()}
-              className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
-            >
-              Retry
-            </button>
+            {onRetry ? (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
+              >
+                Retry
+              </button>
+            ) : null}
           </div>
         ) : null}
 
-        {panelMode === "ready" ? (
+        {!isLoading && !loadError ? (
           <>
             <AdvisorNoteComposer
               key={composerResetKey}

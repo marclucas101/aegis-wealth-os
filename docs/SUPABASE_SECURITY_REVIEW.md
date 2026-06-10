@@ -212,7 +212,24 @@ Individual advisor routes (`/api/advisor/overview`, `/notifications`, `/tasks`, 
 
 ---
 
-## 11. Review Conclusion
+## 11. Advisor Client Command Center (Phase 4P)
+
+`GET /api/advisor/clients/[clientId]/command-center` consolidates advisor client workspace reads into one handler-gated response.
+
+| Control | Implementation |
+|---------|----------------|
+| Authentication | `requireAdvisorAccess()` — same advisor/admin gate as individual client routes |
+| Scope | `clientId` from URL path; access checked server-side via existing query modules (`loadAdvisorClientWorkspace`, `resolveAccessibleClient`) |
+| Advisor scope | Advisors may only load assigned clients; admins may load any client |
+| Errors | `toPublicErrorMessage()` on fatal failures; per-section errors (`fileQualityError`, `suggestionsError`, etc.) without blocking workspace core |
+| Service role | Used only inside existing Supabase query modules — never exposed to the client |
+| Timing | Server logs section timings (`payload.timing`) for profiling |
+
+Individual client routes (`/api/advisor/clients/[clientId]`, `/review-status`, `/tasks`, `/file-quality`, `/task-suggestions`, `/notes`, document/report actions) remain available for backward compatibility and targeted refreshes after mutations.
+
+---
+
+## 12. Review Conclusion
 
 Phase 3 Supabase integration meets MVP security requirements:
 

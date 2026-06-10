@@ -3,7 +3,9 @@
 import type { AdvisorActivityItem } from "@/lib/supabase/advisorQueries";
 
 interface AdvisorClientActivityPanelProps {
-  activity: AdvisorActivityItem[];
+  activity: AdvisorActivityItem[] | null;
+  error?: string | null;
+  onRetry?: () => void;
 }
 
 function formatTimestamp(iso: string): string {
@@ -18,7 +20,12 @@ function formatTimestamp(iso: string): string {
 
 export default function AdvisorClientActivityPanel({
   activity,
+  error = null,
+  onRetry,
 }: AdvisorClientActivityPanelProps) {
+  const isLoading = activity === null && error === null;
+  const items = activity ?? [];
+
   return (
     <section className="relative overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60">
       <div className="absolute inset-0 bg-gradient-to-br from-[#D1A866]/5 via-transparent to-transparent" />
@@ -31,7 +38,30 @@ export default function AdvisorClientActivityPanel({
         </p>
       </div>
 
-      {activity.length === 0 ? (
+      {isLoading ? (
+        <div className="relative px-5 py-12 text-center">
+          <p className="text-sm font-light text-[#F3F1EA]/45">
+            Loading activity…
+          </p>
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="relative px-5 py-12 text-center">
+          <p className="text-sm font-light text-red-200/70">{error}</p>
+          {onRetry ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
+            >
+              Retry
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {!isLoading && !error && items.length === 0 ? (
         <div className="relative px-5 py-12 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-[#D1A866]/15 bg-[#071B2A]/50">
             <span className="text-lg text-[#D1A866]/40" aria-hidden>
@@ -46,9 +76,11 @@ export default function AdvisorClientActivityPanel({
             appear in the audit trail here.
           </p>
         </div>
-      ) : (
+      ) : null}
+
+      {!isLoading && !error && items.length > 0 ? (
         <ul className="relative divide-y divide-[#D1A866]/8">
-          {activity.map((item) => (
+          {items.map((item) => (
             <li key={item.id} className="px-5 py-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -69,7 +101,7 @@ export default function AdvisorClientActivityPanel({
             </li>
           ))}
         </ul>
-      )}
+      ) : null}
     </section>
   );
 }

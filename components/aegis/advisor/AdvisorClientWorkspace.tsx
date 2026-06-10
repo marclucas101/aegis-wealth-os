@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import type { AdvisorClientCommandCenterResponse } from "@/app/api/advisor/clients/[clientId]/command-center/route";
 import AdvisorClientAccessDenied from "@/components/aegis/advisor/AdvisorClientAccessDenied";
 import AdvisorClientActionBar from "@/components/aegis/advisor/AdvisorClientActionBar";
 import AdvisorClientActivityPanel from "@/components/aegis/advisor/AdvisorClientActivityPanel";
@@ -20,8 +21,7 @@ import AdvisorClientStressPanel from "@/components/aegis/advisor/AdvisorClientSt
 import AdvisorClientTaskSuggestionsPanel from "@/components/aegis/advisor/AdvisorClientTaskSuggestionsPanel";
 import AdvisorClientTasksPanel from "@/components/aegis/advisor/AdvisorClientTasksPanel";
 import AdvisorClientTimeline from "@/components/aegis/advisor/AdvisorClientTimeline";
-import type { AdvisorTaskRecord } from "@/components/aegis/advisor/AdvisorTaskComposer";
-import type { AdvisorClientWorkspace as WorkspaceData } from "@/lib/supabase/advisorClientQueries";
+import type { AdvisorClientCommandCenterPayload } from "@/lib/supabase/advisorClientCommandCenter";
 import type { ClientReviewStatusDetail } from "@/lib/supabase/advisorReviewPipeline";
 
 type WorkspaceMode =
@@ -55,90 +55,84 @@ function scrollToSection(id: string) {
   }
 }
 
+function extractCommandCenterData(
+  data: Extract<AdvisorClientCommandCenterResponse, { ok: true }>,
+): AdvisorClientCommandCenterPayload {
+  const { ok: _ok, ...payload } = data;
+  return payload;
+}
+
 export default function AdvisorClientWorkspace({
   clientId,
 }: AdvisorClientWorkspaceProps) {
   const [mode, setMode] = useState<WorkspaceMode>("loading");
-  const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
+  const [commandCenter, setCommandCenter] =
+    useState<AdvisorClientCommandCenterPayload | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [review, setReview] = useState<ClientReviewStatusDetail | null>(null);
-  const [openTaskCount, setOpenTaskCount] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [openTaskCountOverride, setOpenTaskCountOverride] = useState<
+    number | null
+  >(null);
 
-  const loadSupplementaryData = useCallback(async () => {
-    try {
-      const [reviewResponse, tasksResponse] = await Promise.all([
-        fetch(`/api/advisor/clients/${clientId}/review-status`, {
-          cache: "no-store",
-        }),
-        fetch(`/api/advisor/clients/${clientId}/tasks`, { cache: "no-store" }),
-      ]);
+  const loadCommandCenter = useCallback(async () => {
+    const response = await fetch(
+      `/api/advisor/clients/${clientId}/command-center`,
+      { cache: "no-store" },
+    );
 
-      if (reviewResponse.ok) {
-        const reviewData = (await reviewResponse.json()) as
-          | { ok: true; review: ClientReviewStatusDetail }
-          | { ok: false };
-        if (reviewData.ok) {
-          setReview(reviewData.review);
-        }
-      }
-
-      if (tasksResponse.ok) {
-        const tasksData = (await tasksResponse.json()) as
-          | { ok: true; tasks: AdvisorTaskRecord[] }
-          | { ok: false };
-        if (tasksData.ok) {
-          const open = tasksData.tasks.filter(
-            (task) => task.status === "open" || task.status === "in_progress",
-          ).length;
-          setOpenTaskCount(open);
-        }
-      }
-    } catch {
-      // supplementary data is non-blocking
+    if (response.status === 403) {
+      return { kind: "forbidden" as const };
     }
+
+    if (response.status === 404) {
+      return { kind: "not_found" as const };
+    }
+
+    const data = (await response.json()) as AdvisorClientCommandCenterResponse;
+
+    if (!response.ok || !data.ok) {
+      return {
+        kind: "error" as const,
+        message:
+          data.ok === false && data.error
+            ? data.error
+            : "Failed to load client workspace.",
+      };
+    }
+
+    return {
+      kind: "success" as const,
+      data: extractCommandCenterData(data),
+    };
   }, [clientId]);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadWorkspace() {
+    async function loadInitial() {
       try {
-        const response = await fetch(`/api/advisor/clients/${clientId}`, {
-          cache: "no-store",
-        });
-
+        const result = await loadCommandCenter();
         if (cancelled) return;
 
-        if (response.status === 403) {
+        if (result.kind === "forbidden") {
           setMode("forbidden");
           return;
         }
 
-        if (response.status === 404) {
+        if (result.kind === "not_found") {
           setMode("not_found");
           return;
         }
 
-        if (!response.ok) {
-          const data = (await response.json()) as { error?: string };
+        if (result.kind === "error") {
           setMode("error");
-          setErrorMessage(data.error ?? "Failed to load client workspace.");
+          setErrorMessage(result.message);
           return;
         }
 
-        const data = (await response.json()) as
-          | ({ ok: true } & WorkspaceData)
-          | { ok: false; error?: string };
-
-        if (!data.ok) {
-          setMode("error");
-          setErrorMessage(data.error ?? "Failed to load client workspace.");
-          return;
-        }
-
-        setWorkspace(data);
+        setCommandCenter(result.data);
+        setOpenTaskCountOverride(null);
         setMode("ready");
-        void loadSupplementaryData();
       } catch {
         if (cancelled) return;
         setMode("error");
@@ -146,12 +140,60 @@ export default function AdvisorClientWorkspace({
       }
     }
 
-    void loadWorkspace();
+    void loadInitial();
 
     return () => {
       cancelled = true;
     };
-  }, [clientId, loadSupplementaryData]);
+  }, [loadCommandCenter]);
+
+  const refreshCommandCenter = useCallback(async () => {
+    setRefreshing(true);
+
+    try {
+      const result = await loadCommandCenter();
+      if (result.kind === "success") {
+        setCommandCenter(result.data);
+        setOpenTaskCountOverride(null);
+      }
+    } catch {
+      // keep existing data on refresh failure
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadCommandCenter]);
+
+  const openTaskCount = useMemo(() => {
+    if (openTaskCountOverride !== null) return openTaskCountOverride;
+    if (!commandCenter || commandCenter.tasksError) return null;
+    return commandCenter.tasks.filter(
+      (task) => task.status === "open" || task.status === "in_progress",
+    ).length;
+  }, [commandCenter, openTaskCountOverride]);
+
+  const handleReviewUpdated = useCallback((newStatus: string) => {
+    setCommandCenter((current) =>
+      current
+        ? {
+            ...current,
+            client: {
+              ...current.client,
+              status: newStatus as typeof current.client.status,
+            },
+          }
+        : current,
+    );
+  }, []);
+
+  const handleReviewRefreshed = useCallback((review: ClientReviewStatusDetail) => {
+    setCommandCenter((current) =>
+      current ? { ...current, review } : current,
+    );
+  }, []);
+
+  const handleOpenTaskCountChange = useCallback((count: number) => {
+    setOpenTaskCountOverride(count);
+  }, []);
 
   if (mode === "loading") {
     return (
@@ -193,33 +235,54 @@ export default function AdvisorClientWorkspace({
         <p className="text-sm font-light text-red-200/80">
           {errorMessage ?? "Unable to load client workspace."}
         </p>
+        <button
+          type="button"
+          onClick={() => void refreshCommandCenter()}
+          className="mt-4 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
+        >
+          Retry
+        </button>
       </div>
     );
   }
 
-  if (!workspace) {
+  if (!commandCenter) {
     return null;
   }
 
-  const pillarScores = workspace.shield?.pillarScores ?? null;
-  const lastAnnualReview = workspace.annualReviewHistory[0] ?? null;
-  const lastActivity = workspace.recentActivity[0] ?? null;
+  const pillarScores = commandCenter.shield?.pillarScores ?? null;
+  const lastAnnualReview = commandCenter.annualReviewHistory[0] ?? null;
+  const lastActivity = commandCenter.recentActivity[0] ?? null;
 
   return (
     <div className="space-y-6 sm:space-y-8">
+      {refreshing ? (
+        <p className="text-center text-[10px] uppercase tracking-[0.14em] text-[#F3F1EA]/30">
+          Refreshing client file…
+        </p>
+      ) : null}
+
       <AdvisorClientCommandHeader
-        client={workspace.client}
-        adjustedShieldScore={workspace.shield?.adjustedShieldScore ?? null}
-        rating={workspace.shield?.rating ?? null}
-        review={review}
+        client={commandCenter.client}
+        adjustedShieldScore={commandCenter.shield?.adjustedShieldScore ?? null}
+        rating={commandCenter.shield?.rating ?? null}
+        review={commandCenter.review}
         lastActivity={lastActivity}
       />
 
       <AdvisorClientActionBar />
 
-      <AdvisorClientFileQualityPanel clientId={clientId} />
+      <AdvisorClientFileQualityPanel
+        quality={commandCenter.fileQuality}
+        error={commandCenter.fileQualityError}
+        onRetry={() => void refreshCommandCenter()}
+      />
 
-      <AdvisorClientTaskSuggestionsPanel clientId={clientId} />
+      <AdvisorClientTaskSuggestionsPanel
+        initialPayload={commandCenter.taskSuggestions}
+        error={commandCenter.suggestionsError}
+        onRetry={() => void refreshCommandCenter()}
+      />
 
       <nav
         aria-label="Client file sections"
@@ -237,100 +300,119 @@ export default function AdvisorClientWorkspace({
         ))}
       </nav>
 
-      <AdvisorClientSnapshot
-        discover={workspace.discover}
-        shield={workspace.shield}
-        roadmapCompletionPercent={workspace.roadmapCompletionPercent}
-        documentCount={workspace.documents.length}
-        openTaskCount={openTaskCount}
-        lastAnnualReview={lastAnnualReview}
-      />
+      <div id="client-overview" className="scroll-mt-24 space-y-6">
+        <AdvisorClientSnapshot
+          discover={commandCenter.discover}
+          shield={commandCenter.shield}
+          roadmapCompletionPercent={commandCenter.roadmapCompletionPercent}
+          documentCount={commandCenter.documents.length}
+          openTaskCount={openTaskCount}
+          lastAnnualReview={lastAnnualReview}
+        />
 
-      <AdvisorClientTimeline
-        client={workspace.client}
-        recentActivity={workspace.recentActivity}
-        lastAnnualReview={lastAnnualReview}
-      />
+        <AdvisorClientTimeline
+          client={commandCenter.client}
+          recentActivity={commandCenter.recentActivity}
+          lastAnnualReview={lastAnnualReview}
+        />
 
-      <AdvisorClientScorePanel
-        client={workspace.client}
-        discover={workspace.discover}
-        profile={workspace.profile}
-        shield={workspace.shield}
-        awri={workspace.awri}
-        benchmark={workspace.benchmark}
-      />
+        <AdvisorClientScorePanel
+          client={commandCenter.client}
+          discover={commandCenter.discover}
+          profile={commandCenter.profile}
+          shield={commandCenter.shield}
+          awri={commandCenter.awri}
+          benchmark={commandCenter.benchmark}
+        />
+      </div>
 
       <section id="client-risk" className="scroll-mt-24 space-y-6">
         <AdvisorClientRiskSummary
           pillarScores={pillarScores}
-          weakestPillar={workspace.insights?.weakestPillar ?? null}
-          topStressExposures={workspace.topStressExposures}
-          review={review}
+          weakestPillar={commandCenter.insights?.weakestPillar ?? null}
+          topStressExposures={commandCenter.topStressExposures}
+          review={commandCenter.review}
         />
 
         <div className="grid gap-6 lg:grid-cols-2">
           <AdvisorClientPillarPanel
             pillarScores={pillarScores}
-            weakestPillar={workspace.insights?.weakestPillar ?? null}
-            strongestPillar={workspace.insights?.strongestPillar ?? null}
+            weakestPillar={commandCenter.insights?.weakestPillar ?? null}
+            strongestPillar={commandCenter.insights?.strongestPillar ?? null}
           />
           <AdvisorClientStressPanel
-            topStressExposures={workspace.topStressExposures}
-            stressHistory={workspace.stressHistory}
+            topStressExposures={commandCenter.topStressExposures}
+            stressHistory={commandCenter.stressHistory}
           />
         </div>
 
         <div id="client-review" className="scroll-mt-24">
           <AdvisorClientReviewPanel
             clientId={clientId}
-            onStatusUpdated={(newStatus) => {
-              setWorkspace((current) =>
-                current
-                  ? {
-                      ...current,
-                      client: { ...current.client, status: newStatus },
-                    }
-                  : current,
-              );
-              void loadSupplementaryData();
-            }}
+            review={commandCenter.review}
+            error={commandCenter.reviewError}
+            onRetry={() => void refreshCommandCenter()}
+            onStatusUpdated={handleReviewUpdated}
+            onReviewRefreshed={handleReviewRefreshed}
           />
         </div>
       </section>
 
       <div id="client-roadmap" className="scroll-mt-24">
         <AdvisorClientRoadmapPanel
-          roadmap={workspace.roadmap}
-          completionPercent={workspace.roadmapCompletionPercent}
+          roadmap={commandCenter.roadmap}
+          completionPercent={commandCenter.roadmapCompletionPercent}
         />
       </div>
 
       <div id="client-documents" className="scroll-mt-24">
         <AdvisorClientDocumentsPanel
           clientId={clientId}
-          documents={workspace.documents}
+          documents={commandCenter.documents}
+          loadError={commandCenter.documentsError}
+          onRetry={() => void refreshCommandCenter()}
         />
       </div>
 
       <div id="client-reports" className="scroll-mt-24">
         <AdvisorClientReportsPanel
           clientId={clientId}
-          wealthBlueprintHistory={workspace.wealthBlueprintHistory}
-          annualReviewHistory={workspace.annualReviewHistory}
+          wealthBlueprintHistory={commandCenter.wealthBlueprintHistory}
+          annualReviewHistory={commandCenter.annualReviewHistory}
+          metadataError={commandCenter.reportsError}
+          onRetry={() => void refreshCommandCenter()}
         />
       </div>
 
       <div id="client-notes" className="scroll-mt-24">
-        <AdvisorClientNotesPanel clientId={clientId} />
+        <AdvisorClientNotesPanel
+          clientId={clientId}
+          initialNotes={commandCenter.notes}
+          error={commandCenter.notesError}
+          viewer={commandCenter.viewer}
+          onRetry={() => void refreshCommandCenter()}
+        />
       </div>
 
       <div id="client-tasks" className="scroll-mt-24">
-        <AdvisorClientTasksPanel clientId={clientId} />
+        <AdvisorClientTasksPanel
+          clientId={clientId}
+          initialTasks={commandCenter.tasks}
+          error={commandCenter.tasksError}
+          viewer={commandCenter.viewer}
+          onRetry={() => void refreshCommandCenter()}
+          onOpenTaskCountChange={handleOpenTaskCountChange}
+        />
       </div>
 
       <div id="client-activity" className="scroll-mt-24">
-        <AdvisorClientActivityPanel activity={workspace.recentActivity} />
+        <AdvisorClientActivityPanel
+          activity={
+            commandCenter.activityError ? null : commandCenter.recentActivity
+          }
+          error={commandCenter.activityError}
+          onRetry={() => void refreshCommandCenter()}
+        />
       </div>
     </div>
   );

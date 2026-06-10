@@ -21,6 +21,8 @@ interface AdvisorClientReportsPanelProps {
   clientId: string;
   wealthBlueprintHistory: AdvisorWealthBlueprintEntry[];
   annualReviewHistory: AdvisorAnnualReviewEntry[];
+  metadataError?: string | null;
+  onRetry?: () => void;
 }
 
 type ReportViewState =
@@ -48,6 +50,8 @@ export default function AdvisorClientReportsPanel({
   clientId,
   wealthBlueprintHistory,
   annualReviewHistory,
+  metadataError = null,
+  onRetry,
 }: AdvisorClientReportsPanelProps) {
   const [viewState, setViewState] = useState<ReportViewState>({ kind: "idle" });
   const [listError, setListError] = useState<string | null>(null);
@@ -138,6 +142,21 @@ export default function AdvisorClientReportsPanel({
             Wealth Blueprint and Annual Review snapshots
           </p>
         </div>
+
+        {metadataError ? (
+          <div className="relative border-b border-red-400/15 bg-red-400/5 px-5 py-3">
+            <p className="text-xs font-light text-red-200/80">{metadataError}</p>
+            {onRetry ? (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="mt-2 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
+              >
+                Retry
+              </button>
+            ) : null}
+          </div>
+        ) : null}
 
         {listError ? (
           <div className="relative border-b border-red-400/15 bg-red-400/5 px-5 py-3">

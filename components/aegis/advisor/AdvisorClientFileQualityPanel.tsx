@@ -1,62 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 import AdvisorFileQualityChecklist from "@/components/aegis/advisor/AdvisorFileQualityChecklist";
 import AdvisorFileQualityScore from "@/components/aegis/advisor/AdvisorFileQualityScore";
 import type { ClientFileQuality } from "@/lib/supabase/clientFileQuality";
 
 interface AdvisorClientFileQualityPanelProps {
-  clientId: string;
+  quality: ClientFileQuality | null;
+  error: string | null;
+  onRetry?: () => void;
 }
 
-type LoadState = "loading" | "ready" | "error";
-
 export default function AdvisorClientFileQualityPanel({
-  clientId,
+  quality,
+  error,
+  onRetry,
 }: AdvisorClientFileQualityPanelProps) {
-  const [loadState, setLoadState] = useState<LoadState>("loading");
-  const [quality, setQuality] = useState<ClientFileQuality | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadQuality() {
-      try {
-        const response = await fetch(
-          `/api/advisor/clients/${clientId}/file-quality`,
-          { cache: "no-store" },
-        );
-
-        if (cancelled) return;
-
-        if (!response.ok) {
-          setLoadState("error");
-          return;
-        }
-
-        const data = (await response.json()) as
-          | { ok: true; quality: ClientFileQuality }
-          | { ok: false };
-
-        if (!data.ok) {
-          setLoadState("error");
-          return;
-        }
-
-        setQuality(data.quality);
-        setLoadState("ready");
-      } catch {
-        if (!cancelled) setLoadState("error");
-      }
-    }
-
-    void loadQuality();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [clientId]);
+  const isLoading = quality === null && error === null;
 
   return (
     <section
@@ -74,19 +33,28 @@ export default function AdvisorClientFileQualityPanel({
       </div>
 
       <div className="relative px-5 py-5">
-        {loadState === "loading" ? (
+        {isLoading ? (
           <p className="text-sm font-light text-[#F3F1EA]/45">
             Assessing client file quality…
           </p>
         ) : null}
 
-        {loadState === "error" ? (
-          <p className="text-sm font-light text-red-200/70">
-            Unable to load file quality assessment.
-          </p>
+        {error ? (
+          <div className="text-center">
+            <p className="text-sm font-light text-red-200/70">{error}</p>
+            {onRetry ? (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
+              >
+                Retry
+              </button>
+            ) : null}
+          </div>
         ) : null}
 
-        {loadState === "ready" && quality ? (
+        {!isLoading && !error && quality ? (
           <div className="space-y-6">
             <AdvisorFileQualityScore
               readinessScore={quality.readinessScore}
