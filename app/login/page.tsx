@@ -60,12 +60,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
   const next = params.next?.startsWith("/") ? params.next : undefined;
 
-  const callbackError =
+  const formError =
     params.error === "auth_callback_failed"
       ? "Email confirmation failed. Please try signing in again."
       : params.error === "missing_auth_code"
         ? "Authentication link was invalid. Please try again."
-        : null;
+        : params.error
+          ? params.error
+          : null;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#071B2A] text-[#F3F1EA]">
@@ -95,15 +97,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
         <main className="flex flex-1 items-center justify-center py-12 sm:py-16">
           <div className="w-full max-w-md">
-            {callbackError ? (
-              <p
-                role="alert"
-                className="mb-6 rounded-sm border border-red-400/20 bg-red-950/30 px-4 py-3 text-sm text-red-300/90"
-              >
-                {callbackError}
-              </p>
-            ) : null}
-            <AuthForm mode="login" next={next} />
+            <AuthForm mode="login" next={next} initialError={formError} />
           </div>
         </main>
       </div>

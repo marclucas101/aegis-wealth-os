@@ -1,28 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
-
-import {
-  login,
-  signup,
-  type AuthFormState,
-} from "@/app/auth/actions";
-
-const initialState: AuthFormState = {
-  error: null,
-  success: null,
-};
+import { useFormStatus } from "react-dom";
 
 type AuthFormProps = {
   mode: "login" | "signup";
   next?: string;
+  initialError?: string | null;
+  initialSuccess?: string | null;
 };
 
-export default function AuthForm({ mode, next }: AuthFormProps) {
-  const action = mode === "login" ? login : signup;
-  const [state, formAction, pending] = useActionState(action, initialState);
+function SubmitButton({ label }: { label: string }) {
+  const { pending } = useFormStatus();
 
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="mt-6 w-full rounded-sm border border-[#D1A866]/40 bg-[#D1A866]/10 px-6 py-3.5 text-sm font-light tracking-wide text-[#D1A866] transition-all hover:border-[#D1A866]/60 hover:bg-[#D1A866]/15 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {pending ? "Please wait…" : label}
+    </button>
+  );
+}
+
+export default function AuthForm({
+  mode,
+  next,
+  initialError = null,
+  initialSuccess = null,
+}: AuthFormProps) {
   const title = mode === "login" ? "Sign In" : "Create Account";
   const subtitle =
     mode === "login"
@@ -33,6 +40,7 @@ export default function AuthForm({ mode, next }: AuthFormProps) {
   const alternatePrompt =
     mode === "login" ? "New to AEGIS?" : "Already have an account?";
   const alternateLabel = mode === "login" ? "Create account" : "Sign in";
+  const formAction = mode === "login" ? "/auth/login" : "/auth/signup";
 
   return (
     <div className="w-full max-w-md">
@@ -48,6 +56,7 @@ export default function AuthForm({ mode, next }: AuthFormProps) {
 
       <form
         action={formAction}
+        method="post"
         className="rounded-sm border border-[#D1A866]/12 bg-[#10283A]/35 p-6 backdrop-blur-sm sm:p-8"
       >
         {next && mode === "login" ? (
@@ -95,31 +104,25 @@ export default function AuthForm({ mode, next }: AuthFormProps) {
           </div>
         </div>
 
-        {state.error ? (
+        {initialError ? (
           <p
             role="alert"
             className="mt-5 rounded-sm border border-red-400/20 bg-red-950/30 px-4 py-3 text-sm text-red-300/90"
           >
-            {state.error}
+            {initialError}
           </p>
         ) : null}
 
-        {state.success ? (
+        {initialSuccess ? (
           <p
             role="status"
             className="mt-5 rounded-sm border border-[#D1A866]/20 bg-[#D1A866]/8 px-4 py-3 text-sm text-[#D1A866]/90"
           >
-            {state.success}
+            {initialSuccess}
           </p>
         ) : null}
 
-        <button
-          type="submit"
-          disabled={pending}
-          className="mt-6 w-full rounded-sm border border-[#D1A866]/40 bg-[#D1A866]/10 px-6 py-3.5 text-sm font-light tracking-wide text-[#D1A866] transition-all hover:border-[#D1A866]/60 hover:bg-[#D1A866]/15 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {pending ? "Please wait…" : submitLabel}
-        </button>
+        <SubmitButton label={submitLabel} />
       </form>
 
       <p className="mt-6 text-center text-sm text-[#F3F1EA]/35">

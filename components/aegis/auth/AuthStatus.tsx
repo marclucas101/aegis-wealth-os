@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { User } from "@supabase/supabase-js";
 
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import type { MeResponse } from "@/app/api/me/route";
 
 function initialsFromEmail(email: string): string {
   const local = email.split("@")[0] ?? "";
@@ -13,41 +12,35 @@ function initialsFromEmail(email: string): string {
 }
 
 export default function AuthStatus() {
-  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<MeResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
 
-    try {
-      const supabase = createBrowserSupabaseClient();
+    async function loadSession() {
+      try {
+        const response = await fetch("/api/me", { cache: "no-store" });
+        const data = (await response.json()) as MeResponse;
 
-      void supabase.auth.getUser().then(({ data: { user: currentUser } }) => {
         if (!active) return;
-        setUser(currentUser);
-        setLoading(false);
-      });
-
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange((_event, session) => {
-        if (!active) return;
-        setUser(session?.user ?? null);
-        setLoading(false);
-      });
-
-      return () => {
-        active = false;
-        subscription.unsubscribe();
-      };
-    } catch {
-      queueMicrotask(() => {
+        setSession(data.authenticated ? data : null);
+      } catch {
+        if (active) {
+          setSession(null);
+        }
+      } finally {
         if (active) {
           setLoading(false);
         }
-      });
-      return undefined;
+      }
     }
+
+    void loadSession();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   if (loading) {
@@ -58,11 +51,11 @@ export default function AuthStatus() {
     );
   }
 
-  if (!user) {
+  if (!session?.authenticated || !session.email) {
     return null;
   }
 
-  const email = user.email ?? "Signed in";
+  const email = session.email;
 
   return (
     <div className="flex items-center gap-2 sm:gap-3">

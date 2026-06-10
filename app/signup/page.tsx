@@ -49,7 +49,16 @@ function TriSpireMark() {
   );
 }
 
-export default function SignupPage() {
+type SignupPageProps = {
+  searchParams: Promise<{
+    error?: string;
+    success?: string;
+  }>;
+};
+
+export default async function SignupPage({ searchParams }: SignupPageProps) {
+  const params = await searchParams;
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#071B2A] text-[#F3F1EA]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_#1A2A2B_0%,_transparent_55%)]" />
@@ -77,7 +86,11 @@ export default function SignupPage() {
         </header>
 
         <main className="flex flex-1 items-center justify-center py-12 sm:py-16">
-          <AuthForm mode="signup" />
+          <AuthForm
+            mode="signup"
+            initialError={params.error ?? null}
+            initialSuccess={params.success ?? null}
+          />
         </main>
       </div>
     </div>

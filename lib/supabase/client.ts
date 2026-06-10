@@ -25,5 +25,6 @@ export function createBrowserSupabaseClient(): SupabaseClient<Database> {
 
   return createBrowserClient<Database>(url, anonKey, {
     cookieOptions: getSupabaseCookieOptions(),
+    isSingleton: false,
   });
 }
