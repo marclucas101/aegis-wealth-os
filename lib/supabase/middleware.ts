@@ -37,7 +37,7 @@ export function applySessionCookies(
 export async function updateSession(
   request: NextRequest,
 ): Promise<SessionUpdateResult> {
-  let response = NextResponse.next({ request });
+  const response = NextResponse.next({ request });
   const pendingCookies = new Map<string, PendingCookie>();
   let pendingHeaders: Record<string, string> = {};
   const { url, anonKey } = getSupabasePublicEnv();

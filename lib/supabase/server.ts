@@ -33,10 +33,11 @@ export async function createServerSupabaseClient(): Promise<
       getAll() {
         return cookieStore.getAll();
       },
-      setAll(
-        cookiesToSet: { name: string; value: string; options: CookieOptions }[],
-        _headers: Record<string, string>,
-      ) {
+      setAll(cookiesToSet: {
+        name: string;
+        value: string;
+        options: CookieOptions;
+      }[]) {
         try {
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, options);
