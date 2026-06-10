@@ -142,6 +142,7 @@ export default function DashboardClient() {
       try {
         const response = await fetch("/api/dashboard/current", {
           cache: "no-store",
+          credentials: "include",
         });
 
         if (cancelled) return;

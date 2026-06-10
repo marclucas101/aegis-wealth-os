@@ -3,6 +3,9 @@ import AdminDashboardClient from "@/components/aegis/admin/AdminDashboardClient"
 import AppShell from "@/components/aegis/AppShell";
 import { requireAdminAccess } from "@/lib/supabase/adminManagement";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AdminPage() {
   const access = await requireAdminAccess();
 

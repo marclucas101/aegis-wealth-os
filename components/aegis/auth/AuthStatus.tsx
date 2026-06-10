@@ -20,7 +20,10 @@ export default function AuthStatus() {
 
     async function loadSession() {
       try {
-        const response = await fetch("/api/me", { cache: "no-store" });
+        const response = await fetch("/api/me", {
+          cache: "no-store",
+          credentials: "include",
+        });
         const data = (await response.json()) as MeResponse;
 
         if (!active) return;

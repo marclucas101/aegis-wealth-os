@@ -1,8 +1,14 @@
+import { cookies } from "next/headers";
+
 import AppShell from "@/components/aegis/AppShell";
 import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
 import DiscoverWizard from "@/components/aegis/discover/DiscoverWizard";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-export default function DiscoverPage() {
+export default async function DiscoverPage() {
+  await cookies();
+
   return (
     <AppShell
       title="Discover™"

@@ -43,6 +43,7 @@ export default function DocumentVaultClient() {
 
     const response = await fetch(`/api/documents/list${query}`, {
       cache: "no-store",
+      credentials: "include",
     });
 
     if (response.status === 401) {
