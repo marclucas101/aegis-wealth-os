@@ -11,6 +11,8 @@
 
 **Operations (Phase 4W):** [Operations Runbook](./OPERATIONS_RUNBOOK.md) · [Monitoring & Logging](./MONITORING_AND_LOGGING.md) · [Backup & Recovery](./BACKUP_AND_RECOVERY.md) · [Incident Response](./INCIDENT_RESPONSE.md) · [Audit Log Review](./AUDIT_LOG_REVIEW.md)
 
+**Demo environment (Phase 4Y):** [Demo Environment](./DEMO_ENVIRONMENT.md) · [Demo Script](./DEMO_SCRIPT.md) · [Seeding and Reset](./SEEDING_AND_RESET.md)
+
 ---
 
 ## 1. Environment Variables
@@ -257,6 +259,16 @@ Before client-ready report packaging sign-off:
 - [ ] `/advisor/clients/[clientId]/reports/annual-reviews/[id]/print` — advisor auth enforced
 - [ ] Empty states when no profile / snapshot data
 - [ ] No server-side PDF generation or Supabase PDF storage in this phase
+
+---
+
+## 13. Demo environment (optional — dev/staging only)
+
+- [ ] `npm run demo:seed` completes without error on target demo database
+- [ ] Demo logins documented in [Demo Environment](./DEMO_ENVIRONMENT.md)
+- [ ] `npm run demo:clear -- --confirm` removes only `@aegis-demo.local` data
+- [ ] Demo seed is **not** wired to deploy hooks or production startup
+- [ ] No real client PII used in demo personas
 
 ---
 

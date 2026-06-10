@@ -7,6 +7,8 @@
 
 **Security (Phase 4X):** [Security Audit Report](./SECURITY_AUDIT_REPORT.md) · `npm run security:audit`
 
+**Demo (Phase 4Y):** [Demo Environment](./DEMO_ENVIRONMENT.md) · `npm run demo:seed` (dev/staging only — never in production deploy)
+
 ---
 
 > **Warning:** Do not deploy with real client data until legal, compliance, and security review is complete.
@@ -94,6 +96,8 @@
 | `npm run deploy:config -- --production` | Before production promotion |
 | `npm run qa:smoke` | After deploy (set `BASE_URL`) |
 | `npm run ops:check` | Pre-deploy and after ops doc changes |
+| `npm run demo:seed` | Dev/staging demo setup only (manual) |
+| `npm run demo:clear -- --confirm` | Reset demo data (manual) |
 
 ---
 
