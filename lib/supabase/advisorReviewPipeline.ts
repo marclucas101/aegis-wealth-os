@@ -106,7 +106,7 @@ type AdvisorNoteSummary = {
   created_at: string;
 };
 
-type ClientReviewContext = {
+export type ClientReviewContext = {
   client: AppClientRow;
   shield: ShieldScoreSummary | undefined;
   roadmapItems: RoadmapSummary[];
@@ -583,15 +583,20 @@ function isDueThisMonth(client: ReviewPipelineClient): boolean {
 }
 
 /**
- * Loads the advisor review pipeline for accessible clients.
- * Client scope is resolved server-side from the authenticated advisor/admin.
+ * Batch-loads review pipeline inputs for multiple clients.
  */
-export async function loadAdvisorReviewPipeline(
-  authUserId: string,
-  userRole: "advisor" | "admin",
-): Promise<AdvisorReviewPipeline> {
-  const clients = await loadAccessibleClients(authUserId, userRole);
-  const contexts = await loadClientReviewContexts(clients);
+export async function loadAdvisorClientReviewContexts(
+  clients: AppClientRow[],
+): Promise<ClientReviewContext[]> {
+  return loadClientReviewContexts(clients);
+}
+
+/**
+ * Builds the review pipeline from preloaded contexts (no extra queries).
+ */
+export function buildAdvisorReviewPipelineFromContexts(
+  contexts: ClientReviewContext[],
+): AdvisorReviewPipeline {
   const pipelineClients = contexts.map(buildPipelineClient);
 
   const dueThisMonth = pipelineClients
@@ -660,6 +665,38 @@ export async function loadAdvisorReviewPipeline(
       recentlyCompletedCount: recentlyCompleted.length,
     },
   };
+}
+
+/**
+ * Builds review status detail from a preloaded review context.
+ */
+export function buildClientReviewStatusDetailFromContext(
+  ctx: ClientReviewContext,
+): ClientReviewStatusDetail {
+  const pipelineClient = buildPipelineClient(ctx);
+  const { incompleteCount } = computeRoadmapCompletion(ctx.roadmapItems);
+
+  return {
+    ...pipelineClient,
+    incompleteRoadmapCount: incompleteCount,
+    hasRecentAdvisorNote:
+      ctx.recentNote != null &&
+      isWithinDays(ctx.recentNote.created_at, RECENT_NOTE_DAYS),
+    hasSevereStress: isSevereStress(ctx.stressRows),
+  };
+}
+
+/**
+ * Loads the advisor review pipeline for accessible clients.
+ * Client scope is resolved server-side from the authenticated advisor/admin.
+ */
+export async function loadAdvisorReviewPipeline(
+  authUserId: string,
+  userRole: "advisor" | "admin",
+): Promise<AdvisorReviewPipeline> {
+  const clients = await loadAccessibleClients(authUserId, userRole);
+  const contexts = await loadClientReviewContexts(clients);
+  return buildAdvisorReviewPipelineFromContexts(contexts);
 }
 
 async function resolveAccessibleClient(

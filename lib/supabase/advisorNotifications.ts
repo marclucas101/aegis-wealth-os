@@ -5,10 +5,12 @@ import type { ShieldRating } from "@/src/lib/scoring/types";
 import { createAdminSupabaseClient } from "./admin";
 import {
   loadAdvisorReviewPipeline,
+  type AdvisorReviewPipeline,
   type ReviewPipelineClient,
 } from "./advisorReviewPipeline";
 import {
   loadAdvisorTaskDashboard,
+  type AdvisorTaskDashboard,
   type AdvisorTaskRecord,
 } from "./advisorTasks";
 import type { AppClientRow, ClientStatus } from "./userProfile";
@@ -619,26 +621,22 @@ function reportLabelForAction(action: string): string {
   return "Report saved";
 }
 
-/**
- * Computes read-only advisor notifications from existing operational data.
- * Scope is resolved server-side from the authenticated advisor/admin.
- */
-export async function loadAdvisorNotifications(
-  authUserId: string,
-  userRole: "advisor" | "admin",
-): Promise<AdvisorNotificationsPayload> {
-  const [taskDashboard, reviewPipeline, clients] = await Promise.all([
-    loadAdvisorTaskDashboard(authUserId, userRole),
-    loadAdvisorReviewPipeline(authUserId, userRole),
-    loadAccessibleClients(authUserId, userRole),
-  ]);
+export type AdvisorNotificationsSharedInput = {
+  taskDashboard: AdvisorTaskDashboard;
+  reviewPipeline: AdvisorReviewPipeline;
+  clients: AppClientRow[];
+};
 
+function buildAdvisorNotificationsPayload(input: {
+  taskDashboard: AdvisorTaskDashboard;
+  reviewPipeline: AdvisorReviewPipeline;
+  clients: AppClientRow[];
+  contextMaps: Awaited<ReturnType<typeof loadClientContextMaps>>;
+}): AdvisorNotificationsPayload {
+  const { taskDashboard, reviewPipeline, clients, contextMaps } = input;
   const clientNameById = new Map(
     clients.map((client) => [client.id, client.display_name]),
   );
-
-  const clientIds = clients.map((client) => client.id);
-  const contextMaps = await loadClientContextMaps(clientIds);
 
   const notifications: AdvisorNotification[] = [
     ...buildTaskNotifications(taskDashboard.overdue),
@@ -785,4 +783,32 @@ export async function loadAdvisorNotifications(
     notifications: sorted,
     summary: buildSummary(sorted, taskDashboard.summary, reviewPipeline.summary),
   };
+}
+
+/**
+ * Computes read-only advisor notifications from existing operational data.
+ * Scope is resolved server-side from the authenticated advisor/admin.
+ */
+export async function loadAdvisorNotifications(
+  authUserId: string,
+  userRole: "advisor" | "admin",
+  shared?: AdvisorNotificationsSharedInput,
+): Promise<AdvisorNotificationsPayload> {
+  const [taskDashboard, reviewPipeline, clients] = shared
+    ? [shared.taskDashboard, shared.reviewPipeline, shared.clients]
+    : await Promise.all([
+        loadAdvisorTaskDashboard(authUserId, userRole),
+        loadAdvisorReviewPipeline(authUserId, userRole),
+        loadAccessibleClients(authUserId, userRole),
+      ]);
+
+  const clientIds = clients.map((client) => client.id);
+  const contextMaps = await loadClientContextMaps(clientIds);
+
+  return buildAdvisorNotificationsPayload({
+    taskDashboard,
+    reviewPipeline,
+    clients,
+    contextMaps,
+  });
 }

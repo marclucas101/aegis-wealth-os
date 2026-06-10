@@ -8,26 +8,36 @@ import type {
 } from "./advisorNotifications";
 import { loadAdvisorNotifications } from "./advisorNotifications";
 import type { AdvisorReviewPipeline } from "./advisorReviewPipeline";
-import { loadAdvisorReviewPipeline } from "./advisorReviewPipeline";
+import {
+  buildAdvisorReviewPipelineFromContexts,
+  loadAdvisorClientReviewContexts,
+} from "./advisorReviewPipeline";
 import type { AdvisorTaskDashboard } from "./advisorTasks";
 import { loadAdvisorTaskDashboard } from "./advisorTasks";
 import type {
   AdvisorBookFileQuality,
   ClientFileQualitySummary,
 } from "./clientFileQuality";
-import { loadAdvisorBookFileQuality } from "./clientFileQuality";
+import {
+  buildAdvisorBookFileQualityFromContexts,
+  loadAdvisorAccessibleClients,
+  loadAdvisorClientQualityContexts,
+} from "./clientFileQuality";
 import type {
   AdvisorTaskSuggestion,
   AdvisorTaskSuggestionsPayload,
 } from "./advisorTaskSuggestions";
-import { loadAdvisorTaskSuggestions } from "./advisorTaskSuggestions";
+import {
+  DASHBOARD_SUGGESTIONS_LIMIT,
+  loadAdvisorTaskSuggestions,
+} from "./advisorTaskSuggestions";
 import {
   loadOnboardingClients,
   type OnboardingClientRecord,
 } from "./clientOnboarding";
 
 const TOP_NOTIFICATIONS_LIMIT = 8;
-const TOP_SUGGESTIONS_LIMIT = 12;
+const HEAVY_SUGGESTIONS_TIME_BUDGET_MS = 3_000;
 
 export type AdvisorCommandCenterShellTiming = {
   totalMs: number;
@@ -37,6 +47,7 @@ export type AdvisorCommandCenterShellTiming = {
 
 export type AdvisorCommandCenterHeavyTiming = {
   totalMs: number;
+  totalHeavyMs: number;
   notificationsMs: number | null;
   tasksMs: number | null;
   reviewPipelineMs: number | null;
@@ -121,7 +132,7 @@ function selectTopNotifications(
 function selectTopTaskSuggestions(
   payload: AdvisorTaskSuggestionsPayload,
 ): AdvisorTaskSuggestion[] {
-  return payload.suggestions.slice(0, TOP_SUGGESTIONS_LIMIT);
+  return payload.suggestions.slice(0, DASHBOARD_SUGGESTIONS_LIMIT);
 }
 
 /**
@@ -164,8 +175,8 @@ export async function loadAdvisorCommandCenterShell(
 }
 
 /**
- * Loads expensive advisor dashboard panels in parallel.
- * Each section is isolated so one failure does not block the rest.
+ * Loads expensive advisor dashboard panels with shared batch context.
+ * Clients, file quality, review pipeline, and suggestions reuse one query pass.
  */
 export async function loadAdvisorCommandCenterHeavy(
   authUserId: string,
@@ -173,41 +184,113 @@ export async function loadAdvisorCommandCenterHeavy(
 ): Promise<AdvisorCommandCenterHeavyPayload> {
   const totalStarted = performance.now();
 
-  const [
-    notificationsResult,
-    tasksResult,
-    reviewPipelineResult,
-    fileQualityResult,
-    suggestionsResult,
-  ] = await Promise.all([
-    loadSection("notifications", () =>
-      loadAdvisorNotifications(authUserId, userRole),
-    ),
+  const clients = await loadAdvisorAccessibleClients(authUserId, userRole);
+
+  const [tasksResult, qualityResult, reviewResult] = await Promise.all([
     loadSection("tasks", () =>
       loadAdvisorTaskDashboard(authUserId, userRole),
     ),
-    loadSection("reviewPipeline", () =>
-      loadAdvisorReviewPipeline(authUserId, userRole),
+    loadSection("qualityContexts", () =>
+      loadAdvisorClientQualityContexts(clients),
     ),
-    loadSection("fileQuality", () =>
-      loadAdvisorBookFileQuality(authUserId, userRole),
-    ),
-    loadSection("taskSuggestions", () =>
-      loadAdvisorTaskSuggestions(authUserId, userRole),
+    loadSection("reviewContexts", () =>
+      loadAdvisorClientReviewContexts(clients),
     ),
   ]);
+
+  const taskDashboard = tasksResult.ok ? tasksResult.data : null;
+
+  let fileQuality: AdvisorBookFileQuality | null = null;
+  let fileQualityError: string | null = null;
+  let fileQualityMs: number | null = null;
+
+  if (qualityResult.ok) {
+    const fileQualityStarted = performance.now();
+    try {
+      fileQuality = buildAdvisorBookFileQualityFromContexts(qualityResult.data);
+      fileQualityMs = Math.round(performance.now() - fileQualityStarted);
+    } catch (err) {
+      fileQualityMs = Math.round(performance.now() - fileQualityStarted);
+      fileQualityError =
+        err instanceof Error ? err.message : "Failed to compute file quality";
+      console.error("[advisorCommandCenter:fileQuality]", err);
+    }
+  } else {
+    fileQualityError = qualityResult.error;
+    fileQualityMs = qualityResult.ms;
+  }
+
+  let reviewPipeline: AdvisorReviewPipeline | null = null;
+  let reviewPipelineError: string | null = null;
+  let reviewPipelineMs: number | null = null;
+
+  if (reviewResult.ok) {
+    const reviewPipelineStarted = performance.now();
+    try {
+      reviewPipeline = buildAdvisorReviewPipelineFromContexts(
+        reviewResult.data,
+      );
+      reviewPipelineMs = Math.round(performance.now() - reviewPipelineStarted);
+    } catch (err) {
+      reviewPipelineMs = Math.round(performance.now() - reviewPipelineStarted);
+      reviewPipelineError =
+        err instanceof Error
+          ? err.message
+          : "Failed to compute review pipeline";
+      console.error("[advisorCommandCenter:reviewPipeline]", err);
+    }
+  } else {
+    reviewPipelineError = reviewResult.error;
+    reviewPipelineMs = reviewResult.ms;
+  }
+
+  const sharedReady =
+    taskDashboard != null &&
+    reviewPipeline != null &&
+    qualityResult.ok &&
+    reviewResult.ok;
+
+  const [notificationsResult, suggestionsResult] = sharedReady
+    ? await Promise.all([
+        loadSection("notifications", () =>
+          loadAdvisorNotifications(authUserId, userRole, {
+            taskDashboard: taskDashboard!,
+            reviewPipeline: reviewPipeline!,
+            clients,
+          }),
+        ),
+        loadSection("taskSuggestions", () =>
+          loadAdvisorTaskSuggestions(authUserId, userRole, {
+            mode: "dashboard",
+            limit: DASHBOARD_SUGGESTIONS_LIMIT,
+            timeBudgetMs: HEAVY_SUGGESTIONS_TIME_BUDGET_MS,
+            shared: {
+              clients,
+              reviewPipeline: reviewPipeline!,
+              qualityContexts: qualityResult.data,
+              reviewContexts: reviewResult.data,
+            },
+          }),
+        ),
+      ])
+    : [
+        {
+          ok: false as const,
+          error: "Task dashboard or review pipeline unavailable",
+          ms: 0,
+        },
+        {
+          ok: false as const,
+          error: "Task dashboard or review pipeline unavailable",
+          ms: 0,
+        },
+      ];
 
   const notifications = notificationsResult.ok
     ? notificationsResult.data
     : null;
-  const taskDashboard = tasksResult.ok ? tasksResult.data : null;
-  const reviewPipeline = reviewPipelineResult.ok
-    ? reviewPipelineResult.data
-    : null;
-  const fileQuality = fileQualityResult.ok ? fileQualityResult.data : null;
-  const taskSuggestions = suggestionsResult.ok
-    ? suggestionsResult.data
-    : null;
+  const taskSuggestions = suggestionsResult.ok ? suggestionsResult.data : null;
+  const totalMs = Math.round(performance.now() - totalStarted);
 
   return {
     notifications,
@@ -220,11 +303,9 @@ export async function loadAdvisorCommandCenterHeavy(
     taskDashboard,
     tasksError: tasksResult.ok ? null : tasksResult.error,
     reviewPipeline,
-    reviewPipelineError: reviewPipelineResult.ok
-      ? null
-      : reviewPipelineResult.error,
+    reviewPipelineError,
     fileQuality,
-    fileQualityError: fileQualityResult.ok ? null : fileQualityResult.error,
+    fileQualityError,
     fileQualityByClientId: fileQuality?.clients ?? [],
     taskSuggestions,
     suggestionsError: suggestionsResult.ok ? null : suggestionsResult.error,
@@ -232,11 +313,12 @@ export async function loadAdvisorCommandCenterHeavy(
       ? selectTopTaskSuggestions(taskSuggestions)
       : [],
     timing: {
-      totalMs: Math.round(performance.now() - totalStarted),
+      totalMs,
+      totalHeavyMs: totalMs,
       notificationsMs: notificationsResult.ms,
       tasksMs: tasksResult.ms,
-      reviewPipelineMs: reviewPipelineResult.ms,
-      fileQualityMs: fileQualityResult.ms,
+      reviewPipelineMs,
+      fileQualityMs,
       taskSuggestionsMs: suggestionsResult.ms,
     },
   };

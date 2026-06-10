@@ -2,8 +2,21 @@ import "server-only";
 
 import { createAdminSupabaseClient } from "./admin";
 import {
-  loadClientReviewStatus,
-  loadAdvisorReviewPipeline,
+  buildClientFileQualityFromContext,
+  type ClientFileQuality,
+  type ClientQualityContext,
+  DOCUMENT_QUALITY_CATEGORIES,
+  loadAdvisorAccessibleClients,
+  loadAdvisorClientQualityContexts,
+  type DocumentQualityCategory,
+} from "./clientFileQuality";
+import type { AppClientRow } from "./userProfile";
+import {
+  buildAdvisorReviewPipelineFromContexts,
+  buildClientReviewStatusDetailFromContext,
+  loadAdvisorClientReviewContexts,
+  type AdvisorReviewPipeline,
+  type ClientReviewContext,
   type ClientReviewStatusDetail,
   type ReviewPipelineClient,
 } from "./advisorReviewPipeline";
@@ -14,13 +27,6 @@ import {
   type AdvisorTaskRecord,
   type AdvisorTaskType,
 } from "./advisorTasks";
-import {
-  DOCUMENT_QUALITY_CATEGORIES,
-  loadClientFileQuality,
-  type ClientFileQuality,
-  type DocumentQualityCategory,
-} from "./clientFileQuality";
-import type { AppClientRow } from "./userProfile";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -75,6 +81,29 @@ export type AdvisorTaskSuggestionsPayload = {
     highCount: number;
     clientCount: number;
   };
+  partial?: boolean;
+  warning?: string | null;
+};
+
+export const DASHBOARD_SUGGESTIONS_LIMIT = 20;
+const DASHBOARD_DOCUMENT_SUGGESTIONS_PER_CLIENT = 2;
+const DEFAULT_SUGGESTIONS_TIME_BUDGET_MS = 3_000;
+
+export type AdvisorSuggestionComputeMode = "dashboard" | "client";
+
+export type AdvisorSuggestionSharedInput = {
+  clients: AppClientRow[];
+  reviewPipeline: AdvisorReviewPipeline;
+  qualityContexts: ClientQualityContext[];
+  reviewContexts: ClientReviewContext[];
+};
+
+export type AdvisorSuggestionComputeOptions = {
+  mode?: AdvisorSuggestionComputeMode;
+  limit?: number;
+  timeBudgetMs?: number;
+  maxDocumentSuggestionsPerClient?: number;
+  shared?: AdvisorSuggestionSharedInput;
 };
 
 export type CreateTaskFromSuggestionResult =
@@ -487,25 +516,7 @@ async function loadAccessibleClients(
   authUserId: string,
   userRole: "advisor" | "admin",
 ): Promise<AppClientRow[]> {
-  const admin = createAdminSupabaseClient();
-
-  let query = admin
-    .from("clients")
-    .select("*")
-    .neq("status", "archived")
-    .order("display_name", { ascending: true });
-
-  if (userRole === "advisor") {
-    query = query.eq("advisor_user_id", authUserId);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    throw new Error(`Failed to load advisor clients: ${error.message}`);
-  }
-
-  return (data ?? []) as AppClientRow[];
+  return loadAdvisorAccessibleClients(authUserId, userRole);
 }
 
 async function resolveAccessibleClient(
@@ -685,9 +696,13 @@ function buildSuggestionsFromFileQuality(input: {
   discoverCompleted: boolean;
   documentCategories: Set<string>;
   roadmapItems: RoadmapItemSummary[];
+  maxDocumentSuggestions?: number;
 }): AdvisorTaskSuggestion[] {
   const suggestions: AdvisorTaskSuggestion[] = [];
   const { quality } = input;
+  const maxDocumentSuggestions =
+    input.maxDocumentSuggestions ?? DOCUMENT_QUALITY_CATEGORIES.length;
+  let documentSuggestionCount = 0;
 
   if (!input.discoverCompleted) {
     suggestions.push(buildCompleteDiscoverSuggestion(input.client));
@@ -713,11 +728,25 @@ function buildSuggestionsFromFileQuality(input: {
     );
   }
 
-  for (const category of DOCUMENT_QUALITY_CATEGORIES) {
-    if (!hasDocumentCategory(input.documentCategories, category)) {
+  if (quality.criticalGaps.includes("No documents uploaded")) {
+    if (documentSuggestionCount < maxDocumentSuggestions) {
       suggestions.push(
-        buildUploadDocumentSuggestion(input.client, category),
+        buildUploadDocumentSuggestion(input.client, "insurance"),
       );
+      documentSuggestionCount += 1;
+    }
+  } else {
+    for (const category of DOCUMENT_QUALITY_CATEGORIES) {
+      if (documentSuggestionCount >= maxDocumentSuggestions) {
+        break;
+      }
+
+      if (!hasDocumentCategory(input.documentCategories, category)) {
+        suggestions.push(
+          buildUploadDocumentSuggestion(input.client, category),
+        );
+        documentSuggestionCount += 1;
+      }
     }
   }
 
@@ -756,7 +785,7 @@ function buildSuggestionsFromFileQuality(input: {
 }
 
 function buildSuggestionsFromReviewPipeline(
-  pipeline: Awaited<ReturnType<typeof loadAdvisorReviewPipeline>>,
+  pipeline: AdvisorReviewPipeline,
   clientsById: Map<string, AppClientRow>,
   reviewByClientId: Map<string, ClientReviewStatusDetail>,
   roadmapByClient: Map<string, RoadmapItemSummary[]>,
@@ -844,66 +873,120 @@ function dedupeSuggestions(
   return Array.from(seen.values());
 }
 
+function applySuggestionLimits(
+  suggestions: AdvisorTaskSuggestion[],
+  options: AdvisorSuggestionComputeOptions,
+): {
+  suggestions: AdvisorTaskSuggestion[];
+  partial: boolean;
+  warning: string | null;
+} {
+  const limit =
+    options.mode === "dashboard"
+      ? (options.limit ?? DASHBOARD_SUGGESTIONS_LIMIT)
+      : options.limit;
+
+  if (limit == null || suggestions.length <= limit) {
+    return { suggestions, partial: false, warning: null };
+  }
+
+  return {
+    suggestions: suggestions.slice(0, limit),
+    partial: true,
+    warning: `Showing top ${limit} follow-up suggestions for the advisor dashboard.`,
+  };
+}
+
 async function computeSuggestionsForClients(
   authUserId: string,
   userRole: "advisor" | "admin",
   clients: AppClientRow[],
-): Promise<AdvisorTaskSuggestion[]> {
+  options: AdvisorSuggestionComputeOptions = {},
+): Promise<AdvisorTaskSuggestionsPayload> {
+  const started = performance.now();
+  const timeBudgetMs = options.timeBudgetMs ?? DEFAULT_SUGGESTIONS_TIME_BUDGET_MS;
+  const maxDocumentSuggestions =
+    options.mode === "dashboard"
+      ? (options.maxDocumentSuggestionsPerClient ??
+        DASHBOARD_DOCUMENT_SUGGESTIONS_PER_CLIENT)
+      : options.maxDocumentSuggestionsPerClient;
+
   if (clients.length === 0) {
-    return [];
+    return {
+      suggestions: [],
+      summary: summarizeSuggestions([]),
+      partial: false,
+      warning: null,
+    };
   }
 
   const clientIds = clients.map((client) => client.id);
   const clientsById = new Map(clients.map((client) => [client.id, client]));
 
   const [
-    pipeline,
+    reviewContexts,
     openTasks,
     roadmapByClient,
     discoverByClient,
     documentsByClient,
+    qualityContexts,
   ] = await Promise.all([
-    loadAdvisorReviewPipeline(authUserId, userRole),
+    options.shared?.reviewContexts
+      ? Promise.resolve(options.shared.reviewContexts)
+      : loadAdvisorClientReviewContexts(clients),
     loadOpenTasksForClients(clientIds),
     loadRoadmapByClient(clientIds),
     loadDiscoverCompletionByClient(clientIds),
     loadDocumentCategoriesByClient(clientIds),
+    options.shared?.qualityContexts
+      ? Promise.resolve(options.shared.qualityContexts)
+      : loadAdvisorClientQualityContexts(clients),
   ]);
 
+  const reviewPipeline =
+    options.shared?.reviewPipeline ??
+    buildAdvisorReviewPipelineFromContexts(reviewContexts);
+
   const reviewByClientId = new Map<string, ClientReviewStatusDetail>();
-  const fileQualityResults = await Promise.all(
-    clients.map(async (client) => {
-      const [quality, review] = await Promise.all([
-        loadClientFileQuality(authUserId, userRole, client.id),
-        loadClientReviewStatus(authUserId, userRole, client.id),
-      ]);
+  for (const ctx of reviewContexts) {
+    reviewByClientId.set(
+      ctx.client.id,
+      buildClientReviewStatusDetailFromContext(ctx),
+    );
+  }
 
-      if (review.ok) {
-        reviewByClientId.set(client.id, review.review);
-      }
+  const fileQualityResults: AdvisorTaskSuggestion[][] = [];
+  let timedOut = false;
 
-      const discoverCompleted = discoverByClient.get(client.id) ?? false;
-      const documentCategories =
-        documentsByClient.get(client.id) ?? new Set<string>();
-      const roadmapItems = roadmapByClient.get(client.id) ?? [];
+  for (const qualityCtx of qualityContexts) {
+    if (performance.now() - started > timeBudgetMs) {
+      timedOut = true;
+      break;
+    }
 
-      if (!quality.ok) {
-        return [];
-      }
+    const client = qualityCtx.client;
+    const quality = buildClientFileQualityFromContext(qualityCtx);
+    const review = reviewByClientId.get(client.id) ?? null;
+    const discoverCompleted = discoverByClient.get(client.id) ?? false;
+    const documentCategories =
+      documentsByClient.get(client.id) ?? new Set<string>();
+    const roadmapItems = roadmapByClient.get(client.id) ?? [];
 
-      return buildSuggestionsFromFileQuality({
+    fileQualityResults.push(
+      buildSuggestionsFromFileQuality({
         client,
-        quality: quality.quality,
-        review: review.ok ? review.review : null,
+        quality,
+        review,
         discoverCompleted,
         documentCategories,
         roadmapItems,
-      });
-    }),
-  );
+        maxDocumentSuggestions,
+      }),
+    );
+  }
 
   const pipelineSuggestions = buildSuggestionsFromReviewPipeline(
-    pipeline,
+    reviewPipeline,
     clientsById,
     reviewByClientId,
     roadmapByClient,
@@ -914,7 +997,22 @@ async function computeSuggestionsForClients(
     ...pipelineSuggestions,
   ]);
 
-  return sortSuggestions(filterDuplicateSuggestions(merged, openTasks));
+  const filtered = sortSuggestions(
+    filterDuplicateSuggestions(merged, openTasks),
+  );
+
+  const limited = applySuggestionLimits(filtered, options);
+  const warning =
+    timedOut && !limited.warning
+      ? "Task suggestions were truncated because computation exceeded the time budget."
+      : limited.warning;
+
+  return {
+    suggestions: limited.suggestions,
+    summary: summarizeSuggestions(limited.suggestions),
+    partial: limited.partial || timedOut,
+    warning,
+  };
 }
 
 /**
@@ -923,18 +1021,17 @@ async function computeSuggestionsForClients(
 export async function loadAdvisorTaskSuggestions(
   authUserId: string,
   userRole: "advisor" | "admin",
+  options: AdvisorSuggestionComputeOptions = {},
 ): Promise<AdvisorTaskSuggestionsPayload> {
-  const clients = await loadAccessibleClients(authUserId, userRole);
-  const suggestions = await computeSuggestionsForClients(
-    authUserId,
-    userRole,
-    clients,
-  );
+  const clients =
+    options.shared?.clients ??
+    (await loadAccessibleClients(authUserId, userRole));
 
-  return {
-    suggestions,
-    summary: summarizeSuggestions(suggestions),
-  };
+  return computeSuggestionsForClients(authUserId, userRole, clients, {
+    mode: "dashboard",
+    limit: DASHBOARD_SUGGESTIONS_LIMIT,
+    ...options,
+  });
 }
 
 /**
@@ -959,18 +1056,16 @@ export async function loadClientTaskSuggestions(
     return { ok: false, reason: "forbidden" };
   }
 
-  const suggestions = await computeSuggestionsForClients(
+  const payload = await computeSuggestionsForClients(
     authUserId,
     userRole,
     [access.client],
+    { mode: "client" },
   );
 
   return {
     ok: true,
-    payload: {
-      suggestions,
-      summary: summarizeSuggestions(suggestions),
-    },
+    payload,
   };
 }
 
@@ -1002,13 +1097,14 @@ export async function createTaskFromSuggestion(
     return { ok: false, reason: "forbidden" };
   }
 
-  const suggestions = await computeSuggestionsForClients(
+  const payload = await computeSuggestionsForClients(
     authUserId,
     userRole,
     [access.client],
+    { mode: "client" },
   );
 
-  const suggestion = suggestions.find(
+  const suggestion = payload.suggestions.find(
     (item) => item.id === input.suggestionId && item.client_id === input.clientId,
   );
 

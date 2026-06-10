@@ -150,7 +150,7 @@ type TaskSummary = {
   due_date: string | null;
 };
 
-type StressSummary = {
+type StressTestSummary = {
   client_id: string;
   severity: "mild" | "moderate" | "severe" | "extreme";
   post_stress_score: number | string;
@@ -161,7 +161,7 @@ type AnnualReviewSummary = {
   generated_at: string;
 };
 
-type ClientQualityContext = {
+export type ClientQualityContext = {
   client: AppClientRow;
   hasClientProfile: boolean;
   discoverCompleted: boolean;
@@ -199,7 +199,7 @@ function todayDateString(): string {
   return `${year}-${month}-${day}`;
 }
 
-function isSevereStress(rows: StressSummary[]): boolean {
+function isSevereStress(rows: StressTestSummary[]): boolean {
   return rows.some((row) => {
     const postScore = toNumber(row.post_stress_score);
     return (
@@ -708,8 +708,8 @@ async function loadClientQualityContexts(
     blueprintByClient.add(row.client_id);
   }
 
-  const stressByClient = new Map<string, StressSummary[]>();
-  for (const row of (stressResult.data ?? []) as StressSummary[]) {
+  const stressByClient = new Map<string, StressTestSummary[]>();
+  for (const row of (stressResult.data ?? []) as StressTestSummary[]) {
     const existing = stressByClient.get(row.client_id) ?? [];
     existing.push(row);
     stressByClient.set(row.client_id, existing);
@@ -784,45 +784,28 @@ async function loadClientQualityContexts(
   });
 }
 
-/**
- * Loads file quality for a single client.
- * Access is verified server-side — advisors only see assigned clients.
- */
-export async function loadClientFileQuality(
-  authUserId: string,
-  userRole: "advisor" | "admin",
-  clientId: string,
-): Promise<
-  | { ok: false; reason: "not_found" }
-  | { ok: false; reason: "forbidden" }
-  | { ok: true; quality: ClientFileQuality }
-> {
-  const access = await resolveAccessibleClient(authUserId, userRole, clientId);
-
-  if (access.status === "not_found") {
-    return { ok: false, reason: "not_found" };
-  }
-
-  if (access.status === "forbidden") {
-    return { ok: false, reason: "forbidden" };
-  }
-
-  const contexts = await loadClientQualityContexts([access.client]);
-  const quality = computeClientFileQuality(contexts[0]!);
-
-  return { ok: true, quality };
+export function buildClientFileQualityFromContext(
+  context: ClientQualityContext,
+): ClientFileQuality {
+  return computeClientFileQuality(context);
 }
 
 /**
- * Loads book-wide file quality summary for accessible clients.
+ * Batch-loads quality inputs for multiple clients in a fixed query set.
  */
-export async function loadAdvisorBookFileQuality(
-  authUserId: string,
-  userRole: "advisor" | "admin",
-): Promise<AdvisorBookFileQuality> {
-  const clients = await loadAccessibleClients(authUserId, userRole);
+export async function loadAdvisorClientQualityContexts(
+  clients: AppClientRow[],
+): Promise<ClientQualityContext[]> {
+  return loadClientQualityContexts(clients);
+}
 
-  if (clients.length === 0) {
+/**
+ * Builds book-wide file quality from preloaded quality contexts (no extra queries).
+ */
+export function buildAdvisorBookFileQualityFromContexts(
+  contexts: ClientQualityContext[],
+): AdvisorBookFileQuality {
+  if (contexts.length === 0) {
     return {
       averageReadinessScore: null,
       reviewReadyCount: 0,
@@ -833,7 +816,6 @@ export async function loadAdvisorBookFileQuality(
     };
   }
 
-  const contexts = await loadClientQualityContexts(clients);
   const qualities = contexts.map(computeClientFileQuality);
 
   const scores = qualities.map((q) => q.readinessScore);
@@ -874,4 +856,60 @@ export async function loadAdvisorBookFileQuality(
     clientsNeedingCleanup,
     clients: clientSummaries,
   };
+}
+
+/**
+ * Loads accessible advisor book clients (server-side scope).
+ */
+export async function loadAdvisorAccessibleClients(
+  authUserId: string,
+  userRole: "advisor" | "admin",
+): Promise<AppClientRow[]> {
+  return loadAccessibleClients(authUserId, userRole);
+}
+
+/**
+ * Loads file quality for a single client.
+ * Access is verified server-side — advisors only see assigned clients.
+ */
+export async function loadClientFileQuality(
+  authUserId: string,
+  userRole: "advisor" | "admin",
+  clientId: string,
+): Promise<
+  | { ok: false; reason: "not_found" }
+  | { ok: false; reason: "forbidden" }
+  | { ok: true; quality: ClientFileQuality }
+> {
+  const access = await resolveAccessibleClient(authUserId, userRole, clientId);
+
+  if (access.status === "not_found") {
+    return { ok: false, reason: "not_found" };
+  }
+
+  if (access.status === "forbidden") {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const contexts = await loadClientQualityContexts([access.client]);
+  const quality = computeClientFileQuality(contexts[0]!);
+
+  return { ok: true, quality };
+}
+
+/**
+ * Loads book-wide file quality summary for accessible clients.
+ */
+export async function loadAdvisorBookFileQuality(
+  authUserId: string,
+  userRole: "advisor" | "admin",
+): Promise<AdvisorBookFileQuality> {
+  const clients = await loadAccessibleClients(authUserId, userRole);
+
+  if (clients.length === 0) {
+    return buildAdvisorBookFileQualityFromContexts([]);
+  }
+
+  const contexts = await loadClientQualityContexts(clients);
+  return buildAdvisorBookFileQualityFromContexts(contexts);
 }

@@ -328,3 +328,44 @@ Existing write routes already emit audit events. No new audit actions were requi
 | Route scanner | `npm run qa:routes` |
 | API smoke tests | `npm run qa:smoke` (requires running server) |
 
+---
+
+## 15. Phase 4O.2 — Heavy Advisor Load Performance
+
+**Date:** 2026-06-10  
+**Scope:** Server-side batching for `/api/advisor/command-center/heavy` (no schema or scoring changes)
+
+### Root cause (pre-4O.2)
+
+- Task suggestions called `loadClientFileQuality()` and `loadClientReviewStatus()` **per client** (N+1 queries).
+- Each per-client file-quality load re-ran ~10 Supabase queries instead of one batched pass.
+- Heavy command-center sections loaded **in parallel but independently**, duplicating clients, review pipeline, tasks, and file-quality work.
+- Dashboard suggestions could emit up to **six document-gap suggestions per client**, inflating compute time.
+
+### Optimizations
+
+| Area | Change |
+|------|--------|
+| Command center heavy | Single client list → batch quality + review contexts → derive file quality, pipeline, notifications, suggestions from shared data |
+| Task suggestions | Batch `loadAdvisorClientQualityContexts` / `loadAdvisorClientReviewContexts`; no per-client quality/review loaders on dashboard path |
+| Document gaps | Dashboard caps **2 document suggestions per client**; empty vault gets **1** suggestion |
+| Book-wide cap | Top **20** suggestions by priority for `/advisor` heavy payload |
+| Time budget | **3s** suggestion compute budget; returns partial results + `warning` instead of blocking |
+| Notifications | Accepts preloaded `taskDashboard` + `reviewPipeline` + `clients` (no duplicate pipeline/task loads) |
+
+### Timing logs
+
+`GET /api/advisor/command-center/heavy` logs:
+
+`totalMs`, `totalHeavyMs`, `tasksMs`, `fileQualityMs`, `reviewPipelineMs`, `notificationsMs`, `taskSuggestionsMs`
+
+### Remaining limitations
+
+| Limit | Notes |
+|-------|-------|
+| Large books (>50 clients) | Batch queries grow with client count; consider pagination or background jobs |
+| Client workspace suggestions | `GET /api/advisor/clients/[clientId]/task-suggestions` still computes full client detail (intentional) |
+| Standalone `GET /api/advisor/task-suggestions` | Returns dashboard-capped top 20 (backward compatible, lighter than pre-4O.2 full book) |
+| Partial suggestions | `partial: true` + `warning` when time budget or cap applies — UI may show fewer than total actionable items |
+| Cold Supabase latency | First request after idle may still exceed 3–5s on slow networks |
+
