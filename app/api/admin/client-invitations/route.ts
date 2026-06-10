@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import {
   getRequestMetadata,
   parseJsonBodySafely,
+  rateLimitOrThrow,
+  rejectUnexpectedFields,
   toPublicErrorMessage,
   validateRequiredString,
 } from "@/lib/security/apiGuards";
@@ -91,6 +93,14 @@ export async function POST(
       );
     }
 
+    const rateLimit = rateLimitOrThrow<AdminInviteClientResponse>(request, {
+      userId: access.authUser.id,
+      bucket: "writeHeavy",
+    });
+    if (!rateLimit.ok) {
+      return rateLimit.response;
+    }
+
     const parsed = await parseJsonBodySafely(request);
     if (!parsed.ok) {
       return NextResponse.json(
@@ -103,6 +113,14 @@ export async function POST(
     if (forbidden.rejected) {
       return NextResponse.json(
         { ok: false, reason: "invalid_input", error: forbidden.error },
+        { status: 400 },
+      );
+    }
+
+    const sensitiveReject = rejectUnexpectedFields(parsed.body);
+    if (sensitiveReject.rejected) {
+      return NextResponse.json(
+        { ok: false, reason: "invalid_input", error: sensitiveReject.error },
         { status: 400 },
       );
     }

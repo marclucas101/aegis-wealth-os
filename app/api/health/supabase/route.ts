@@ -1,21 +1,30 @@
 import { NextResponse } from "next/server";
 
+import { rateLimitOrThrow } from "@/lib/security/apiGuards";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
 export type SupabaseHealthResponse = {
   ok: boolean;
+  timestamp: string;
   databaseReachable: boolean;
   tablesAccessible: boolean;
-  timestamp: string;
   error?: string;
 };
+
+function isProductionHealthMode(): boolean {
+  return (
+    process.env.NODE_ENV === "production" ||
+    process.env.VERCEL_ENV === "production"
+  );
+}
 
 function sanitizeErrorMessage(message: string): string {
   return message
     .replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "[redacted]")
-    .replace(/(service[_-]?role|anon|api)[_-]?key[=:\s]+[^\s]+/gi, "[redacted]");
+    .replace(/(service[_-]?role|anon|api)[_-]?key[=:\s]+[^\s]+/gi, "[redacted]")
+    .replace(/\b(public\.|from\s+)\w+/gi, "[redacted]");
 }
 
 function isConnectionError(message: string): boolean {
@@ -30,8 +39,19 @@ function isConnectionError(message: string): boolean {
   );
 }
 
-export async function GET(): Promise<NextResponse<SupabaseHealthResponse>> {
+export async function GET(
+  request: Request,
+): Promise<NextResponse<SupabaseHealthResponse>> {
   const timestamp = new Date().toISOString();
+  const productionMode = isProductionHealthMode();
+
+  const rateLimit = rateLimitOrThrow<SupabaseHealthResponse>(request, {
+    userId: null,
+    bucket: "health",
+  });
+  if (!rateLimit.ok) {
+    return rateLimit.response;
+  }
 
   try {
     const supabase = createAdminSupabaseClient();
@@ -47,7 +67,9 @@ export async function GET(): Promise<NextResponse<SupabaseHealthResponse>> {
           databaseReachable: reachable,
           tablesAccessible: false,
           timestamp,
-          error: sanitizeErrorMessage(error.message),
+          ...(productionMode
+            ? {}
+            : { error: sanitizeErrorMessage(error.message) }),
         },
         { status: 503 },
       );
@@ -70,7 +92,7 @@ export async function GET(): Promise<NextResponse<SupabaseHealthResponse>> {
         databaseReachable: false,
         tablesAccessible: false,
         timestamp,
-        error: sanitizeErrorMessage(message),
+        ...(productionMode ? {} : { error: sanitizeErrorMessage(message) }),
       },
       { status: isEnvError ? 503 : 500 },
     );

@@ -3,7 +3,9 @@ import { NextResponse } from "next/server";
 import {
   getRequestMetadata,
   parseJsonBodySafely,
+  rateLimitOrThrow,
   rejectClientIdInBody,
+  rejectUnexpectedFields,
   toPublicErrorMessage,
 } from "@/lib/security/apiGuards";
 import { requireAdvisorAccess } from "@/lib/supabase/advisorAuth";
@@ -61,6 +63,14 @@ export async function POST(
       );
     }
 
+    const rateLimit = rateLimitOrThrow<AdvisorDocumentDeleteResponse>(request, {
+      userId: access.authUser.id,
+      bucket: "writeHeavy",
+    });
+    if (!rateLimit.ok) {
+      return rateLimit.response;
+    }
+
     const parsed = await parseJsonBodySafely(request, { allowEmpty: true });
     if (!parsed.ok) {
       return NextResponse.json(
@@ -74,6 +84,16 @@ export async function POST(
       if (clientIdReject.rejected) {
         return NextResponse.json(
           { ok: false, reason: "error", error: clientIdReject.error },
+          { status: 400 },
+        );
+      }
+
+      const sensitiveReject = rejectUnexpectedFields(parsed.body, {
+        rejectClientId: true,
+      });
+      if (sensitiveReject.rejected) {
+        return NextResponse.json(
+          { ok: false, reason: "error", error: sensitiveReject.error },
           { status: 400 },
         );
       }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { toPublicErrorMessage } from "@/lib/security/apiGuards";
+import { rateLimitOrThrow, toPublicErrorMessage } from "@/lib/security/apiGuards";
 import { requireAdvisorAccess } from "@/lib/supabase/advisorAuth";
 import {
   loadAdvisorCommandCenter,
@@ -25,7 +25,9 @@ function advisorRole(role: string): "advisor" | "admin" | null {
   return null;
 }
 
-export async function GET(): Promise<
+export async function GET(
+  request: Request,
+): Promise<
   NextResponse<AdvisorCommandCenterResponse>
 > {
   try {
@@ -56,6 +58,14 @@ export async function GET(): Promise<
         },
         { status: 403 },
       );
+    }
+
+    const rateLimit = rateLimitOrThrow<AdvisorCommandCenterResponse>(request, {
+      userId: access.authUser.id,
+      bucket: "commandCenter",
+    });
+    if (!rateLimit.ok) {
+      return rateLimit.response;
     }
 
     const payload = await loadAdvisorCommandCenter(access.authUser.id, role);

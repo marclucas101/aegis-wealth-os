@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 
 import {
   getRequestMetadata,
+  rateLimitOrThrow,
   rejectClientIdInFormData,
+  rejectUnexpectedFormFields,
   toPublicErrorMessage,
   validateEnum,
 } from "@/lib/security/apiGuards";
@@ -67,6 +69,14 @@ export async function POST(
       );
     }
 
+    const rateLimit = rateLimitOrThrow<AdvisorDocumentUploadResponse>(request, {
+      userId: access.authUser.id,
+      bucket: "writeHeavy",
+    });
+    if (!rateLimit.ok) {
+      return rateLimit.response;
+    }
+
     let formData: FormData;
     try {
       formData = await request.formData();
@@ -81,6 +91,16 @@ export async function POST(
     if (clientIdReject.rejected) {
       return NextResponse.json(
         { ok: false, reason: "error", error: clientIdReject.error },
+        { status: 400 },
+      );
+    }
+
+    const sensitiveReject = rejectUnexpectedFormFields(formData, {
+      rejectClientId: true,
+    });
+    if (sensitiveReject.rejected) {
+      return NextResponse.json(
+        { ok: false, reason: "error", error: sensitiveReject.error },
         { status: 400 },
       );
     }

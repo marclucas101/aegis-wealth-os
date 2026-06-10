@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import {
   getRequestMetadata,
   parseJsonBodySafely,
+  rateLimitOrThrow,
+  rejectUnexpectedFields,
   toPublicErrorMessage,
   validateEnum,
   validateRequiredString,
@@ -239,6 +241,14 @@ export async function POST(
       );
     }
 
+    const rateLimit = rateLimitOrThrow<AdvisorTasksCreateResponse>(request, {
+      userId: access.authUser.id,
+      bucket: "writeHeavy",
+    });
+    if (!rateLimit.ok) {
+      return rateLimit.response;
+    }
+
     const parsed = await parseJsonBodySafely(request);
     if (!parsed.ok) {
       return NextResponse.json(
@@ -251,6 +261,16 @@ export async function POST(
     if (forbidden.rejected) {
       return NextResponse.json(
         { ok: false, reason: "error", error: forbidden.error },
+        { status: 400 },
+      );
+    }
+
+    const sensitiveReject = rejectUnexpectedFields(parsed.body, {
+      rejectClientId: false,
+    });
+    if (sensitiveReject.rejected) {
+      return NextResponse.json(
+        { ok: false, reason: "error", error: sensitiveReject.error },
         { status: 400 },
       );
     }

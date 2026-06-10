@@ -107,6 +107,9 @@
 - [x] Stress test run validates scenario/severity enums
 - [x] Report saves use server-loaded snapshots only
 - [x] Middleware protects app pages; public routes remain public
+- [x] Phase 4Q: in-memory rate limits on write-heavy and command-center routes
+- [x] Phase 4Q: `rejectUnexpectedFields` on privileged write bodies/form data
+- [x] Phase 4Q: health endpoint production-minimal response + IP throttling
 
 ---
 
@@ -117,8 +120,8 @@
 | Advisor Dashboard | Phase 4 — multi-client, `advisor_user_id` scoping |
 | `advisor_notes` API | Advisor OS annotations |
 | RLS-respecting reads | Reduce service-role read surface |
-| Rate limiting | Production hardening |
-| Protect health endpoints | Production env flag |
+| Rate limiting | Phase 4Q — in-memory MVP limiter on write routes |
+| Protect health endpoints | Phase 4Q — production-minimal response + IP rate limit |
 | Email confirmation / MFA | Auth hardening |
 | localStorage deprecation | Full cloud-only client state |
 | Real-time subscriptions | Optional live dashboard updates |

@@ -241,3 +241,72 @@ Phase 3 Supabase integration meets MVP security requirements:
 - Document, roadmap, stress, and report flows verify ownership or server-derived identity
 
 **Phase 3 is complete.** Proceed to Advisor Dashboard (Phase 4).
+
+---
+
+## 13. Phase 4Q — Production Security Hardening & Rate Limits
+
+**Date:** 2026-06-10  
+**Scope:** Central request guards, in-memory rate limiting, sensitive-field rejection, health endpoint hardening
+
+### Rate limiting approach
+
+| Module | Purpose |
+|--------|---------|
+| `lib/security/rateLimit.ts` | In-memory sliding-window limiter (`checkRateLimit`, presets) |
+| `lib/security/requestValidation.ts` | `rejectUnexpectedFields`, `rejectUnexpectedFormFields` |
+| `lib/security/apiGuards.ts` | `getRequestActorKey`, `rateLimitOrThrow`, `createRateLimitedResponse`, `assertAllowedMethods`, `parseJsonBodySafe` |
+
+**Actor key:** Authenticated requests key by `user:{userId}`; unauthenticated requests fall back to `ip:{x-forwarded-for|x-real-ip}`.
+
+**Presets:**
+
+| Bucket | Window | Max | Applied to |
+|--------|--------|-----|------------|
+| `writeHeavy` | 60s | 30 | All privileged write routes (client saves, uploads, advisor/admin mutations) |
+| `commandCenter` | 60s | 120 | `GET /api/advisor/command-center`, `GET /api/advisor/clients/[clientId]/command-center` |
+| `health` | 60s | 20 | `GET /api/health/supabase` (per IP) |
+
+**429 response:** `{ ok: false, error: "Too many requests...", retryAfterMs }` with `Retry-After` header.
+
+> **WARNING:** The in-memory store is **per Node.js process** and is **not shared** across serverless instances, containers, or horizontal scale-out. Replace with Redis, Upstash, or edge/CDN rate limiting before multi-instance production.
+
+### Sensitive field rejection
+
+`rejectUnexpectedFields()` blocks browser-supplied identity/escalation keys on privileged writes:
+
+`user_id`, `userId`, `advisor_id`, `advisorId`, `client_id`, `clientId`, `role` (except admin role update), `service_role`, `serviceRole`.
+
+Routes with `clientId` in the URL path reject body `client_id` / `clientId`. Task create / suggestion routes allow optional `client_id` in body (scoped server-side).
+
+### Health endpoint (production mode)
+
+When `NODE_ENV=production` or `VERCEL_ENV=production`, `/api/health/supabase` returns only `{ ok, timestamp }` — no `databaseReachable`, `tablesAccessible`, or internal error strings. Dev/non-production responses retain diagnostic fields (sanitized).
+
+### Endpoints hardened (Phase 4Q)
+
+**Client writes:** discover save, document upload/delete, stress test run, roadmap status, blueprint save, annual review save.
+
+**Advisor writes:** notes create/update/delete, tasks create/update, suggested task create, client document upload/delete, client invitation create.
+
+**Advisor reads (light limit):** command-center routes.
+
+**Admin writes:** user role update, client advisor assignment, client invitation create.
+
+**Public:** health probe (IP rate limit + reduced production payload).
+
+### Audit log review (Phase 4Q)
+
+Existing write routes already emit audit events. No new audit actions were required — advisor notes/tasks/documents, admin role/assignment/invitations, and client portal writes were confirmed covered. Invitation failures continue to log `client_invitation_failed`.
+
+### Remaining production risks (post-4Q)
+
+| Risk | Severity | Notes |
+|------|----------|-------|
+| In-memory rate limits | Medium | Bypassable under multi-instance / serverless cold starts; upgrade before launch traffic |
+| Service-role bypasses RLS | Medium (accepted) | Unchanged — server env compromise = full DB access |
+| Public health endpoint | Low | Production mode minimizes leakage; still unauthenticated — consider auth or IP allowlist |
+| No WAF / bot protection | Medium | Add CDN or edge rules for abuse patterns |
+| Audit log silent failure | Low | Monitor `[auditLog]` console errors |
+| CSP / virus scan on uploads | Low | Deferred to scale phase |
+

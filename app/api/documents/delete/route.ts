@@ -3,7 +3,9 @@ import { NextResponse } from "next/server";
 import {
   getRequestMetadata,
   parseJsonBodySafely,
+  rateLimitOrThrow,
   rejectClientIdInBody,
+  rejectUnexpectedFields,
   toPublicErrorMessage,
   validateRequiredString,
 } from "@/lib/security/apiGuards";
@@ -30,6 +32,14 @@ export async function POST(
       );
     }
 
+    const rateLimit = rateLimitOrThrow<DocumentsDeleteResponse>(request, {
+      userId: session.authUser.id,
+      bucket: "writeHeavy",
+    });
+    if (!rateLimit.ok) {
+      return rateLimit.response;
+    }
+
     const parsed = await parseJsonBodySafely(request);
     if (!parsed.ok) {
       return NextResponse.json(
@@ -42,6 +52,14 @@ export async function POST(
     if (clientIdReject.rejected) {
       return NextResponse.json(
         { ok: false, error: clientIdReject.error },
+        { status: 400 },
+      );
+    }
+
+    const sensitiveReject = rejectUnexpectedFields(parsed.body);
+    if (sensitiveReject.rejected) {
+      return NextResponse.json(
+        { ok: false, error: sensitiveReject.error },
         { status: 400 },
       );
     }

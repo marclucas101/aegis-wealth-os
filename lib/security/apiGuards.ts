@@ -1,5 +1,29 @@
 import "server-only";
 
+import { NextResponse } from "next/server";
+
+import {
+  buildRateLimitKey,
+  checkRateLimit,
+  RATE_LIMIT_PRESETS,
+  type RateLimitConfig,
+} from "./rateLimit";
+import {
+  rejectUnexpectedFields,
+  rejectUnexpectedFormFields,
+  type RejectUnexpectedFieldsOptions,
+  type UnexpectedFieldsResult,
+} from "./requestValidation";
+
+export {
+  RATE_LIMIT_PRESETS,
+  rejectUnexpectedFields,
+  rejectUnexpectedFormFields,
+  type RejectUnexpectedFieldsOptions,
+  type UnexpectedFieldsResult,
+};
+export type { RateLimitConfig } from "./rateLimit";
+
 export type JsonParseResult =
   | { ok: true; body: unknown }
   | { ok: false; error: string };
@@ -72,6 +96,9 @@ export async function parseJsonBodySafely(
     return { ok: false, error: "Invalid JSON body" };
   }
 }
+
+/** Alias for {@link parseJsonBodySafely}. */
+export const parseJsonBodySafe = parseJsonBodySafely;
 
 /** Extracts client IP and user agent from standard proxy headers. */
 export function getRequestMetadata(request: Request): RequestMetadata {
@@ -155,4 +182,102 @@ export function toPublicErrorMessage(err: unknown, fallback: string): string {
   }
 
   return fallback;
+}
+
+export type RateLimitGuardResult<T = never> =
+  | { ok: true }
+  | { ok: false; response: NextResponse<T> };
+
+/**
+ * Derives a stable rate-limit actor key: authenticated user id when available,
+ * otherwise client IP (x-forwarded-for / x-real-ip) or "unknown".
+ */
+export function getRequestActorKey(
+  request: Request,
+  userId?: string | null,
+): string {
+  if (userId?.trim()) {
+    return `user:${userId.trim()}`;
+  }
+
+  const { ip_address } = getRequestMetadata(request);
+  if (ip_address) {
+    return `ip:${ip_address}`;
+  }
+
+  return "ip:unknown";
+}
+
+/** Standard 429 JSON payload — routes may extend with route-specific `reason` fields. */
+export function createRateLimitedResponse(retryAfterMs: number): NextResponse {
+  const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
+
+  return NextResponse.json(
+    {
+      ok: false as const,
+      error: "Too many requests. Please try again later.",
+      retryAfterMs,
+    },
+    {
+      status: 429,
+      headers: {
+        "Retry-After": String(retryAfterSeconds),
+      },
+    },
+  );
+}
+
+/**
+ * Applies in-memory rate limiting for the current request actor.
+ * Returns a 429 response when the limit is exceeded.
+ *
+ * WARNING: Not suitable for multi-instance production — see rateLimit.ts.
+ */
+export function rateLimitOrThrow<T = never>(
+  request: Request,
+  options: {
+    userId?: string | null;
+    bucket: keyof typeof RATE_LIMIT_PRESETS | string;
+    config?: RateLimitConfig;
+  },
+): RateLimitGuardResult<T> {
+  const config =
+    options.config ??
+    (options.bucket in RATE_LIMIT_PRESETS
+      ? RATE_LIMIT_PRESETS[options.bucket as keyof typeof RATE_LIMIT_PRESETS]
+      : RATE_LIMIT_PRESETS.writeHeavy);
+
+  const actorKey = getRequestActorKey(request, options.userId);
+  const limitKey = buildRateLimitKey(options.bucket, actorKey);
+  const result = checkRateLimit(limitKey, config);
+
+  if (result.limited) {
+    return {
+      ok: false,
+      response: createRateLimitedResponse(result.retryAfterMs) as NextResponse<T>,
+    };
+  }
+
+  return { ok: true };
+}
+
+/** Returns 405 when the request method is not in the allowed list. */
+export function assertAllowedMethods(
+  request: Request,
+  allowed: readonly string[],
+): { ok: true } | { ok: false; response: NextResponse } {
+  if (allowed.includes(request.method)) {
+    return { ok: true };
+  }
+
+  return {
+    ok: false,
+    response: NextResponse.json(
+      { ok: false, error: "Method not allowed" },
+      {
+        status: 405,
+        headers: { Allow: allowed.join(", ") },
+      },
+    ),
+  };
 }
