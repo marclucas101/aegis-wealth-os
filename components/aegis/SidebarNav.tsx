@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export interface NavItem {
   label: string;
   href: string;
   description?: string;
+  adminOnly?: boolean;
 }
 
 export interface NavSection {
@@ -63,6 +65,12 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Advisory",
     items: [
       { label: "Advisor OS", href: "/advisor", description: "Client monitoring" },
+      {
+        label: "Admin Console",
+        href: "/admin",
+        description: "Roles & assignments",
+        adminOnly: true,
+      },
     ],
   },
 ];
@@ -107,6 +115,33 @@ interface SidebarNavProps {
 
 export default function SidebarNav({ onNavigate }: SidebarNavProps) {
   const pathname = usePathname();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkAdminAccess() {
+      try {
+        const response = await fetch("/api/admin/users", {
+          cache: "no-store",
+        });
+
+        if (!cancelled) {
+          setIsAdmin(response.ok);
+        }
+      } catch {
+        if (!cancelled) {
+          setIsAdmin(false);
+        }
+      }
+    }
+
+    void checkAdminAccess();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <nav className="flex h-full flex-col">
@@ -137,7 +172,9 @@ export default function SidebarNav({ onNavigate }: SidebarNavProps) {
               {section.title}
             </p>
             <ul className="space-y-0.5">
-              {section.items.map((item) => {
+              {section.items
+                .filter((item) => !item.adminOnly || isAdmin)
+                .map((item) => {
                 const isActive =
                   pathname === item.href ||
                   pathname.startsWith(`${item.href}/`);

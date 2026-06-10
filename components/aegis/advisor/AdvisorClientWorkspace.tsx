@@ -171,13 +171,17 @@ export default function AdvisorClientWorkspace({
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <AdvisorClientDocumentsPanel documents={workspace.documents} />
+        <AdvisorClientDocumentsPanel
+          clientId={clientId}
+          documents={workspace.documents}
+        />
         <AdvisorClientActivityPanel activity={workspace.recentActivity} />
       </div>
 
       <AdvisorClientNotesPanel clientId={clientId} />
 
       <AdvisorClientReportsPanel
+        clientId={clientId}
         wealthBlueprintHistory={workspace.wealthBlueprintHistory}
         annualReviewHistory={workspace.annualReviewHistory}
       />

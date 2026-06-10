@@ -16,6 +16,7 @@ const PROTECTED_PREFIXES = [
   "/annual-review",
   "/document-vault",
   "/advisor",
+  "/admin",
 ] as const;
 
 const AUTH_PAGES = ["/login", "/signup"] as const;
