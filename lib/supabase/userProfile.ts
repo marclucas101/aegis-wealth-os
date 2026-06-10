@@ -3,6 +3,12 @@ import "server-only";
 import type { User } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { writeAuditLog } from "./auditLog";
+import {
+  findLinkablePlaceholderClient,
+  linkPlaceholderClientToUser,
+  normalizeEmail,
+} from "./clientOnboarding";
 import { createAdminSupabaseClient } from "./admin";
 import { createServerSupabaseClient } from "./server";
 import type { Database } from "./types";
@@ -160,6 +166,25 @@ export async function ensureUserClientProfile(): Promise<EnsureUserClientProfile
   }
 
   let clientRow = await fetchClientByUserId(admin, authUser.id);
+  let linkedPlaceholder = false;
+
+  if (!clientRow && userRow.role === "client") {
+    const placeholder = await findLinkablePlaceholderClient(email);
+
+    if (placeholder) {
+      const linked = await linkPlaceholderClientToUser({
+        placeholder,
+        userId: authUser.id,
+        fallbackDisplayName: displayNameFromAuthUser(authUser),
+      });
+
+      if (linked) {
+        clientRow = linked;
+        linkedPlaceholder = true;
+      }
+    }
+  }
+
   if (!clientRow) {
     const { data, error } = await admin
       .from("clients")
@@ -182,6 +207,22 @@ export async function ensureUserClientProfile(): Promise<EnsureUserClientProfile
     } else {
       clientRow = data as AppClientRow;
     }
+  }
+
+  if (linkedPlaceholder && clientRow) {
+    await writeAuditLog({
+      clientId: clientRow.id,
+      userId: authUser.id,
+      action: "client_placeholder_linked_to_user",
+      entityType: "clients",
+      entityId: clientRow.id,
+      metadata: {
+        client_id: clientRow.id,
+        user_id: authUser.id,
+        email: normalizeEmail(email),
+        advisor_user_id: clientRow.advisor_user_id,
+      },
+    });
   }
 
   return {

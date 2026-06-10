@@ -14,6 +14,8 @@
 | **3D** | Supabase health check (`/supabase-health`, `/api/health/supabase`) | ✅ |
 | **3E** | Supabase Auth (login, signup, callback, protected routes) | ✅ |
 | **3F** | User/client provisioning (`ensureUserClientProfile`, one client per user) | ✅ |
+
+**Phase 4F.1 extension:** On first authenticated session, `ensureUserClientProfile()` links an existing placeholder `clients` row (matching email, `user_id` null, status `onboarding`/`prospect`) instead of inserting a duplicate. If multiple placeholders match, the most recently created row is used. Emits `client_placeholder_linked_to_user` audit event.
 | **3G** | Discover™ saves to Supabase (`/api/discover/save`, scoring chain) | ✅ |
 | **3H** | Dashboard loads from Supabase (`/api/dashboard/current`) | ✅ |
 | **3I** | Modules load from Supabase (shield, roadmap, stress, blueprint, annual review) | ✅ |

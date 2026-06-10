@@ -580,3 +580,93 @@ export async function inviteClientByEmail(
     advisorUserId: client.advisor_user_id,
   };
 }
+
+/**
+ * Finds an unlinked placeholder client matching the given email.
+ * When multiple placeholders share the same email, returns the most recently
+ * created row with status onboarding or prospect.
+ */
+export async function findLinkablePlaceholderClient(
+  email: string,
+): Promise<AppClientRow | null> {
+  const admin = createAdminSupabaseClient();
+  const normalized = normalizeEmail(email);
+
+  const { data, error } = await admin
+    .from("clients")
+    .select("*")
+    .ilike("email", normalized)
+    .is("user_id", null)
+    .in("status", ONBOARDING_STATUSES)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `Failed to find linkable placeholder client: ${error.message}`,
+    );
+  }
+
+  return data as AppClientRow | null;
+}
+
+/**
+ * Links a placeholder client row to an authenticated client user.
+ * Preserves advisor_user_id and display_name unless display_name is empty.
+ */
+export async function linkPlaceholderClientToUser(input: {
+  placeholder: AppClientRow;
+  userId: string;
+  fallbackDisplayName: string;
+}): Promise<AppClientRow | null> {
+  const admin = createAdminSupabaseClient();
+
+  const updates: { user_id: string; display_name?: string } = {
+    user_id: input.userId,
+  };
+
+  if (!input.placeholder.display_name.trim()) {
+    updates.display_name = input.fallbackDisplayName;
+  }
+
+  const { data, error } = await admin
+    .from("clients")
+    .update(updates as never)
+    .eq("id", input.placeholder.id)
+    .is("user_id", null)
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to link placeholder client: ${error.message}`);
+  }
+
+  if (data) {
+    return data as AppClientRow;
+  }
+
+  const linkedForUser = await findClientByUserId(input.userId);
+  if (linkedForUser) {
+    return linkedForUser;
+  }
+
+  const { data: refreshed, error: refreshError } = await admin
+    .from("clients")
+    .select("*")
+    .eq("id", input.placeholder.id)
+    .maybeSingle();
+
+  if (refreshError) {
+    throw new Error(
+      `Failed to reload placeholder client: ${refreshError.message}`,
+    );
+  }
+
+  const refreshedRow = refreshed as AppClientRow | null;
+  if (refreshedRow?.user_id === input.userId) {
+    return refreshedRow;
+  }
+
+  return null;
+}
