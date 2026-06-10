@@ -34,10 +34,16 @@ export async function createServerSupabaseClient(): Promise<
           value: string;
           options: CookieOptions;
         }[],
+        headers: Record<string, string>,
       ) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          cookieStore.set(name, value, options);
-        });
+        void headers;
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        } catch {
+          // Server Components cannot mutate cookies; middleware handles refresh.
+        }
       },
     },
   });

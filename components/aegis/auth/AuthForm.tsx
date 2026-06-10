@@ -1,19 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-
-import {
-  login,
-  signup,
-  type AuthFormState,
-} from "@/app/auth/actions";
-
-const initialState: AuthFormState = {
-  error: null,
-  success: null,
-};
 
 type AuthFormProps = {
   mode: "login" | "signup";
@@ -42,9 +30,6 @@ export default function AuthForm({
   initialError = null,
   initialSuccess = null,
 }: AuthFormProps) {
-  const action = mode === "login" ? login : signup;
-  const [state, formAction] = useActionState(action, initialState);
-
   const title = mode === "login" ? "Sign In" : "Create Account";
   const subtitle =
     mode === "login"
@@ -55,9 +40,7 @@ export default function AuthForm({
   const alternatePrompt =
     mode === "login" ? "New to AEGIS?" : "Already have an account?";
   const alternateLabel = mode === "login" ? "Create account" : "Sign in";
-
-  const errorMessage = state.error ?? initialError;
-  const successMessage = state.success ?? initialSuccess;
+  const formAction = mode === "login" ? "/auth/login" : "/auth/signup";
 
   return (
     <div className="w-full max-w-md">
@@ -73,6 +56,7 @@ export default function AuthForm({
 
       <form
         action={formAction}
+        method="post"
         className="rounded-sm border border-[#D1A866]/12 bg-[#10283A]/35 p-6 backdrop-blur-sm sm:p-8"
       >
         {next && mode === "login" ? (
@@ -120,21 +104,21 @@ export default function AuthForm({
           </div>
         </div>
 
-        {errorMessage ? (
+        {initialError ? (
           <p
             role="alert"
             className="mt-5 rounded-sm border border-red-400/20 bg-red-950/30 px-4 py-3 text-sm text-red-300/90"
           >
-            {errorMessage}
+            {initialError}
           </p>
         ) : null}
 
-        {successMessage ? (
+        {initialSuccess ? (
           <p
             role="status"
             className="mt-5 rounded-sm border border-[#D1A866]/20 bg-[#D1A866]/8 px-4 py-3 text-sm text-[#D1A866]/90"
           >
-            {successMessage}
+            {initialSuccess}
           </p>
         ) : null}
 

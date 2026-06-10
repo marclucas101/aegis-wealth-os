@@ -18,6 +18,14 @@ const PROTECTED_PREFIXES = [
 
 const AUTH_PAGES = ["/login", "/signup"] as const;
 
+/** Auth handlers set cookies on their own NextResponse — skip middleware refresh. */
+const AUTH_HANDLER_PREFIXES = [
+  "/auth/login",
+  "/auth/signup",
+  "/auth/callback",
+  "/logout",
+] as const;
+
 function matchesPrefix(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
@@ -30,8 +38,17 @@ function isAuthPage(pathname: string): boolean {
   return AUTH_PAGES.some((page) => pathname === page);
 }
 
+function isAuthHandler(pathname: string): boolean {
+  return AUTH_HANDLER_PREFIXES.some((prefix) => matchesPrefix(pathname, prefix));
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (isAuthHandler(pathname)) {
+    return NextResponse.next();
+  }
+
   const session = await updateSession(request);
 
   if (!session.user && isProtectedRoute(pathname)) {
