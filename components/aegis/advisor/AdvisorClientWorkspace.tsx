@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import AdvisorClientAccessDenied from "@/components/aegis/advisor/AdvisorClientAccessDenied";
 import AdvisorClientActivityPanel from "@/components/aegis/advisor/AdvisorClientActivityPanel";
 import AdvisorClientDocumentsPanel from "@/components/aegis/advisor/AdvisorClientDocumentsPanel";
+import AdvisorClientNotesPanel from "@/components/aegis/advisor/AdvisorClientNotesPanel";
 import AdvisorClientHeader from "@/components/aegis/advisor/AdvisorClientHeader";
 import AdvisorClientPillarPanel from "@/components/aegis/advisor/AdvisorClientPillarPanel";
 import AdvisorClientReportsPanel from "@/components/aegis/advisor/AdvisorClientReportsPanel";
@@ -173,6 +174,8 @@ export default function AdvisorClientWorkspace({
         <AdvisorClientDocumentsPanel documents={workspace.documents} />
         <AdvisorClientActivityPanel activity={workspace.recentActivity} />
       </div>
+
+      <AdvisorClientNotesPanel clientId={clientId} />
 
       <AdvisorClientReportsPanel
         wealthBlueprintHistory={workspace.wealthBlueprintHistory}
