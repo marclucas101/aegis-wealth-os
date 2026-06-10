@@ -5,14 +5,11 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { getSupabaseCookieOptions } from "./cookie-options";
 import { getSupabasePublicEnv } from "./env";
-import { applySupabaseSetCookies } from "./set-cookie";
+import {
+  normalizeSetCookieOptions,
+  resolveFinalCookiesToSet,
+} from "./set-cookie";
 import type { Database } from "./types";
-
-type PendingCookie = {
-  name: string;
-  value: string;
-  options: CookieOptions;
-};
 
 export type SessionUpdateResult = {
   response: NextResponse;
@@ -45,7 +42,6 @@ export async function updateSession(
   request: NextRequest,
 ): Promise<SessionUpdateResult> {
   let response = NextResponse.next({ request });
-  const pendingCookies = new Map<string, PendingCookie>();
   let pendingHeaders: Record<string, string> = {};
   const { url, anonKey } = getSupabasePublicEnv();
 
@@ -59,23 +55,26 @@ export async function updateSession(
         cookiesToSet: { name: string; value: string; options: CookieOptions }[],
         headers: Record<string, string>,
       ) {
-        cookiesToSet.forEach(({ name, value }) => {
-          request.cookies.set(name, value);
-        });
+        const finalCookies = resolveFinalCookiesToSet(cookiesToSet);
 
-        cookiesToSet.forEach(({ name, value, options }) => {
-          pendingCookies.set(name, { name, value, options });
+        finalCookies.forEach(({ name, value }) => {
+          request.cookies.set(name, value);
         });
 
         response = NextResponse.next({ request });
 
-        applySupabaseSetCookies(
-          response,
-          Array.from(pendingCookies.values()),
-          { ...pendingHeaders, ...headers },
-        );
+        finalCookies.forEach(({ name, value, options }) => {
+          response.cookies.set(
+            name,
+            value,
+            normalizeSetCookieOptions(options),
+          );
+        });
 
         pendingHeaders = { ...pendingHeaders, ...headers };
+        Object.entries(headers).forEach(([key, value]) => {
+          response.headers.set(key, value);
+        });
       },
     },
   });
@@ -93,11 +92,17 @@ export async function updateSession(
   }
 
   const applyCookies = (target: NextResponse): NextResponse => {
-    applySupabaseSetCookies(
-      target,
-      Array.from(pendingCookies.values()),
-      pendingHeaders,
-    );
+    const getSetCookie = response.headers.getSetCookie;
+    if (typeof getSetCookie === "function") {
+      for (const header of getSetCookie.call(response.headers)) {
+        target.headers.append("Set-Cookie", header);
+      }
+    }
+
+    Object.entries(pendingHeaders).forEach(([key, value]) => {
+      target.headers.set(key, value);
+    });
+
     return target;
   };
 

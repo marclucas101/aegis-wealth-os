@@ -1,10 +1,11 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { type NextRequest } from "next/server";
 
 import { readAuthCredentials } from "@/lib/supabase/auth-credentials";
 import { createRouteHandlerSupabaseClient } from "@/lib/supabase/route-handler";
 import {
-  describeSetCookieHeaders,
-  hasSupabaseAuthCookiesOnResponse,
+  attachAuthCookieDiagnostics,
+  getSetCookieHeadersFrom,
+  hasSupabaseAuthCookiesOnHeaders,
 } from "@/lib/supabase/set-cookie";
 
 export const runtime = "nodejs";
@@ -20,57 +21,61 @@ function loginRedirectUrl(request: NextRequest, next?: string): URL {
   return loginUrl;
 }
 
+function redirectResponse(
+  url: URL,
+  headers: Headers,
+  status = POST_AUTH_REDIRECT_STATUS,
+): Response {
+  headers.set("Location", url.toString());
+  return new Response(null, { status, headers });
+}
+
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
   const { email, password, error: validationError } = readAuthCredentials(formData);
   const next = String(formData.get("next") ?? "").trim();
 
   if (validationError) {
-    const loginUrl = loginRedirectUrl(request, next);
-    loginUrl.searchParams.set("error", validationError);
-    return NextResponse.redirect(loginUrl, POST_AUTH_REDIRECT_STATUS);
+    return redirectResponse(loginRedirectUrl(request, next), new Headers());
   }
 
   const redirectPath = next.startsWith("/") ? next : "/dashboard";
-  const redirectResponse = NextResponse.redirect(
-    new URL(redirectPath, request.url),
-    POST_AUTH_REDIRECT_STATUS,
-  );
-
-  const supabase = createRouteHandlerSupabaseClient(request, redirectResponse);
+  const responseHeaders = new Headers();
+  const supabase = createRouteHandlerSupabaseClient(request, responseHeaders);
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
-  const setCookieHeaders =
-    typeof redirectResponse.headers.getSetCookie === "function"
-      ? redirectResponse.headers.getSetCookie()
-      : [];
+  const serializedSetCookies = getSetCookieHeadersFrom(responseHeaders);
 
   console.info("[auth/login]", {
     host: new URL(request.url).host,
     origin: new URL(request.url).origin,
     hasUser: Boolean(data.user),
     hasSession: Boolean(data.session),
-    setCookieCount: setCookieHeaders.length,
-    cookieAttributes: describeSetCookieHeaders(setCookieHeaders),
+    setCookieCount: serializedSetCookies.length,
   });
 
   if (error) {
     const loginUrl = loginRedirectUrl(request, next);
     loginUrl.searchParams.set("error", error.message);
-    return NextResponse.redirect(loginUrl, POST_AUTH_REDIRECT_STATUS);
+    return redirectResponse(loginUrl, new Headers());
   }
 
-  if (!hasSupabaseAuthCookiesOnResponse(redirectResponse)) {
+  if (!hasSupabaseAuthCookiesOnHeaders(responseHeaders)) {
     const loginUrl = loginRedirectUrl(request, next);
     loginUrl.searchParams.set(
       "error",
       "Sign-in succeeded but session cookies were not saved. Please try again.",
     );
-    return NextResponse.redirect(loginUrl, POST_AUTH_REDIRECT_STATUS);
+    return redirectResponse(loginUrl, new Headers());
   }
 
-  return redirectResponse;
+  attachAuthCookieDiagnostics(responseHeaders, serializedSetCookies);
+
+  return redirectResponse(
+    new URL(redirectPath, request.url),
+    responseHeaders,
+  );
 }
