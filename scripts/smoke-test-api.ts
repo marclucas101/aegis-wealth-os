@@ -83,6 +83,13 @@ const CASES: SmokeCase[] = [
     forbidStatus: [500],
   },
   {
+    name: "Advisor command-center heavy rejects unauthenticated access",
+    method: "GET",
+    path: "/api/advisor/command-center/heavy",
+    expectStatus: 401,
+    forbidStatus: [500],
+  },
+  {
     name: "Advisor client workspace rejects unauthenticated access",
     method: "GET",
     path: `/api/advisor/clients/${PLACEHOLDER_CLIENT_ID}`,

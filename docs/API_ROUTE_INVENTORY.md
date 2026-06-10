@@ -1,7 +1,7 @@
 # API Route Inventory — Phase 4R
 
 **Date:** 2026-06-10  
-**Total routes:** 51 handler files  
+**Total routes:** 52 handler files  
 **Regenerate flags:** `npm run qa:routes`
 
 **Related:** [Role Access Matrix](./ROLE_ACCESS_MATRIX.md) · [Security Test Plan](./SECURITY_TEST_PLAN.md)
@@ -62,6 +62,7 @@ Returns `{ authenticated: false }` with 200 when logged out. Returns own client 
 |-------|--------|------|------|-----|----|-------|
 | `/api/advisor/overview` | GET | Yes | advisor, admin | R | No | — |
 | `/api/advisor/command-center` | GET | Yes | advisor, admin | R | Yes (`commandCenter`) | — |
+| `/api/advisor/command-center/heavy` | GET | Yes | advisor, admin | R | Yes (`commandCenter`) | — |
 | `/api/advisor/notifications` | GET | Yes | advisor, admin | R | No | — |
 | `/api/advisor/review-pipeline` | GET | Yes | advisor, admin | R | No | — |
 | `/api/advisor/file-quality` | GET | Yes | advisor, admin | R | No | — |

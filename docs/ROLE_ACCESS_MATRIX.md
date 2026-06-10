@@ -86,6 +86,7 @@ Client-scoped routes use `resolveAccessibleClient`: advisors need assignment; ad
 |-------|--------|--------|--------|--------------------|------------------|-------|
 | `/api/advisor/overview` | GET | ❌ 401 | ❌ 403 | ✅ (own clients) | ✅ | ✅ |
 | `/api/advisor/command-center` | GET | ❌ 401 | ❌ 403 | ✅ | ✅ | ✅ |
+| `/api/advisor/command-center/heavy` | GET | ❌ 401 | ❌ 403 | ✅ | ✅ | ✅ |
 | `/api/advisor/notifications` | GET | ❌ 401 | ❌ 403 | ✅ | ✅ | ✅ |
 | `/api/advisor/review-pipeline` | GET | ❌ 401 | ❌ 403 | ✅ | ✅ | ✅ |
 | `/api/advisor/file-quality` | GET | ❌ 401 | ❌ 403 | ✅ | ✅ | ✅ |

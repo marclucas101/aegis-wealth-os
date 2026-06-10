@@ -119,9 +119,11 @@ function printTable(routes: RouteRecord[]): void {
 }
 
 function printReviewFlags(routes: RouteRecord[]): void {
-  const writeWithoutRateLimit = routes.filter(
-    (route) => route.isWrite && !route.hasRateLimit && route.authKind !== "public",
-  );
+  const writeWithoutRateLimit = routes.filter((route) => {
+    if (route.authKind === "public") return false;
+    const writeMethods = route.methods.filter((method) => method !== "GET");
+    return writeMethods.length > 0 && !route.hasRateLimit;
+  });
   const unknownAuth = routes.filter((route) => route.authKind === "unknown");
   const writeWithoutAudit = routes.filter(
     (route) =>
@@ -138,7 +140,8 @@ function printReviewFlags(routes: RouteRecord[]): void {
   } else {
     console.log("  WARN Write routes without rate limiting (review before production):");
     for (const route of writeWithoutRateLimit) {
-      console.log(`       ${route.routePath} (${route.methods.join(", ")})`);
+      const writeMethods = route.methods.filter((method) => method !== "GET");
+      console.log(`       ${route.routePath} (${writeMethods.join(", ")})`);
     }
   }
 
