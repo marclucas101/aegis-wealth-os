@@ -29,19 +29,34 @@ import {
 const TOP_NOTIFICATIONS_LIMIT = 8;
 const TOP_SUGGESTIONS_LIMIT = 12;
 
-export type AdvisorCommandCenterTiming = {
+export type AdvisorCommandCenterShellTiming = {
   totalMs: number;
   overviewMs: number | null;
+  onboardingMs: number | null;
+};
+
+export type AdvisorCommandCenterHeavyTiming = {
+  totalMs: number;
   notificationsMs: number | null;
   tasksMs: number | null;
   reviewPipelineMs: number | null;
   fileQualityMs: number | null;
   taskSuggestionsMs: number | null;
-  onboardingMs: number | null;
 };
 
-export type AdvisorCommandCenterPayload = {
+/** @deprecated Use shell + heavy timing types for split loads. */
+export type AdvisorCommandCenterTiming = AdvisorCommandCenterShellTiming &
+  AdvisorCommandCenterHeavyTiming;
+
+export type AdvisorCommandCenterShellPayload = {
   overview: AdvisorOverview;
+  onboardingClients: OnboardingClientRecord[];
+  onboardingError: string | null;
+  viewer: { userId: string; role: "advisor" | "admin" };
+  timing: AdvisorCommandCenterShellTiming;
+};
+
+export type AdvisorCommandCenterHeavyPayload = {
   notifications: AdvisorNotificationsPayload | null;
   notificationsError: string | null;
   topNotifications: AdvisorNotification[];
@@ -55,11 +70,14 @@ export type AdvisorCommandCenterPayload = {
   taskSuggestions: AdvisorTaskSuggestionsPayload | null;
   suggestionsError: string | null;
   topTaskSuggestions: AdvisorTaskSuggestion[];
-  onboardingClients: OnboardingClientRecord[];
-  onboardingError: string | null;
-  viewer: { userId: string; role: "advisor" | "admin" };
-  timing: AdvisorCommandCenterTiming;
+  timing: AdvisorCommandCenterHeavyTiming;
 };
+
+/** Full payload shape — used when both shell and heavy are merged client-side. */
+export type AdvisorCommandCenterPayload = AdvisorCommandCenterShellPayload &
+  Omit<AdvisorCommandCenterHeavyPayload, "timing"> & {
+    timing: AdvisorCommandCenterTiming;
+  };
 
 type SectionResult<T> =
   | { ok: true; data: T; ms: number }
@@ -107,22 +125,53 @@ function selectTopTaskSuggestions(
 }
 
 /**
- * Loads consolidated advisor dashboard data in parallel sections.
- * Each section is isolated so one failure does not block the rest of the console.
+ * Loads critical advisor dashboard shell data (overview + cheap onboarding).
+ * Intended for fast first paint on /advisor.
  */
-export async function loadAdvisorCommandCenter(
+export async function loadAdvisorCommandCenterShell(
   authUserId: string,
   userRole: "advisor" | "admin",
-): Promise<AdvisorCommandCenterPayload> {
+): Promise<AdvisorCommandCenterShellPayload> {
   const totalStarted = performance.now();
 
-  const overviewResult = await loadSection("overview", () =>
-    loadAdvisorOverview(authUserId, userRole),
-  );
+  const [overviewResult, onboardingResult] = await Promise.all([
+    loadSection("overview", () =>
+      loadAdvisorOverview(authUserId, userRole),
+    ),
+    loadSection("onboarding", () =>
+      loadOnboardingClients({
+        scope: "advisor",
+        advisorUserId: authUserId,
+      }),
+    ),
+  ]);
 
   if (!overviewResult.ok) {
     throw new Error(overviewResult.error);
   }
+
+  return {
+    overview: overviewResult.data,
+    onboardingClients: onboardingResult.ok ? onboardingResult.data : [],
+    onboardingError: onboardingResult.ok ? null : onboardingResult.error,
+    viewer: { userId: authUserId, role: userRole },
+    timing: {
+      totalMs: Math.round(performance.now() - totalStarted),
+      overviewMs: overviewResult.ms,
+      onboardingMs: onboardingResult.ms,
+    },
+  };
+}
+
+/**
+ * Loads expensive advisor dashboard panels in parallel.
+ * Each section is isolated so one failure does not block the rest.
+ */
+export async function loadAdvisorCommandCenterHeavy(
+  authUserId: string,
+  userRole: "advisor" | "admin",
+): Promise<AdvisorCommandCenterHeavyPayload> {
+  const totalStarted = performance.now();
 
   const [
     notificationsResult,
@@ -130,7 +179,6 @@ export async function loadAdvisorCommandCenter(
     reviewPipelineResult,
     fileQualityResult,
     suggestionsResult,
-    onboardingResult,
   ] = await Promise.all([
     loadSection("notifications", () =>
       loadAdvisorNotifications(authUserId, userRole),
@@ -147,12 +195,6 @@ export async function loadAdvisorCommandCenter(
     loadSection("taskSuggestions", () =>
       loadAdvisorTaskSuggestions(authUserId, userRole),
     ),
-    loadSection("onboarding", () =>
-      loadOnboardingClients({
-        scope: "advisor",
-        advisorUserId: authUserId,
-      }),
-    ),
   ]);
 
   const notifications = notificationsResult.ok
@@ -168,7 +210,6 @@ export async function loadAdvisorCommandCenter(
     : null;
 
   return {
-    overview: overviewResult.data,
     notifications,
     notificationsError: notificationsResult.ok
       ? null
@@ -190,18 +231,13 @@ export async function loadAdvisorCommandCenter(
     topTaskSuggestions: taskSuggestions
       ? selectTopTaskSuggestions(taskSuggestions)
       : [],
-    onboardingClients: onboardingResult.ok ? onboardingResult.data : [],
-    onboardingError: onboardingResult.ok ? null : onboardingResult.error,
-    viewer: { userId: authUserId, role: userRole },
     timing: {
       totalMs: Math.round(performance.now() - totalStarted),
-      overviewMs: overviewResult.ms,
       notificationsMs: notificationsResult.ms,
       tasksMs: tasksResult.ms,
       reviewPipelineMs: reviewPipelineResult.ms,
       fileQualityMs: fileQualityResult.ms,
       taskSuggestionsMs: suggestionsResult.ms,
-      onboardingMs: onboardingResult.ms,
     },
   };
 }

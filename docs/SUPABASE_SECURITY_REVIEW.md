@@ -310,3 +310,21 @@ Existing write routes already emit audit events. No new audit actions were requi
 | Audit log silent failure | Low | Monitor `[auditLog]` console errors |
 | CSP / virus scan on uploads | Low | Deferred to scale phase |
 
+---
+
+## 14. Phase 4R — Production Readiness QA
+
+**Date:** 2026-06-10  
+**Scope:** QA documentation, route inventory, and automation scripts (no app behavior changes)
+
+| Deliverable | Location |
+|-------------|----------|
+| Production readiness checklist | `docs/PRODUCTION_READINESS_CHECKLIST.md` |
+| Manual smoke test plan | `docs/QA_SMOKE_TEST_PLAN.md` |
+| Role access matrix | `docs/ROLE_ACCESS_MATRIX.md` |
+| API route inventory | `docs/API_ROUTE_INVENTORY.md` |
+| Security test plan | `docs/SECURITY_TEST_PLAN.md` |
+| Env verification | `npm run qa:env` |
+| Route scanner | `npm run qa:routes` |
+| API smoke tests | `npm run qa:smoke` (requires running server) |
+

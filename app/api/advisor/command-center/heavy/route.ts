@@ -3,14 +3,14 @@ import { NextResponse } from "next/server";
 import { rateLimitOrThrow, toPublicErrorMessage } from "@/lib/security/apiGuards";
 import { requireAdvisorAccess } from "@/lib/supabase/advisorAuth";
 import {
-  loadAdvisorCommandCenterShell,
-  type AdvisorCommandCenterShellPayload,
+  loadAdvisorCommandCenterHeavy,
+  type AdvisorCommandCenterHeavyPayload,
 } from "@/lib/supabase/advisorCommandCenter";
 
 export const dynamic = "force-dynamic";
 
-export type AdvisorCommandCenterResponse =
-  | ({ ok: true } & AdvisorCommandCenterShellPayload)
+export type AdvisorCommandCenterHeavyResponse =
+  | ({ ok: true } & AdvisorCommandCenterHeavyPayload)
   | {
       ok: false;
       reason: "unauthenticated" | "forbidden" | "error";
@@ -27,9 +27,7 @@ function advisorRole(role: string): "advisor" | "admin" | null {
 
 export async function GET(
   request: Request,
-): Promise<
-  NextResponse<AdvisorCommandCenterResponse>
-> {
+): Promise<NextResponse<AdvisorCommandCenterHeavyResponse>> {
   try {
     const access = await requireAdvisorAccess();
 
@@ -60,29 +58,32 @@ export async function GET(
       );
     }
 
-    const rateLimit = rateLimitOrThrow<AdvisorCommandCenterResponse>(request, {
-      userId: access.authUser.id,
-      bucket: "commandCenter",
-    });
+    const rateLimit = rateLimitOrThrow<AdvisorCommandCenterHeavyResponse>(
+      request,
+      {
+        userId: access.authUser.id,
+        bucket: "commandCenter",
+      },
+    );
     if (!rateLimit.ok) {
       return rateLimit.response;
     }
 
-    const payload = await loadAdvisorCommandCenterShell(
+    const payload = await loadAdvisorCommandCenterHeavy(
       access.authUser.id,
       role,
     );
 
-    console.info("[api/advisor/command-center] shell timing", payload.timing);
+    console.info("[api/advisor/command-center/heavy] timing", payload.timing);
 
     return NextResponse.json({ ok: true, ...payload });
   } catch (err) {
     const message = toPublicErrorMessage(
       err,
-      "Failed to load advisor command center",
+      "Failed to load advisor command center panels",
     );
 
-    console.error("[api/advisor/command-center]", err);
+    console.error("[api/advisor/command-center/heavy]", err);
 
     return NextResponse.json(
       { ok: false, reason: "error", error: message },

@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "qa:env": "npx tsx scripts/verify-env.ts",
+    "qa:routes": "npx tsx scripts/check-api-routes.ts",
+    "qa:smoke": "npx tsx scripts/smoke-test-api.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",

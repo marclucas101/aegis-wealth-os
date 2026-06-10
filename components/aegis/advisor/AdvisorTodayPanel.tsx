@@ -22,6 +22,7 @@ type TaskDashboardSlice = {
 };
 
 interface AdvisorTodayPanelProps {
+  isLoading?: boolean;
   notifications?: AdvisorNotificationsPayload | null;
   notificationsError?: string | null;
   taskDashboard?: AdvisorTaskDashboard | null;
@@ -158,6 +159,7 @@ function ReviewRow({
 }
 
 export default function AdvisorTodayPanel({
+  isLoading = false,
   notifications = null,
   notificationsError = null,
   taskDashboard = null,
@@ -211,6 +213,36 @@ export default function AdvisorTodayPanel({
       summary: reviewPipeline.summary,
     };
   }, [showPipeline, reviewPipeline]);
+
+  if (isLoading) {
+    return (
+      <section
+        id="advisor-today"
+        className="relative scroll-mt-24 overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60"
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-[#D1A866]/5 via-transparent to-transparent" />
+        <div className="relative border-b border-[#D1A866]/10 px-5 py-4">
+          <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#D1A866]/70">
+            Today
+          </p>
+          <p className="mt-1 text-sm font-light text-[#F3F1EA]/45">
+            Loading urgent items, tasks, and review servicing…
+          </p>
+        </div>
+        <div className="relative space-y-3 px-5 py-5">
+          {[1, 2, 3, 4].map((slot) => (
+            <div
+              key={slot}
+              className="animate-pulse rounded-sm border border-[#D1A866]/8 bg-[#071B2A]/35 p-4"
+            >
+              <div className="h-2 w-24 rounded bg-[#D1A866]/10" />
+              <div className="mt-3 h-8 rounded bg-[#F3F1EA]/5" />
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
 
   if (
     notifications === undefined &&

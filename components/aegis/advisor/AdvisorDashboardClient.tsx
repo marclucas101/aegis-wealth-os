@@ -22,6 +22,7 @@ import AdvisorSearchFilters, {
   type AdvisorFilters,
 } from "@/components/aegis/advisor/AdvisorSearchFilters";
 import type { AdvisorCommandCenterResponse } from "@/app/api/advisor/command-center/route";
+import type { AdvisorCommandCenterHeavyResponse } from "@/app/api/advisor/command-center/heavy/route";
 import type { AdvisorOverview } from "@/lib/supabase/advisorQueries";
 import type { AdvisorNotificationsPayload } from "@/lib/supabase/advisorNotifications";
 import type { AdvisorReviewPipeline } from "@/lib/supabase/advisorReviewPipeline";
@@ -34,9 +35,16 @@ import type { AdvisorTaskSuggestionsPayload } from "@/lib/supabase/advisorTaskSu
 import type { OnboardingClientRecord } from "@/lib/supabase/clientOnboarding";
 
 type AdvisorMode = "loading" | "empty" | "ready" | "error" | "forbidden";
+type HeavyLoadState = "idle" | "loading" | "ready" | "error";
 
-type CommandCenterData = {
+type ShellData = {
   overview: AdvisorOverview;
+  onboardingClients: OnboardingClientRecord[];
+  onboardingError: string | null;
+  viewer: { userId: string; role: "advisor" | "admin" };
+};
+
+type HeavyData = {
   notifications: AdvisorNotificationsPayload | null;
   notificationsError: string | null;
   taskDashboard: AdvisorTaskDashboard | null;
@@ -48,9 +56,6 @@ type CommandCenterData = {
   fileQualityByClientId: ClientFileQualitySummary[];
   taskSuggestions: AdvisorTaskSuggestionsPayload | null;
   suggestionsError: string | null;
-  onboardingClients: OnboardingClientRecord[];
-  onboardingError: string | null;
-  viewer: { userId: string; role: "advisor" | "admin" };
 };
 
 const DEFAULT_FILTERS: AdvisorFilters = {
@@ -89,11 +94,21 @@ function scrollToSection(id: string) {
   }
 }
 
-function extractCommandCenterData(
+function extractShellData(
   data: Extract<AdvisorCommandCenterResponse, { ok: true }>,
-): CommandCenterData {
+): ShellData {
   return {
     overview: data.overview,
+    onboardingClients: data.onboardingClients,
+    onboardingError: data.onboardingError,
+    viewer: data.viewer,
+  };
+}
+
+function extractHeavyData(
+  data: Extract<AdvisorCommandCenterHeavyResponse, { ok: true }>,
+): HeavyData {
+  return {
     notifications: data.notifications,
     notificationsError: data.notificationsError,
     taskDashboard: data.taskDashboard,
@@ -105,22 +120,21 @@ function extractCommandCenterData(
     fileQualityByClientId: data.fileQualityByClientId,
     taskSuggestions: data.taskSuggestions,
     suggestionsError: data.suggestionsError,
-    onboardingClients: data.onboardingClients,
-    onboardingError: data.onboardingError,
-    viewer: data.viewer,
   };
 }
 
 export default function AdvisorDashboardClient() {
   const [mode, setMode] = useState<AdvisorMode>("loading");
-  const [commandCenter, setCommandCenter] = useState<CommandCenterData | null>(
-    null,
-  );
+  const [shell, setShell] = useState<ShellData | null>(null);
+  const [heavy, setHeavy] = useState<HeavyData | null>(null);
+  const [heavyLoadState, setHeavyLoadState] = useState<HeavyLoadState>("idle");
+  const [heavyLoadError, setHeavyLoadError] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [filters, setFilters] = useState<AdvisorFilters>(DEFAULT_FILTERS);
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshingShell, setRefreshingShell] = useState(false);
+  const [refreshingHeavy, setRefreshingHeavy] = useState(false);
 
-  const loadCommandCenter = useCallback(async () => {
+  const loadShell = useCallback(async () => {
     const response = await fetch("/api/advisor/command-center", {
       cache: "no-store",
     });
@@ -144,16 +158,83 @@ export default function AdvisorDashboardClient() {
 
     return {
       kind: "success" as const,
-      data: extractCommandCenterData(data),
+      data: extractShellData(data),
     };
   }, []);
+
+  const loadHeavy = useCallback(async () => {
+    const response = await fetch("/api/advisor/command-center/heavy", {
+      cache: "no-store",
+    });
+
+    if (response.status === 401) {
+      return { kind: "unauthenticated" as const };
+    }
+
+    if (response.status === 403) {
+      return { kind: "forbidden" as const };
+    }
+
+    const data = (await response.json()) as AdvisorCommandCenterHeavyResponse;
+
+    if (!data.ok) {
+      return {
+        kind: "error" as const,
+        message: data.error ?? "Failed to load advisor panels.",
+      };
+    }
+
+    return {
+      kind: "success" as const,
+      data: extractHeavyData(data),
+    };
+  }, []);
+
+  const refreshHeavy = useCallback(async () => {
+    setRefreshingHeavy(true);
+
+    try {
+      const result = await loadHeavy();
+      if (result.kind === "success") {
+        setHeavy(result.data);
+        setHeavyLoadState("ready");
+        setHeavyLoadError(null);
+      }
+    } catch {
+      // keep current heavy data on refresh failure
+    } finally {
+      setRefreshingHeavy(false);
+    }
+  }, [loadHeavy]);
+
+  const refreshShell = useCallback(async () => {
+    setRefreshingShell(true);
+
+    try {
+      const result = await loadShell();
+      if (result.kind === "success") {
+        setShell(result.data);
+        setMode(
+          result.data.overview.totalClients === 0 ? "empty" : "ready",
+        );
+      }
+    } catch {
+      // keep current shell on refresh failure
+    } finally {
+      setRefreshingShell(false);
+    }
+  }, [loadShell]);
+
+  const refreshAll = useCallback(async () => {
+    await Promise.all([refreshShell(), refreshHeavy()]);
+  }, [refreshShell, refreshHeavy]);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadInitial() {
+    async function loadInitialShell() {
       try {
-        const result = await loadCommandCenter();
+        const result = await loadShell();
         if (cancelled) return;
 
         if (result.kind === "unauthenticated") {
@@ -173,7 +254,7 @@ export default function AdvisorDashboardClient() {
           return;
         }
 
-        setCommandCenter(result.data);
+        setShell(result.data);
         setMode(
           result.data.overview.totalClients === 0 ? "empty" : "ready",
         );
@@ -184,35 +265,56 @@ export default function AdvisorDashboardClient() {
       }
     }
 
-    void loadInitial();
+    void loadInitialShell();
 
     return () => {
       cancelled = true;
     };
-  }, [loadCommandCenter]);
+  }, [loadShell]);
 
-  const refreshCommandCenter = useCallback(async () => {
-    setRefreshing(true);
+  useEffect(() => {
+    if (mode !== "ready") return;
 
-    try {
-      const result = await loadCommandCenter();
-      if (result.kind === "success") {
-        setCommandCenter(result.data);
-        setMode(
-          result.data.overview.totalClients === 0 ? "empty" : "ready",
+    let cancelled = false;
+
+    async function loadInitialHeavy() {
+      setHeavyLoadState("loading");
+      setHeavyLoadError(null);
+
+      try {
+        const result = await loadHeavy();
+        if (cancelled) return;
+
+        if (result.kind === "success") {
+          setHeavy(result.data);
+          setHeavyLoadState("ready");
+          return;
+        }
+
+        setHeavyLoadState("error");
+        setHeavyLoadError(
+          result.kind === "error"
+            ? result.message
+            : "Failed to load advisor panels.",
         );
+      } catch {
+        if (cancelled) return;
+        setHeavyLoadState("error");
+        setHeavyLoadError("Failed to load advisor panels.");
       }
-    } catch {
-      // keep current dashboard on refresh failure
-    } finally {
-      setRefreshing(false);
     }
-  }, [loadCommandCenter]);
+
+    void loadInitialHeavy();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, loadHeavy]);
 
   const filteredClients = useMemo(() => {
-    if (!commandCenter) return [];
+    if (!shell) return [];
 
-    return commandCenter.overview.clients.filter((client) => {
+    return shell.overview.clients.filter((client) => {
       if (!matchesSearch(client, filters.search)) return false;
       if (filters.status !== "all" && client.status !== filters.status) {
         return false;
@@ -228,16 +330,19 @@ export default function AdvisorDashboardClient() {
       }
       return true;
     });
-  }, [commandCenter, filters]);
+  }, [shell, filters]);
 
   const fileQualityByClientId = useMemo(() => {
     return new Map(
-      (commandCenter?.fileQualityByClientId ?? []).map((client) => [
+      (heavy?.fileQualityByClientId ?? []).map((client) => [
         client.clientId,
         client,
       ]),
     );
-  }, [commandCenter?.fileQualityByClientId]);
+  }, [heavy?.fileQualityByClientId]);
+
+  const heavyLoading = heavyLoadState === "loading" || heavyLoadState === "idle";
+  const heavyReady = heavyLoadState === "ready" && heavy != null;
 
   if (mode === "loading") {
     return (
@@ -246,7 +351,7 @@ export default function AdvisorDashboardClient() {
           Loading advisor console…
         </p>
         <p className="mt-2 text-xs font-light text-[#F3F1EA]/25">
-          Consolidating book overview, tasks, reviews, and alerts.
+          Preparing book overview and client roster.
         </p>
       </div>
     );
@@ -266,9 +371,9 @@ export default function AdvisorDashboardClient() {
           type="button"
           onClick={() => {
             setMode("loading");
-            void loadCommandCenter().then((result) => {
+            void loadShell().then((result) => {
               if (result.kind === "success") {
-                setCommandCenter(result.data);
+                setShell(result.data);
                 setMode(
                   result.data.overview.totalClients === 0 ? "empty" : "ready",
                 );
@@ -292,7 +397,7 @@ export default function AdvisorDashboardClient() {
     );
   }
 
-  if (mode === "empty" || !commandCenter) {
+  if (mode === "empty" || !shell) {
     return (
       <div className="space-y-6 sm:space-y-8">
         <AdvisorClientOnboardingPanel
@@ -306,14 +411,30 @@ export default function AdvisorDashboardClient() {
     );
   }
 
-  const { overview } = commandCenter;
+  const { overview } = shell;
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      {refreshing ? (
+      {refreshingShell || refreshingHeavy ? (
         <p className="text-center text-[10px] uppercase tracking-[0.14em] text-[#F3F1EA]/30">
           Refreshing advisor console…
         </p>
+      ) : null}
+
+      {heavyLoadError && !heavyReady ? (
+        <div className="rounded-sm border border-amber-400/20 bg-amber-400/5 px-4 py-3 text-center">
+          <p className="text-xs font-light text-amber-100/80">
+            Some dashboard panels failed to load. The book overview is available;
+            retry to load tasks, notifications, and pipeline data.
+          </p>
+          <button
+            type="button"
+            onClick={() => void refreshHeavy()}
+            className="mt-2 text-[10px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
+          >
+            Retry panels
+          </button>
+        </div>
       ) : null}
 
       <AdvisorCommandHeader overview={overview} />
@@ -341,55 +462,62 @@ export default function AdvisorDashboardClient() {
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">
           <AdvisorTodayPanel
-            notifications={commandCenter.notifications}
-            notificationsError={commandCenter.notificationsError}
-            taskDashboard={commandCenter.taskDashboard}
-            tasksError={commandCenter.tasksError}
-            reviewPipeline={commandCenter.reviewPipeline}
-            reviewPipelineError={commandCenter.reviewPipelineError}
-            onRefresh={refreshCommandCenter}
+            isLoading={heavyLoading}
+            notifications={heavyReady ? heavy.notifications : null}
+            notificationsError={
+              heavyReady ? heavy.notificationsError : heavyLoadError
+            }
+            taskDashboard={heavyReady ? heavy.taskDashboard : null}
+            tasksError={heavyReady ? heavy.tasksError : heavyLoadError}
+            reviewPipeline={heavyReady ? heavy.reviewPipeline : null}
+            reviewPipelineError={
+              heavyReady ? heavy.reviewPipelineError : heavyLoadError
+            }
+            onRefresh={refreshHeavy}
           />
           <AdvisorNotificationCenter
-            payload={commandCenter.notifications}
-            errorMessage={commandCenter.notificationsError}
-            onRefresh={refreshCommandCenter}
+            payload={heavyReady ? heavy.notifications : null}
+            errorMessage={
+              heavyReady ? heavy.notificationsError : heavyLoadError
+            }
+            onRefresh={refreshHeavy}
           />
         </div>
         <div className="space-y-6">
           <AdvisorBookHealthPanel overview={overview} />
           <AdvisorBookQualityPanel
-            bookQuality={commandCenter.fileQuality}
-            errorMessage={commandCenter.fileQualityError}
+            bookQuality={heavyReady ? heavy.fileQuality : null}
+            errorMessage={heavyReady ? heavy.fileQualityError : heavyLoadError}
           />
           <AdvisorPriorityClients clients={overview.priorityClients} />
         </div>
       </div>
 
       <AdvisorReviewPipelinePanel
-        pipeline={commandCenter.reviewPipeline}
-        errorMessage={commandCenter.reviewPipelineError}
-        onRefresh={refreshCommandCenter}
+        pipeline={heavyReady ? heavy.reviewPipeline : null}
+        errorMessage={heavyReady ? heavy.reviewPipelineError : heavyLoadError}
+        onRefresh={refreshHeavy}
       />
 
       <AdvisorTaskPanel
-        dashboard={commandCenter.taskDashboard}
-        errorMessage={commandCenter.tasksError}
-        viewer={commandCenter.viewer}
-        onRefresh={refreshCommandCenter}
+        dashboard={heavyReady ? heavy.taskDashboard : null}
+        errorMessage={heavyReady ? heavy.tasksError : heavyLoadError}
+        viewer={shell.viewer}
+        onRefresh={refreshHeavy}
       />
 
       <AdvisorTaskSuggestionsPanel
-        payload={commandCenter.taskSuggestions}
-        errorMessage={commandCenter.suggestionsError}
-        onRefresh={refreshCommandCenter}
+        payload={heavyReady ? heavy.taskSuggestions : null}
+        errorMessage={heavyReady ? heavy.suggestionsError : heavyLoadError}
+        onRefresh={refreshHeavy}
       />
 
       <AdvisorClientOnboardingPanel
         defaultExpanded={false}
-        initialClients={commandCenter.onboardingClients}
-        initialError={commandCenter.onboardingError}
+        initialClients={shell.onboardingClients}
+        initialError={shell.onboardingError}
         onClientCreated={() => {
-          void refreshCommandCenter();
+          void refreshAll();
         }}
       />
 

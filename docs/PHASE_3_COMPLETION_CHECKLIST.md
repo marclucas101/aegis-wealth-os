@@ -143,3 +143,9 @@ npx tsc --noEmit
 ## Phase 3 Status
 
 **COMPLETE** — All client-portal Supabase persistence, auth, audit, and security review items are done. Safe to begin Advisor Dashboard.
+
+---
+
+## Phase 4R — QA & Production Readiness
+
+See [PRODUCTION_READINESS_CHECKLIST.md](./PRODUCTION_READINESS_CHECKLIST.md) and [QA_SMOKE_TEST_PLAN.md](./QA_SMOKE_TEST_PLAN.md) for pre-deploy verification. Automated checks: `npm run qa:env`, `npm run qa:routes`, `npm run qa:smoke`.
