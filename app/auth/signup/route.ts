@@ -1,10 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-import {
-  hasSupabaseAuthCookies,
-  readAuthCredentials,
-} from "@/lib/supabase/auth-credentials";
+import { readAuthCredentials } from "@/lib/supabase/auth-credentials";
 import { createRouteHandlerSupabaseClient } from "@/lib/supabase/route-handler";
+import { hasSupabaseAuthCookiesOnResponse } from "@/lib/supabase/set-cookie";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,7 +34,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (data.session) {
-    if (!hasSupabaseAuthCookies(redirectResponse.cookies.getAll())) {
+    if (!hasSupabaseAuthCookiesOnResponse(redirectResponse)) {
       const signupUrl = new URL("/signup", request.url);
       signupUrl.searchParams.set(
         "error",

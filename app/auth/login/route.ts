@@ -1,10 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-import {
-  hasSupabaseAuthCookies,
-  readAuthCredentials,
-} from "@/lib/supabase/auth-credentials";
+import { readAuthCredentials } from "@/lib/supabase/auth-credentials";
 import { createRouteHandlerSupabaseClient } from "@/lib/supabase/route-handler";
+import {
+  describeSetCookieHeaders,
+  hasSupabaseAuthCookiesOnResponse,
+} from "@/lib/supabase/set-cookie";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,18 +43,18 @@ export async function POST(request: NextRequest) {
     password,
   });
 
-  const requestOrigin = new URL(request.url).origin;
-  const sbCookieNames = redirectResponse.cookies
-    .getAll()
-    .map(({ name }) => name)
-    .filter((name) => name.startsWith("sb-"));
+  const setCookieHeaders =
+    typeof redirectResponse.headers.getSetCookie === "function"
+      ? redirectResponse.headers.getSetCookie()
+      : [];
 
   console.info("[auth/login]", {
     host: new URL(request.url).host,
-    origin: requestOrigin,
+    origin: new URL(request.url).origin,
     hasUser: Boolean(data.user),
     hasSession: Boolean(data.session),
-    sbCookieNames,
+    setCookieCount: setCookieHeaders.length,
+    cookieAttributes: describeSetCookieHeaders(setCookieHeaders),
   });
 
   if (error) {
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(loginUrl, POST_AUTH_REDIRECT_STATUS);
   }
 
-  if (!hasSupabaseAuthCookies(redirectResponse.cookies.getAll())) {
+  if (!hasSupabaseAuthCookiesOnResponse(redirectResponse)) {
     const loginUrl = loginRedirectUrl(request, next);
     loginUrl.searchParams.set(
       "error",

@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-import { hasSupabaseAuthCookies } from "@/lib/supabase/auth-credentials";
 import { createRouteHandlerSupabaseClient } from "@/lib/supabase/route-handler";
+import { hasSupabaseAuthCookiesOnResponse } from "@/lib/supabase/set-cookie";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  if (!hasSupabaseAuthCookies(redirectResponse.cookies.getAll())) {
+  if (!hasSupabaseAuthCookiesOnResponse(redirectResponse)) {
     return NextResponse.redirect(
       new URL("/login?error=auth_callback_failed", requestUrl.origin),
       AUTH_REDIRECT_STATUS,

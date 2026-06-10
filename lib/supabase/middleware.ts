@@ -5,6 +5,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { getSupabaseCookieOptions } from "./cookie-options";
 import { getSupabasePublicEnv } from "./env";
+import { applySupabaseSetCookies } from "./set-cookie";
 import type { Database } from "./types";
 
 type PendingCookie = {
@@ -68,14 +69,13 @@ export async function updateSession(
 
         response = NextResponse.next({ request });
 
-        pendingCookies.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
-        });
+        applySupabaseSetCookies(
+          response,
+          Array.from(pendingCookies.values()),
+          { ...pendingHeaders, ...headers },
+        );
 
         pendingHeaders = { ...pendingHeaders, ...headers };
-        Object.entries(headers).forEach(([key, value]) => {
-          response.headers.set(key, value);
-        });
       },
     },
   });
@@ -93,12 +93,11 @@ export async function updateSession(
   }
 
   const applyCookies = (target: NextResponse): NextResponse => {
-    pendingCookies.forEach(({ name, value, options }) => {
-      target.cookies.set(name, value, options);
-    });
-    Object.entries(pendingHeaders).forEach(([key, value]) => {
-      target.headers.set(key, value);
-    });
+    applySupabaseSetCookies(
+      target,
+      Array.from(pendingCookies.values()),
+      pendingHeaders,
+    );
     return target;
   };
 

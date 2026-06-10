@@ -7,6 +7,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { getSupabaseCookieOptions } from "./cookie-options";
 import { getSupabasePublicEnv } from "./env";
+import { applySupabaseSetCookies } from "./set-cookie";
 import type { Database } from "./types";
 
 /**
@@ -30,12 +31,7 @@ export function createRouteHandlerSupabaseClient(
         cookiesToSet: { name: string; value: string; options: CookieOptions }[],
         headers: Record<string, string>,
       ) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
-        });
-        Object.entries(headers).forEach(([key, value]) => {
-          response.headers.set(key, value);
-        });
+        applySupabaseSetCookies(response, cookiesToSet, headers);
       },
     },
   });

@@ -1,13 +1,15 @@
 import type { CookieOptionsWithName } from "@supabase/ssr";
 
 /**
- * Shared Supabase auth cookie options for server and browser clients.
- * `secure` is required on HTTPS (Vercel production) and must stay off on local HTTP.
+ * Optional overrides merged by @supabase/ssr with DEFAULT_COOKIE_OPTIONS
+ * (path=/, sameSite=lax, httpOnly=false, maxAge=400d).
+ *
+ * Only add production Secure — do not replace Supabase defaults for path/sameSite.
  */
 export function getSupabaseCookieOptions(): CookieOptionsWithName {
-  return {
-    path: "/",
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-  };
+  if (process.env.NODE_ENV === "production") {
+    return { secure: true };
+  }
+
+  return {};
 }

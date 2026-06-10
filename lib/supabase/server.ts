@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 
 import { getSupabaseCookieOptions } from "./cookie-options";
 import { getSupabasePublicEnv } from "./env";
+import { sanitizeSupabaseCookieOptions } from "./set-cookie";
 import type { Database } from "./types";
 
 /**
@@ -39,7 +40,11 @@ export async function createServerSupabaseClient(): Promise<
         void headers;
         try {
           cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
+            cookieStore.set(
+              name,
+              value,
+              sanitizeSupabaseCookieOptions(options),
+            );
           });
         } catch {
           // Server Components cannot mutate cookies; middleware handles refresh.
