@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createRouteHandlerSupabaseClient } from "@/lib/supabase/route-handler";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const next = requestUrl.searchParams.get("next") ?? "/dashboard";
@@ -13,15 +13,26 @@ export async function GET(request: Request) {
     );
   }
 
-  const supabase = await createServerSupabaseClient();
+  const redirectPath = next.startsWith("/") ? next : "/dashboard";
+  const redirectResponse = NextResponse.redirect(
+    new URL(redirectPath, requestUrl.origin),
+  );
+
+  const supabase = createRouteHandlerSupabaseClient(request, redirectResponse);
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[auth/callback] exchangeCodeForSession failed");
+    }
     return NextResponse.redirect(
       new URL("/login?error=auth_callback_failed", requestUrl.origin),
     );
   }
 
-  const redirectPath = next.startsWith("/") ? next : "/dashboard";
-  return NextResponse.redirect(new URL(redirectPath, requestUrl.origin));
+  if (process.env.NODE_ENV === "development") {
+    console.info("[auth/callback] session cookies set, redirecting");
+  }
+
+  return redirectResponse;
 }

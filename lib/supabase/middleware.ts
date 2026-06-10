@@ -1,26 +1,33 @@
 import { createServerClient } from "@supabase/ssr";
+import type { CookieOptions } from "@supabase/ssr";
 import type { User } from "@supabase/supabase-js";
 import { type NextRequest, NextResponse } from "next/server";
 
+import { getSupabaseCookieOptions } from "./cookie-options";
 import { getSupabasePublicEnv } from "./env";
 import type { Database } from "./types";
+
+type PendingCookie = {
+  name: string;
+  value: string;
+  options: CookieOptions;
+};
 
 export type SessionUpdateResult = {
   response: NextResponse;
   user: User | null;
+  applyCookies: (target: NextResponse) => NextResponse;
 };
 
 /**
- * Copies refreshed Supabase auth cookies onto redirect or rewrite responses.
+ * Copies refreshed Supabase auth cookies (with full options) onto redirect responses.
+ * NextResponse.cookies.getAll() omits options, so we track pending cookies from setAll.
  */
 export function applySessionCookies(
-  source: NextResponse,
+  source: SessionUpdateResult,
   target: NextResponse,
 ): NextResponse {
-  source.cookies.getAll().forEach((cookie) => {
-    target.cookies.set(cookie);
-  });
-  return target;
+  return source.applyCookies(target);
 }
 
 /**
@@ -31,20 +38,32 @@ export async function updateSession(
   request: NextRequest,
 ): Promise<SessionUpdateResult> {
   let response = NextResponse.next({ request });
+  const pendingCookies = new Map<string, PendingCookie>();
+  let pendingHeaders: Record<string, string> = {};
   const { url, anonKey } = getSupabasePublicEnv();
 
   const supabase = createServerClient<Database>(url, anonKey, {
+    cookieOptions: getSupabaseCookieOptions(),
     cookies: {
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(
+        cookiesToSet: { name: string; value: string; options: CookieOptions }[],
+        headers: Record<string, string>,
+      ) {
         cookiesToSet.forEach(({ name, value }) => {
           request.cookies.set(name, value);
         });
-        response = NextResponse.next({ request });
+
         cookiesToSet.forEach(({ name, value, options }) => {
+          pendingCookies.set(name, { name, value, options });
           response.cookies.set(name, value, options);
+        });
+
+        pendingHeaders = { ...pendingHeaders, ...headers };
+        Object.entries(headers).forEach(([key, value]) => {
+          response.headers.set(key, value);
         });
       },
     },
@@ -54,5 +73,15 @@ export async function updateSession(
     data: { user },
   } = await supabase.auth.getUser();
 
-  return { response, user };
+  const applyCookies = (target: NextResponse): NextResponse => {
+    pendingCookies.forEach(({ name, value, options }) => {
+      target.cookies.set(name, value, options);
+    });
+    Object.entries(pendingHeaders).forEach(([key, value]) => {
+      target.headers.set(key, value);
+    });
+    return target;
+  };
+
+  return { response, user, applyCookies };
 }

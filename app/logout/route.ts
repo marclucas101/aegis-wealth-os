@@ -1,10 +1,14 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createRouteHandlerSupabaseClient } from "@/lib/supabase/route-handler";
 
-export async function GET(request: Request) {
-  const supabase = await createServerSupabaseClient();
+export async function GET(request: NextRequest) {
+  const redirectResponse = NextResponse.redirect(
+    new URL("/", new URL(request.url).origin),
+  );
+
+  const supabase = createRouteHandlerSupabaseClient(request, redirectResponse);
   await supabase.auth.signOut();
 
-  return NextResponse.redirect(new URL("/", new URL(request.url).origin));
+  return redirectResponse;
 }

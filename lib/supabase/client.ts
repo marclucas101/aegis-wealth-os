@@ -1,6 +1,7 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { getSupabaseCookieOptions } from "./cookie-options";
 import type { Database } from "./types";
 
 /**
@@ -22,5 +23,7 @@ export function createBrowserSupabaseClient(): SupabaseClient<Database> {
     );
   }
 
-  return createBrowserClient<Database>(url, anonKey);
+  return createBrowserClient<Database>(url, anonKey, {
+    cookieOptions: getSupabaseCookieOptions(),
+  });
 }

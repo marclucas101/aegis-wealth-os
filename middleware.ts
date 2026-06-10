@@ -1,9 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-import {
-  applySessionCookies,
-  updateSession,
-} from "@/lib/supabase/middleware";
+import { applySessionCookies, updateSession } from "@/lib/supabase/middleware";
 
 const PROTECTED_PREFIXES = [
   "/dashboard",
@@ -35,29 +32,29 @@ function isAuthPage(pathname: string): boolean {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const { response, user } = await updateSession(request);
+  const session = await updateSession(request);
 
-  if (!user && isProtectedRoute(pathname)) {
+  if (!session.user && isProtectedRoute(pathname)) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("next", pathname);
     return applySessionCookies(
-      response,
+      session,
       NextResponse.redirect(loginUrl),
     );
   }
 
-  if (user && isAuthPage(pathname)) {
+  if (session.user && isAuthPage(pathname)) {
     const dashboardUrl = request.nextUrl.clone();
     dashboardUrl.pathname = "/dashboard";
     dashboardUrl.search = "";
     return applySessionCookies(
-      response,
+      session,
       NextResponse.redirect(dashboardUrl),
     );
   }
 
-  return response;
+  return session.response;
 }
 
 export const config = {
