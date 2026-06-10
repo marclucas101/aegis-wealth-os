@@ -24,6 +24,7 @@ export type AuthCookiesDebugResponse = {
   incomingCookieCount: number;
   incomingRawCookieHeaderPresent: boolean;
   incomingRawCookieHeaderContainsProjectRef: boolean;
+  probeCookiePresent: boolean;
   environment: string | null;
   production: boolean;
 };
@@ -45,6 +46,7 @@ export async function GET(): Promise<NextResponse<AuthCookiesDebugResponse>> {
       incomingRawCookieHeaderContainsProjectRef: projectRef
         ? rawCookieHeader?.includes(projectRef) ?? false
         : false,
+      probeCookiePresent: incomingCookieNames.includes("aegis-cookie-probe"),
       environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? null,
       production: process.env.NODE_ENV === "production",
     },

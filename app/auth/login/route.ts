@@ -4,6 +4,7 @@ import { readAuthCredentials } from "@/lib/supabase/auth-credentials";
 import { createRouteHandlerSupabaseClient } from "@/lib/supabase/route-handler";
 import {
   attachAuthCookieDiagnostics,
+  buildSetCookieHeader,
   getSetCookieHeadersFrom,
   hasSupabaseAuthCookiesOnHeaders,
 } from "@/lib/supabase/set-cookie";
@@ -12,6 +13,20 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const POST_AUTH_REDIRECT_STATUS = 303;
+
+/**
+ * Tiny non-sensitive marker cookie set alongside the Supabase auth cookies.
+ * If this survives in the browser but sb-* does not, something is clearing
+ * sb-* specifically; if neither survives, the browser is rejecting/wiping
+ * all cookies for this site (profile settings or an extension).
+ */
+const PROBE_COOKIE_NAME = "aegis-cookie-probe";
+
+function withStage(headers: Headers, stage: string): Headers {
+  headers.set("X-Aegis-Auth-Route", "login");
+  headers.set("X-Aegis-Auth-Stage", stage);
+  return headers;
+}
 
 function loginRedirectUrl(request: NextRequest, next?: string): URL {
   const loginUrl = new URL("/login", request.url);
@@ -36,7 +51,10 @@ export async function POST(request: NextRequest) {
   const next = String(formData.get("next") ?? "").trim();
 
   if (validationError) {
-    return redirectResponse(loginRedirectUrl(request, next), new Headers());
+    return redirectResponse(
+      loginRedirectUrl(request, next),
+      withStage(new Headers(), "invalid-input"),
+    );
   }
 
   const redirectPath = next.startsWith("/") ? next : "/dashboard";
@@ -60,7 +78,7 @@ export async function POST(request: NextRequest) {
   if (error) {
     const loginUrl = loginRedirectUrl(request, next);
     loginUrl.searchParams.set("error", error.message);
-    return redirectResponse(loginUrl, new Headers());
+    return redirectResponse(loginUrl, withStage(new Headers(), "signin-error"));
   }
 
   if (!hasSupabaseAuthCookiesOnHeaders(responseHeaders)) {
@@ -69,10 +87,18 @@ export async function POST(request: NextRequest) {
       "error",
       "Sign-in succeeded but session cookies were not saved. Please try again.",
     );
-    return redirectResponse(loginUrl, new Headers());
+    return redirectResponse(
+      loginUrl,
+      withStage(new Headers(), "no-session-cookies"),
+    );
   }
 
   attachAuthCookieDiagnostics(responseHeaders, serializedSetCookies);
+  withStage(responseHeaders, "success");
+  responseHeaders.append(
+    "Set-Cookie",
+    buildSetCookieHeader(PROBE_COOKIE_NAME, "1", { maxAge: 3600 }),
+  );
 
   return redirectResponse(
     new URL(redirectPath, request.url),

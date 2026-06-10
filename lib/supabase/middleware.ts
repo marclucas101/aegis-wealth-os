@@ -71,6 +71,22 @@ export async function updateSession(
           );
         });
 
+        // Diagnostic: surface in the Network tab when the middleware clears
+        // sb-* cookies (empty value or Max-Age=0), so a post-login wipe is
+        // visible without inspecting cookie values.
+        const clearedNames = finalCookies
+          .filter(
+            ({ name, value, options }) =>
+              name.startsWith("sb-") && (!value || options.maxAge === 0),
+          )
+          .map(({ name }) => name);
+        if (clearedNames.length > 0) {
+          response.headers.set(
+            "X-Aegis-Session-Cleared",
+            clearedNames.join(","),
+          );
+        }
+
         pendingHeaders = { ...pendingHeaders, ...headers };
         Object.entries(headers).forEach(([key, value]) => {
           response.headers.set(key, value);
