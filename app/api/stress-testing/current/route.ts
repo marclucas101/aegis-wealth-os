@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toPublicErrorMessage } from "@/lib/security/apiGuards";
 import {
   loadStressTestingSnapshot,
   type StressTestingSnapshot,
@@ -33,12 +34,12 @@ export async function GET(): Promise<
 
     return NextResponse.json({ ok: true, ...snapshot });
   } catch (err) {
-    const message =
-      err instanceof Error
-        ? err.message
-        : "Failed to load stress testing snapshot";
+    const message = toPublicErrorMessage(
+      err,
+      "Failed to load stress testing snapshot",
+    );
 
-    console.error("[api/stress-testing/current]", message);
+    console.error("[api/stress-testing/current]", err);
 
     return NextResponse.json(
       { ok: false, reason: "no_profile", error: message },

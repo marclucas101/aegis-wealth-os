@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toPublicErrorMessage } from "@/lib/security/apiGuards";
 import {
   isValidDocumentCategory,
   listClientDocuments,
@@ -45,10 +46,9 @@ export async function GET(
 
     return NextResponse.json({ ok: true, documents });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Failed to list documents";
+    const message = toPublicErrorMessage(err, "Failed to list documents");
 
-    console.error("[api/documents/list]", message);
+    console.error("[api/documents/list]", err);
 
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

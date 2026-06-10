@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 
+import {
+  parseJsonBodySafely,
+  rejectClientIdInBody,
+  toPublicErrorMessage,
+  validateRequiredString,
+} from "@/lib/security/apiGuards";
 import { createDocumentSignedUrl } from "@/lib/supabase/documentPersistence";
 import { ensureUserClientProfile } from "@/lib/supabase/userProfile";
 
@@ -12,18 +18,6 @@ export type DocumentsSignedUrlRequestBody = {
 export type DocumentsSignedUrlResponse =
   | { ok: true; signedUrl: string; expiresIn: number }
   | { ok: false; error: string };
-
-function isValidSignedUrlBody(
-  body: unknown,
-): body is DocumentsSignedUrlRequestBody {
-  if (!body || typeof body !== "object") return false;
-
-  const candidate = body as DocumentsSignedUrlRequestBody;
-  return (
-    typeof candidate.document_id === "string" &&
-    candidate.document_id.trim().length > 0
-  );
-}
 
 export async function POST(
   request: Request,
@@ -38,37 +32,44 @@ export async function POST(
       );
     }
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
+    const parsed = await parseJsonBodySafely(request);
+    if (!parsed.ok) {
       return NextResponse.json(
-        { ok: false, error: "Invalid JSON body" },
+        { ok: false, error: parsed.error },
         { status: 400 },
       );
     }
 
-    if (
-      body &&
-      typeof body === "object" &&
-      ("clientId" in body || "client_id" in body)
-    ) {
+    const clientIdReject = rejectClientIdInBody(parsed.body);
+    if (clientIdReject.rejected) {
       return NextResponse.json(
-        { ok: false, error: "client_id must not be supplied by the client" },
+        { ok: false, error: clientIdReject.error },
         { status: 400 },
       );
     }
 
-    if (!isValidSignedUrlBody(body)) {
+    if (!parsed.body || typeof parsed.body !== "object") {
       return NextResponse.json(
         { ok: false, error: "Missing or invalid document_id" },
         { status: 400 },
       );
     }
 
+    const body = parsed.body as Record<string, unknown>;
+    const documentIdResult = validateRequiredString(
+      body.document_id,
+      "document_id",
+    );
+    if (!documentIdResult.ok) {
+      return NextResponse.json(
+        { ok: false, error: documentIdResult.error },
+        { status: 400 },
+      );
+    }
+
     const result = await createDocumentSignedUrl(
       session.client,
-      body.document_id.trim(),
+      documentIdResult.value,
     );
 
     return NextResponse.json({
@@ -77,10 +78,9 @@ export async function POST(
       expiresIn: result.expiresIn,
     });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Failed to create signed URL";
+    const message = toPublicErrorMessage(err, "Failed to create signed URL");
 
-    console.error("[api/documents/signed-url]", message);
+    console.error("[api/documents/signed-url]", err);
 
     const status = message === "Document not found" ? 404 : 500;
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toPublicErrorMessage } from "@/lib/security/apiGuards";
 import {
   loadShieldDiagnosticSnapshot,
   type ShieldDiagnosticSnapshot,
@@ -33,12 +34,12 @@ export async function GET(): Promise<
 
     return NextResponse.json({ ok: true, ...snapshot });
   } catch (err) {
-    const message =
-      err instanceof Error
-        ? err.message
-        : "Failed to load shield diagnostic snapshot";
+    const message = toPublicErrorMessage(
+      err,
+      "Failed to load shield diagnostic snapshot",
+    );
 
-    console.error("[api/shield-diagnostic/current]", message);
+    console.error("[api/shield-diagnostic/current]", err);
 
     return NextResponse.json(
       { ok: false, reason: "no_profile", error: message },

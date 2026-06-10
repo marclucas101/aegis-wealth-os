@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toPublicErrorMessage } from "@/lib/security/apiGuards";
 import {
   loadRoadmapSnapshot,
   type RoadmapSnapshot,
@@ -31,10 +32,9 @@ export async function GET(): Promise<NextResponse<RoadmapCurrentResponse>> {
 
     return NextResponse.json({ ok: true, ...snapshot });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Failed to load roadmap snapshot";
+    const message = toPublicErrorMessage(err, "Failed to load roadmap snapshot");
 
-    console.error("[api/roadmap/current]", message);
+    console.error("[api/roadmap/current]", err);
 
     return NextResponse.json(
       { ok: false, reason: "no_profile", error: message },

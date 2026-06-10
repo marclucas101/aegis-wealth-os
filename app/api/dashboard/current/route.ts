@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toPublicErrorMessage } from "@/lib/security/apiGuards";
 import {
   loadDashboardSnapshot,
   type DashboardSnapshot,
@@ -31,10 +32,12 @@ export async function GET(): Promise<NextResponse<DashboardCurrentResponse>> {
 
     return NextResponse.json({ ok: true, ...snapshot });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Failed to load dashboard snapshot";
+    const message = toPublicErrorMessage(
+      err,
+      "Failed to load dashboard snapshot",
+    );
 
-    console.error("[api/dashboard/current]", message);
+    console.error("[api/dashboard/current]", err);
 
     return NextResponse.json(
       { ok: false, reason: "no_profile", error: message },

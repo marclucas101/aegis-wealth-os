@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toPublicErrorMessage } from "@/lib/security/apiGuards";
 import {
   loadWealthBlueprintHistory,
   type WealthBlueprintHistoryEntry,
@@ -29,12 +30,12 @@ export async function GET(): Promise<
 
     return NextResponse.json({ ok: true, snapshots });
   } catch (err) {
-    const message =
-      err instanceof Error
-        ? err.message
-        : "Failed to load wealth blueprint history";
+    const message = toPublicErrorMessage(
+      err,
+      "Failed to load wealth blueprint history",
+    );
 
-    console.error("[api/wealth-blueprint/history]", message);
+    console.error("[api/wealth-blueprint/history]", err);
 
     return NextResponse.json(
       { ok: false, reason: "no_profile", error: message },

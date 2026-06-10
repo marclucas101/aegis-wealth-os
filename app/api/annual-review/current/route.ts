@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toPublicErrorMessage } from "@/lib/security/apiGuards";
 import {
   loadAnnualReviewSnapshot,
   type AnnualReviewSnapshot,
@@ -33,12 +34,12 @@ export async function GET(): Promise<
 
     return NextResponse.json({ ok: true, ...snapshot });
   } catch (err) {
-    const message =
-      err instanceof Error
-        ? err.message
-        : "Failed to load annual review snapshot";
+    const message = toPublicErrorMessage(
+      err,
+      "Failed to load annual review snapshot",
+    );
 
-    console.error("[api/annual-review/current]", message);
+    console.error("[api/annual-review/current]", err);
 
     return NextResponse.json(
       { ok: false, reason: "no_profile", error: message },

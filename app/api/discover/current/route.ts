@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import type { DiscoverStoredProfile } from "@/lib/aegis/localProfile";
+import { toPublicErrorMessage } from "@/lib/security/apiGuards";
 import { loadCurrentDiscoverProfile } from "@/lib/supabase/discoverPersistence";
 import { ensureUserClientProfile } from "@/lib/supabase/userProfile";
 
@@ -41,10 +42,12 @@ export async function GET(): Promise<NextResponse<CurrentDiscoverResponse>> {
       clientId,
     });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Failed to load discover profile";
+    const message = toPublicErrorMessage(
+      err,
+      "Failed to load discover profile",
+    );
 
-    console.error("[api/discover/current]", message);
+    console.error("[api/discover/current]", err);
 
     return NextResponse.json(
       { ok: false, error: message, profile: null },

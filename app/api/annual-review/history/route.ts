@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toPublicErrorMessage } from "@/lib/security/apiGuards";
 import {
   loadAnnualReviewHistory,
   type AnnualReviewHistoryEntry,
@@ -27,12 +28,12 @@ export async function GET(): Promise<NextResponse<AnnualReviewHistoryResponse>> 
 
     return NextResponse.json({ ok: true, snapshots });
   } catch (err) {
-    const message =
-      err instanceof Error
-        ? err.message
-        : "Failed to load annual review history";
+    const message = toPublicErrorMessage(
+      err,
+      "Failed to load annual review history",
+    );
 
-    console.error("[api/annual-review/history]", message);
+    console.error("[api/annual-review/history]", err);
 
     return NextResponse.json(
       { ok: false, reason: "no_profile", error: message },

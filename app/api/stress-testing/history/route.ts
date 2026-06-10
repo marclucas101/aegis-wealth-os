@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toPublicErrorMessage } from "@/lib/security/apiGuards";
 import {
   loadStressTestHistory,
   type StressTestHistoryEntry,
@@ -29,10 +30,12 @@ export async function GET(): Promise<
 
     return NextResponse.json({ ok: true, runs });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Failed to load stress test history";
+    const message = toPublicErrorMessage(
+      err,
+      "Failed to load stress test history",
+    );
 
-    console.error("[api/stress-testing/history]", message);
+    console.error("[api/stress-testing/history]", err);
 
     return NextResponse.json(
       { ok: false, reason: "no_profile", error: message },
