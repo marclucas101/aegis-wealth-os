@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import AdvisorAccessDenied from "@/components/aegis/advisor/AdvisorAccessDenied";
 import AdvisorBookHealthPanel from "@/components/aegis/advisor/AdvisorBookHealthPanel";
@@ -21,10 +21,37 @@ import AdvisorTodayPanel from "@/components/aegis/advisor/AdvisorTodayPanel";
 import AdvisorSearchFilters, {
   type AdvisorFilters,
 } from "@/components/aegis/advisor/AdvisorSearchFilters";
+import type { AdvisorCommandCenterResponse } from "@/app/api/advisor/command-center/route";
 import type { AdvisorOverview } from "@/lib/supabase/advisorQueries";
-import type { ClientFileQualitySummary } from "@/lib/supabase/clientFileQuality";
+import type { AdvisorNotificationsPayload } from "@/lib/supabase/advisorNotifications";
+import type { AdvisorReviewPipeline } from "@/lib/supabase/advisorReviewPipeline";
+import type { AdvisorTaskDashboard } from "@/lib/supabase/advisorTasks";
+import type {
+  AdvisorBookFileQuality,
+  ClientFileQualitySummary,
+} from "@/lib/supabase/clientFileQuality";
+import type { AdvisorTaskSuggestionsPayload } from "@/lib/supabase/advisorTaskSuggestions";
+import type { OnboardingClientRecord } from "@/lib/supabase/clientOnboarding";
 
 type AdvisorMode = "loading" | "empty" | "ready" | "error" | "forbidden";
+
+type CommandCenterData = {
+  overview: AdvisorOverview;
+  notifications: AdvisorNotificationsPayload | null;
+  notificationsError: string | null;
+  taskDashboard: AdvisorTaskDashboard | null;
+  tasksError: string | null;
+  reviewPipeline: AdvisorReviewPipeline | null;
+  reviewPipelineError: string | null;
+  fileQuality: AdvisorBookFileQuality | null;
+  fileQualityError: string | null;
+  fileQualityByClientId: ClientFileQualitySummary[];
+  taskSuggestions: AdvisorTaskSuggestionsPayload | null;
+  suggestionsError: string | null;
+  onboardingClients: OnboardingClientRecord[];
+  onboardingError: string | null;
+  viewer: { userId: string; role: "advisor" | "admin" };
+};
 
 const DEFAULT_FILTERS: AdvisorFilters = {
   search: "",
@@ -62,82 +89,130 @@ function scrollToSection(id: string) {
   }
 }
 
+function extractCommandCenterData(
+  data: Extract<AdvisorCommandCenterResponse, { ok: true }>,
+): CommandCenterData {
+  return {
+    overview: data.overview,
+    notifications: data.notifications,
+    notificationsError: data.notificationsError,
+    taskDashboard: data.taskDashboard,
+    tasksError: data.tasksError,
+    reviewPipeline: data.reviewPipeline,
+    reviewPipelineError: data.reviewPipelineError,
+    fileQuality: data.fileQuality,
+    fileQualityError: data.fileQualityError,
+    fileQualityByClientId: data.fileQualityByClientId,
+    taskSuggestions: data.taskSuggestions,
+    suggestionsError: data.suggestionsError,
+    onboardingClients: data.onboardingClients,
+    onboardingError: data.onboardingError,
+    viewer: data.viewer,
+  };
+}
+
 export default function AdvisorDashboardClient() {
   const [mode, setMode] = useState<AdvisorMode>("loading");
-  const [overview, setOverview] = useState<AdvisorOverview | null>(null);
+  const [commandCenter, setCommandCenter] = useState<CommandCenterData | null>(
+    null,
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [filters, setFilters] = useState<AdvisorFilters>(DEFAULT_FILTERS);
-  const [fileQualityByClientId, setFileQualityByClientId] = useState<
-    Map<string, ClientFileQualitySummary>
-  >(new Map());
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadCommandCenter = useCallback(async () => {
+    const response = await fetch("/api/advisor/command-center", {
+      cache: "no-store",
+    });
+
+    if (response.status === 401) {
+      return { kind: "unauthenticated" as const };
+    }
+
+    if (response.status === 403) {
+      return { kind: "forbidden" as const };
+    }
+
+    const data = (await response.json()) as AdvisorCommandCenterResponse;
+
+    if (!data.ok) {
+      return {
+        kind: "error" as const,
+        message: data.error ?? "Failed to load advisor command center.",
+      };
+    }
+
+    return {
+      kind: "success" as const,
+      data: extractCommandCenterData(data),
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadOverview() {
+    async function loadInitial() {
       try {
-        const [overviewResponse, fileQualityResponse] = await Promise.all([
-          fetch("/api/advisor/overview", { cache: "no-store" }),
-          fetch("/api/advisor/file-quality", { cache: "no-store" }),
-        ]);
-
+        const result = await loadCommandCenter();
         if (cancelled) return;
 
-        if (overviewResponse.status === 401) {
+        if (result.kind === "unauthenticated") {
           setMode("error");
           setErrorMessage("Authentication required.");
           return;
         }
 
-        if (overviewResponse.status === 403) {
+        if (result.kind === "forbidden") {
           setMode("forbidden");
           return;
         }
 
-        const data = (await overviewResponse.json()) as
-          | ({ ok: true } & AdvisorOverview)
-          | { ok: false; reason?: string; error?: string };
-
-        if (!data.ok) {
+        if (result.kind === "error") {
           setMode("error");
-          setErrorMessage(data.error ?? "Failed to load advisor overview.");
+          setErrorMessage(result.message);
           return;
         }
 
-        if (fileQualityResponse.ok) {
-          const qualityData = (await fileQualityResponse.json()) as
-            | { ok: true; clients: ClientFileQualitySummary[] }
-            | { ok: false };
-
-          if (qualityData.ok) {
-            setFileQualityByClientId(
-              new Map(
-                qualityData.clients.map((client) => [client.clientId, client]),
-              ),
-            );
-          }
-        }
-
-        setOverview(data);
-        setMode(data.totalClients === 0 ? "empty" : "ready");
+        setCommandCenter(result.data);
+        setMode(
+          result.data.overview.totalClients === 0 ? "empty" : "ready",
+        );
       } catch {
         if (cancelled) return;
         setMode("error");
-        setErrorMessage("Failed to load advisor overview.");
+        setErrorMessage("Failed to load advisor command center.");
       }
     }
 
-    void loadOverview();
+    void loadInitial();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadCommandCenter]);
+
+  const refreshCommandCenter = useCallback(async () => {
+    setRefreshing(true);
+
+    try {
+      const result = await loadCommandCenter();
+      if (result.kind === "success") {
+        setCommandCenter(result.data);
+        setMode(
+          result.data.overview.totalClients === 0 ? "empty" : "ready",
+        );
+      }
+    } catch {
+      // keep current dashboard on refresh failure
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadCommandCenter]);
 
   const filteredClients = useMemo(() => {
-    if (!overview) return [];
+    if (!commandCenter) return [];
 
-    return overview.clients.filter((client) => {
+    return commandCenter.overview.clients.filter((client) => {
       if (!matchesSearch(client, filters.search)) return false;
       if (filters.status !== "all" && client.status !== filters.status) {
         return false;
@@ -153,31 +228,25 @@ export default function AdvisorDashboardClient() {
       }
       return true;
     });
-  }, [overview, filters]);
+  }, [commandCenter, filters]);
 
-  async function refreshOverview() {
-    try {
-      const response = await fetch("/api/advisor/overview", {
-        cache: "no-store",
-      });
-      const data = (await response.json()) as
-        | ({ ok: true } & AdvisorOverview)
-        | { ok: false };
-
-      if (data.ok) {
-        setOverview(data);
-        setMode(data.totalClients === 0 ? "empty" : "ready");
-      }
-    } catch {
-      // keep current overview on refresh failure
-    }
-  }
+  const fileQualityByClientId = useMemo(() => {
+    return new Map(
+      (commandCenter?.fileQualityByClientId ?? []).map((client) => [
+        client.clientId,
+        client,
+      ]),
+    );
+  }, [commandCenter?.fileQualityByClientId]);
 
   if (mode === "loading") {
     return (
       <div className="rounded-sm border border-[#D1A866]/12 bg-[#10283A]/40 px-6 py-16 text-center">
         <p className="text-sm font-light text-[#F3F1EA]/45">
           Loading advisor console…
+        </p>
+        <p className="mt-2 text-xs font-light text-[#F3F1EA]/25">
+          Consolidating book overview, tasks, reviews, and alerts.
         </p>
       </div>
     );
@@ -193,11 +262,37 @@ export default function AdvisorDashboardClient() {
         <p className="text-sm font-light text-red-200/80">
           {errorMessage ?? "Unable to load advisor console."}
         </p>
+        <button
+          type="button"
+          onClick={() => {
+            setMode("loading");
+            void loadCommandCenter().then((result) => {
+              if (result.kind === "success") {
+                setCommandCenter(result.data);
+                setMode(
+                  result.data.overview.totalClients === 0 ? "empty" : "ready",
+                );
+              } else if (result.kind === "forbidden") {
+                setMode("forbidden");
+              } else {
+                setMode("error");
+                setErrorMessage(
+                  result.kind === "error"
+                    ? result.message
+                    : "Authentication required.",
+                );
+              }
+            });
+          }}
+          className="mt-4 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
+        >
+          Retry
+        </button>
       </div>
     );
   }
 
-  if (mode === "empty" || !overview) {
+  if (mode === "empty" || !commandCenter) {
     return (
       <div className="space-y-6 sm:space-y-8">
         <AdvisorClientOnboardingPanel
@@ -211,8 +306,16 @@ export default function AdvisorDashboardClient() {
     );
   }
 
+  const { overview } = commandCenter;
+
   return (
     <div className="space-y-6 sm:space-y-8">
+      {refreshing ? (
+        <p className="text-center text-[10px] uppercase tracking-[0.14em] text-[#F3F1EA]/30">
+          Refreshing advisor console…
+        </p>
+      ) : null}
+
       <AdvisorCommandHeader overview={overview} />
 
       <nav
@@ -237,26 +340,56 @@ export default function AdvisorDashboardClient() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">
-          <AdvisorTodayPanel />
-          <AdvisorNotificationCenter />
+          <AdvisorTodayPanel
+            notifications={commandCenter.notifications}
+            notificationsError={commandCenter.notificationsError}
+            taskDashboard={commandCenter.taskDashboard}
+            tasksError={commandCenter.tasksError}
+            reviewPipeline={commandCenter.reviewPipeline}
+            reviewPipelineError={commandCenter.reviewPipelineError}
+            onRefresh={refreshCommandCenter}
+          />
+          <AdvisorNotificationCenter
+            payload={commandCenter.notifications}
+            errorMessage={commandCenter.notificationsError}
+            onRefresh={refreshCommandCenter}
+          />
         </div>
         <div className="space-y-6">
           <AdvisorBookHealthPanel overview={overview} />
-          <AdvisorBookQualityPanel />
+          <AdvisorBookQualityPanel
+            bookQuality={commandCenter.fileQuality}
+            errorMessage={commandCenter.fileQualityError}
+          />
           <AdvisorPriorityClients clients={overview.priorityClients} />
         </div>
       </div>
 
-      <AdvisorReviewPipelinePanel />
+      <AdvisorReviewPipelinePanel
+        pipeline={commandCenter.reviewPipeline}
+        errorMessage={commandCenter.reviewPipelineError}
+        onRefresh={refreshCommandCenter}
+      />
 
-      <AdvisorTaskPanel />
+      <AdvisorTaskPanel
+        dashboard={commandCenter.taskDashboard}
+        errorMessage={commandCenter.tasksError}
+        viewer={commandCenter.viewer}
+        onRefresh={refreshCommandCenter}
+      />
 
-      <AdvisorTaskSuggestionsPanel />
+      <AdvisorTaskSuggestionsPanel
+        payload={commandCenter.taskSuggestions}
+        errorMessage={commandCenter.suggestionsError}
+        onRefresh={refreshCommandCenter}
+      />
 
       <AdvisorClientOnboardingPanel
         defaultExpanded={false}
+        initialClients={commandCenter.onboardingClients}
+        initialError={commandCenter.onboardingError}
         onClientCreated={() => {
-          void refreshOverview();
+          void refreshCommandCenter();
         }}
       />
 

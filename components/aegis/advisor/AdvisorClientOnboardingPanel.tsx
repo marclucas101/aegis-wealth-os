@@ -27,18 +27,28 @@ function statusLabel(status: OnboardingClientRecord["status"]): string {
 interface AdvisorClientOnboardingPanelProps {
   onClientCreated?: () => void;
   defaultExpanded?: boolean;
+  initialClients?: OnboardingClientRecord[];
+  initialError?: string | null;
 }
 
 export default function AdvisorClientOnboardingPanel({
   onClientCreated,
   defaultExpanded = true,
+  initialClients,
+  initialError = null,
 }: AdvisorClientOnboardingPanelProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
-  const [clients, setClients] = useState<OnboardingClientRecord[]>([]);
-  const [listState, setListState] = useState<"loading" | "ready" | "error">(
-    "loading",
+  const [clients, setClients] = useState<OnboardingClientRecord[]>(
+    initialClients ?? [],
   );
-  const [listError, setListError] = useState<string | null>(null);
+  const [listState, setListState] = useState<"loading" | "ready" | "error">(
+    initialClients !== undefined
+      ? initialError
+        ? "error"
+        : "ready"
+      : "loading",
+  );
+  const [listError, setListError] = useState<string | null>(initialError);
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -92,8 +102,15 @@ export default function AdvisorClientOnboardingPanel({
   }, []);
 
   useEffect(() => {
+    if (initialClients !== undefined) {
+      setClients(initialClients);
+      setListState(initialError ? "error" : "ready");
+      setListError(initialError);
+      return;
+    }
+
     void loadClients();
-  }, [loadClients]);
+  }, [initialClients, initialError, loadClients]);
 
   async function handleCreateProspective(event: React.FormEvent) {
     event.preventDefault();

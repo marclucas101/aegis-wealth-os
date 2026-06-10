@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import AdvisorNotificationCard from "@/components/aegis/advisor/AdvisorNotificationCard";
 import AdvisorReminderSummary, {
@@ -10,8 +10,6 @@ import type {
   AdvisorNotification,
   AdvisorNotificationsPayload,
 } from "@/lib/supabase/advisorNotifications";
-
-type PanelMode = "loading" | "ready" | "error";
 
 const TASK_TYPES = new Set([
   "task_overdue",
@@ -53,68 +51,25 @@ function filterNotifications(
   }
 }
 
-export default function AdvisorNotificationCenter() {
-  const [mode, setMode] = useState<PanelMode>("loading");
-  const [payload, setPayload] = useState<AdvisorNotificationsPayload | null>(
-    null,
-  );
+interface AdvisorNotificationCenterProps {
+  payload?: AdvisorNotificationsPayload | null;
+  errorMessage?: string | null;
+  onRefresh?: () => Promise<void>;
+}
+
+export default function AdvisorNotificationCenter({
+  payload = null,
+  errorMessage = null,
+  onRefresh,
+}: AdvisorNotificationCenterProps) {
   const [activeFilter, setActiveFilter] = useState<NotificationFilter>("all");
-
-  const loadNotifications = useCallback(async () => {
-    setMode("loading");
-
-    try {
-      const response = await fetch("/api/advisor/notifications", {
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        setMode("error");
-        return;
-      }
-
-      const data = (await response.json()) as
-        | ({ ok: true } & AdvisorNotificationsPayload)
-        | { ok: false };
-
-      if (!data.ok) {
-        setMode("error");
-        return;
-      }
-
-      setPayload({
-        notifications: data.notifications,
-        summary: data.summary,
-      });
-      setMode("ready");
-    } catch {
-      setMode("error");
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadNotifications();
-  }, [loadNotifications]);
 
   const filteredNotifications = useMemo(() => {
     if (!payload) return [];
     return filterNotifications(payload.notifications, activeFilter);
   }, [payload, activeFilter]);
 
-  if (mode === "loading") {
-    return (
-      <section
-        id="advisor-notifications"
-        className="scroll-mt-24 overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-12 text-center"
-      >
-        <p className="text-sm font-light text-[#F3F1EA]/45">
-          Loading notifications…
-        </p>
-      </section>
-    );
-  }
-
-  if (mode === "error" || !payload) {
+  if (errorMessage) {
     return (
       <section
         id="advisor-notifications"
@@ -123,13 +78,28 @@ export default function AdvisorNotificationCenter() {
         <p className="text-sm font-light text-[#F3F1EA]/45">
           Unable to load advisor notifications.
         </p>
-        <button
-          type="button"
-          onClick={() => void loadNotifications()}
-          className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
-        >
-          Retry
-        </button>
+        {onRefresh ? (
+          <button
+            type="button"
+            onClick={() => void onRefresh()}
+            className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
+          >
+            Retry
+          </button>
+        ) : null}
+      </section>
+    );
+  }
+
+  if (!payload) {
+    return (
+      <section
+        id="advisor-notifications"
+        className="scroll-mt-24 overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-12 text-center"
+      >
+        <p className="text-sm font-light text-[#F3F1EA]/45">
+          Loading notifications…
+        </p>
       </section>
     );
   }

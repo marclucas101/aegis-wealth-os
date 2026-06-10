@@ -196,7 +196,23 @@ Signed URLs expire in 120 seconds (`SIGNED_URL_EXPIRY_SECONDS`).
 
 ---
 
-## 10. Review Conclusion
+## 10. Advisor Command Center (Phase 4O)
+
+`GET /api/advisor/command-center` consolidates advisor dashboard reads into one handler-gated response.
+
+| Control | Implementation |
+|---------|----------------|
+| Authentication | `requireAdvisorAccess()` — same advisor/admin gate as individual advisor routes |
+| Scope | All client IDs resolved server-side from advisor assignment; no browser-supplied `client_id` |
+| Errors | `toPublicErrorMessage()` on fatal failures; per-section errors returned without blocking other sections |
+| Service role | Used only inside existing Supabase query modules (`advisorQueries`, `advisorTasks`, etc.) — never exposed to the client |
+| Timing | Server logs section timings (`payload.timing`) for future profiling |
+
+Individual advisor routes (`/api/advisor/overview`, `/notifications`, `/tasks`, `/review-pipeline`, `/file-quality`, `/task-suggestions`) remain available for backward compatibility and targeted refreshes after mutations.
+
+---
+
+## 11. Review Conclusion
 
 Phase 3 Supabase integration meets MVP security requirements:
 

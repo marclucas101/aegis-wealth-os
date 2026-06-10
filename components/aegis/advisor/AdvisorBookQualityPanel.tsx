@@ -1,57 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 import AdvisorMetricCard from "@/components/aegis/advisor/AdvisorMetricCard";
 import type { AdvisorBookFileQuality } from "@/lib/supabase/clientFileQuality";
 
-type LoadState = "loading" | "ready" | "error";
+interface AdvisorBookQualityPanelProps {
+  bookQuality?: AdvisorBookFileQuality | null;
+  errorMessage?: string | null;
+}
 
-export default function AdvisorBookQualityPanel() {
-  const [loadState, setLoadState] = useState<LoadState>("loading");
-  const [bookQuality, setBookQuality] = useState<AdvisorBookFileQuality | null>(
-    null,
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadBookQuality() {
-      try {
-        const response = await fetch("/api/advisor/file-quality", {
-          cache: "no-store",
-        });
-
-        if (cancelled) return;
-
-        if (!response.ok) {
-          setLoadState("error");
-          return;
-        }
-
-        const data = (await response.json()) as
-          | ({ ok: true } & AdvisorBookFileQuality)
-          | { ok: false };
-
-        if (!data.ok) {
-          setLoadState("error");
-          return;
-        }
-
-        const { ok: _ok, ...quality } = data;
-        setBookQuality(quality);
-        setLoadState("ready");
-      } catch {
-        if (!cancelled) setLoadState("error");
-      }
-    }
-
-    void loadBookQuality();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+export default function AdvisorBookQualityPanel({
+  bookQuality = null,
+  errorMessage = null,
+}: AdvisorBookQualityPanelProps) {
+  const loadState = errorMessage ? "error" : bookQuality ? "ready" : "loading";
 
   return (
     <section className="relative overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60">

@@ -9,25 +9,11 @@ import AdvisorTaskComposer, {
   type TaskComposerValues,
 } from "@/components/aegis/advisor/AdvisorTaskComposer";
 import AdvisorTaskList from "@/components/aegis/advisor/AdvisorTaskList";
-
-type TaskDashboard = {
-  dueToday: AdvisorTaskRecord[];
-  overdue: AdvisorTaskRecord[];
-  upcoming: AdvisorTaskRecord[];
-  highPriority: AdvisorTaskRecord[];
-  recentlyCompleted: AdvisorTaskRecord[];
-  summary: {
-    dueTodayCount: number;
-    overdueCount: number;
-    upcomingCount: number;
-    highPriorityCount: number;
-    recentlyCompletedCount: number;
-  };
-};
+import type { AdvisorTaskDashboard } from "@/lib/supabase/advisorTasks";
 
 type TaskSection = {
   key: keyof Pick<
-    TaskDashboard,
+    AdvisorTaskDashboard,
     | "dueToday"
     | "overdue"
     | "upcoming"
@@ -66,13 +52,24 @@ const SECTIONS: TaskSection[] = [
   },
 ];
 
-type PanelMode = "loading" | "ready" | "error";
-
 type SaveState = "idle" | "saved" | "error";
 
-export default function AdvisorTaskPanel() {
-  const [mode, setMode] = useState<PanelMode>("loading");
-  const [dashboard, setDashboard] = useState<TaskDashboard | null>(null);
+interface AdvisorTaskPanelProps {
+  dashboard?: AdvisorTaskDashboard | null;
+  errorMessage?: string | null;
+  viewer?: { userId: string; role: "advisor" | "admin" };
+  onRefresh?: () => Promise<void>;
+}
+
+export default function AdvisorTaskPanel({
+  dashboard: initialDashboard = null,
+  errorMessage = null,
+  viewer: initialViewer,
+  onRefresh,
+}: AdvisorTaskPanelProps) {
+  const [dashboard, setDashboard] = useState<AdvisorTaskDashboard | null>(
+    initialDashboard,
+  );
   const [activeSection, setActiveSection] =
     useState<TaskSection["key"]>("overdue");
 
@@ -88,45 +85,53 @@ export default function AdvisorTaskPanel() {
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
 
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(
+    initialViewer?.userId ?? null,
+  );
+  const [isAdmin, setIsAdmin] = useState(initialViewer?.role === "admin");
 
-  const loadDashboard = useCallback(async () => {
-    setMode("loading");
+  useEffect(() => {
+    setDashboard(initialDashboard);
+    if (initialViewer) {
+      setCurrentUserId(initialViewer.userId);
+      setIsAdmin(initialViewer.role === "admin");
+    }
+
+    if (initialDashboard) {
+      const firstNonEmpty = SECTIONS.find(
+        (section) => initialDashboard[section.key].length > 0,
+      );
+      if (firstNonEmpty) {
+        setActiveSection(firstNonEmpty.key);
+      }
+    }
+  }, [initialDashboard, initialViewer]);
+
+  const reloadTasks = useCallback(async () => {
+    if (onRefresh) {
+      await onRefresh();
+      return;
+    }
 
     try {
       const response = await fetch("/api/advisor/tasks", { cache: "no-store" });
       const data = (await response.json()) as
-        | ({ ok: true } & TaskDashboard & {
+        | ({ ok: true } & AdvisorTaskDashboard & {
             viewer: { userId: string; role: "advisor" | "admin" };
           })
         | { ok: false; error?: string };
 
       if (!response.ok || !data.ok) {
-        setMode("error");
         return;
       }
 
       setDashboard(data);
       setCurrentUserId(data.viewer.userId);
       setIsAdmin(data.viewer.role === "admin");
-
-      const firstNonEmpty = SECTIONS.find(
-        (section) => data[section.key].length > 0,
-      );
-      if (firstNonEmpty) {
-        setActiveSection(firstNonEmpty.key);
-      }
-
-      setMode("ready");
     } catch {
-      setMode("error");
+      // keep current dashboard on refresh failure
     }
-  }, []);
-
-  useEffect(() => {
-    void loadDashboard();
-  }, [loadDashboard]);
+  }, [onRefresh]);
 
   async function handleCreate(values: TaskComposerValues) {
     setCreating(true);
@@ -161,7 +166,7 @@ export default function AdvisorTaskPanel() {
       setCreateSaveState("saved");
       setComposerResetKey((key) => key + 1);
       window.setTimeout(() => setCreateSaveState("idle"), 2000);
-      await loadDashboard();
+      await reloadTasks();
     } catch {
       setCreateSaveState("error");
       setCreateError("Failed to create task.");
@@ -205,7 +210,7 @@ export default function AdvisorTaskPanel() {
       setEditingTask(null);
       setUpdateSaveState("saved");
       window.setTimeout(() => setUpdateSaveState("idle"), 2000);
-      await loadDashboard();
+      await reloadTasks();
     } catch {
       setUpdateSaveState("error");
       setUpdateError("Failed to update task.");
@@ -236,7 +241,7 @@ export default function AdvisorTaskPanel() {
         return;
       }
 
-      await loadDashboard();
+      await reloadTasks();
     } catch {
       setStatusError("Failed to update task.");
     } finally {
@@ -244,27 +249,32 @@ export default function AdvisorTaskPanel() {
     }
   }
 
-  if (mode === "loading") {
+  if (errorMessage) {
     return (
-      <section className="relative overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-12 text-center">
-        <p className="text-sm font-light text-[#F3F1EA]/45">Loading tasks…</p>
+      <section
+        id="advisor-tasks"
+        className="relative scroll-mt-24 overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-8 text-center"
+      >
+        <p className="text-sm font-light text-[#F3F1EA]/45">
+          Unable to load advisor tasks.
+        </p>
+        {onRefresh ? (
+          <button
+            type="button"
+            onClick={() => void onRefresh()}
+            className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
+          >
+            Retry
+          </button>
+        ) : null}
       </section>
     );
   }
 
-  if (mode === "error" || !dashboard) {
+  if (!dashboard) {
     return (
-      <section className="relative overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-8 text-center">
-        <p className="text-sm font-light text-[#F3F1EA]/45">
-          Unable to load advisor tasks.
-        </p>
-        <button
-          type="button"
-          onClick={() => void loadDashboard()}
-          className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
-        >
-          Retry
-        </button>
+      <section className="relative overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-12 text-center">
+        <p className="text-sm font-light text-[#F3F1EA]/45">Loading tasks…</p>
       </section>
     );
   }
@@ -326,7 +336,7 @@ export default function AdvisorTaskPanel() {
         <div className="flex flex-wrap gap-2 border-b border-[#D1A866]/10 pb-3">
           {SECTIONS.map((section) => {
             const count = dashboard.summary[
-              `${section.key}Count` as keyof TaskDashboard["summary"]
+              `${section.key}Count` as keyof AdvisorTaskDashboard["summary"]
             ] as number;
             const isActive = activeSection === section.key;
 

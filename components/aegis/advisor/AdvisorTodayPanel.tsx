@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useMemo } from "react";
 
 import type {
   AdvisorNotification,
@@ -9,6 +9,7 @@ import type {
 } from "@/lib/supabase/advisorNotifications";
 import type { AdvisorReviewPipeline } from "@/lib/supabase/advisorReviewPipeline";
 import type { AdvisorTaskRecord } from "@/components/aegis/advisor/AdvisorTaskComposer";
+import type { AdvisorTaskDashboard } from "@/lib/supabase/advisorTasks";
 import type { ReactNode } from "react";
 
 type TaskDashboardSlice = {
@@ -20,7 +21,15 @@ type TaskDashboardSlice = {
   };
 };
 
-type LoadState = "loading" | "ready" | "error";
+interface AdvisorTodayPanelProps {
+  notifications?: AdvisorNotificationsPayload | null;
+  notificationsError?: string | null;
+  taskDashboard?: AdvisorTaskDashboard | null;
+  tasksError?: string | null;
+  reviewPipeline?: AdvisorReviewPipeline | null;
+  reviewPipelineError?: string | null;
+  onRefresh?: () => Promise<void>;
+}
 
 function scrollToSection(id: string) {
   const el = document.getElementById(id);
@@ -148,91 +157,74 @@ function ReviewRow({
   );
 }
 
-export default function AdvisorTodayPanel() {
-  const [loadState, setLoadState] = useState<LoadState>("loading");
-  const [urgentNotifications, setUrgentNotifications] = useState<
-    AdvisorNotification[]
-  >([]);
-  const [urgentCount, setUrgentCount] = useState(0);
-  const [tasks, setTasks] = useState<TaskDashboardSlice | null>(null);
-  const [pipeline, setPipeline] = useState<{
-    overdue: AdvisorReviewPipeline["overdue"];
-    dueThisMonth: AdvisorReviewPipeline["dueThisMonth"];
-    summary: AdvisorReviewPipeline["summary"];
-  } | null>(null);
+export default function AdvisorTodayPanel({
+  notifications = null,
+  notificationsError = null,
+  taskDashboard = null,
+  tasksError = null,
+  reviewPipeline = null,
+  reviewPipelineError = null,
+  onRefresh,
+}: AdvisorTodayPanelProps) {
+  const hasError =
+    Boolean(notificationsError) ||
+    Boolean(tasksError) ||
+    Boolean(reviewPipelineError);
 
-  const loadToday = useCallback(async () => {
-    setLoadState("loading");
+  const showNotifications = !notificationsError && notifications;
+  const showTasks = !tasksError && taskDashboard;
+  const showPipeline = !reviewPipelineError && reviewPipeline;
 
-    try {
-      const [notifRes, taskRes, pipelineRes] = await Promise.all([
-        fetch("/api/advisor/notifications", { cache: "no-store" }),
-        fetch("/api/advisor/tasks", { cache: "no-store" }),
-        fetch("/api/advisor/review-pipeline", { cache: "no-store" }),
-      ]);
+  const tasks = useMemo<TaskDashboardSlice | null>(() => {
+    if (!showTasks || !taskDashboard) return null;
 
-      if (!notifRes.ok || !taskRes.ok || !pipelineRes.ok) {
-        setLoadState("error");
-        return;
-      }
+    return {
+      dueToday: taskDashboard.dueToday.slice(0, 3),
+      overdue: taskDashboard.overdue.slice(0, 3),
+      summary: {
+        dueTodayCount: taskDashboard.summary.dueTodayCount,
+        overdueCount: taskDashboard.summary.overdueCount,
+      },
+    };
+  }, [showTasks, taskDashboard]);
 
-      const notifData = (await notifRes.json()) as
-        | ({ ok: true } & AdvisorNotificationsPayload)
-        | { ok: false };
-      const taskData = (await taskRes.json()) as
-        | ({ ok: true } & TaskDashboardSlice)
-        | { ok: false };
-      const pipelineData = (await pipelineRes.json()) as
-        | ({ ok: true } & AdvisorReviewPipeline)
-        | { ok: false };
+  const urgentNotifications = useMemo(() => {
+    if (!showNotifications || !notifications) return [];
+    return notifications.notifications
+      .filter((notification) => notification.priority === "urgent")
+      .slice(0, 3);
+  }, [showNotifications, notifications]);
 
-      if (!notifData.ok || !taskData.ok || !pipelineData.ok) {
-        setLoadState("error");
-        return;
-      }
+  const urgentCount = useMemo(() => {
+    if (!showNotifications || !notifications) return 0;
+    return notifications.notifications.filter(
+      (notification) => notification.priority === "urgent",
+    ).length;
+  }, [showNotifications, notifications]);
 
-      const urgent = notifData.notifications.filter(
-        (n) => n.priority === "urgent",
-      );
-      setUrgentCount(urgent.length);
-      setUrgentNotifications(urgent.slice(0, 3));
-      setTasks({
-        dueToday: taskData.dueToday.slice(0, 3),
-        overdue: taskData.overdue.slice(0, 3),
-        summary: {
-          dueTodayCount: taskData.summary.dueTodayCount,
-          overdueCount: taskData.summary.overdueCount,
-        },
-      });
-      setPipeline({
-        overdue: pipelineData.overdue.slice(0, 3),
-        dueThisMonth: pipelineData.dueThisMonth.slice(0, 3),
-        summary: pipelineData.summary,
-      });
-      setLoadState("ready");
-    } catch {
-      setLoadState("error");
-    }
-  }, []);
+  const pipeline = useMemo(() => {
+    if (!showPipeline || !reviewPipeline) return null;
 
-  useEffect(() => {
-    void loadToday();
-  }, [loadToday]);
+    return {
+      overdue: reviewPipeline.overdue.slice(0, 3),
+      dueThisMonth: reviewPipeline.dueThisMonth.slice(0, 3),
+      summary: reviewPipeline.summary,
+    };
+  }, [showPipeline, reviewPipeline]);
 
-  if (loadState === "loading") {
-    return (
-      <section
-        id="advisor-today"
-        className="scroll-mt-24 rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-12 text-center"
-      >
-        <p className="text-sm font-light text-[#F3F1EA]/45">
-          Loading today&apos;s priorities…
-        </p>
-      </section>
-    );
+  if (
+    notifications === undefined &&
+    taskDashboard === undefined &&
+    reviewPipeline === undefined
+  ) {
+    return null;
   }
 
-  if (loadState === "error") {
+  if (
+    notificationsError &&
+    tasksError &&
+    reviewPipelineError
+  ) {
     return (
       <section
         id="advisor-today"
@@ -241,32 +233,59 @@ export default function AdvisorTodayPanel() {
         <p className="text-sm font-light text-[#F3F1EA]/45">
           Unable to load today&apos;s priorities.
         </p>
-        <button
-          type="button"
-          onClick={() => void loadToday()}
-          className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
-        >
-          Retry
-        </button>
+        {onRefresh ? (
+          <button
+            type="button"
+            onClick={() => void onRefresh()}
+            className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
+          >
+            Retry
+          </button>
+        ) : null}
       </section>
     );
   }
 
-  const reviewItems = [
-    ...pipeline!.overdue.map((c) => ({
-      clientId: c.clientId,
-      displayName: c.displayName,
-      label: "Review overdue",
-    })),
-    ...pipeline!.dueThisMonth.map((c) => ({
-      clientId: c.clientId,
-      displayName: c.displayName,
-      label: "Due this month",
-    })),
-  ].slice(0, 4);
+  if (!showNotifications && !showTasks && !showPipeline && hasError) {
+    return (
+      <section
+        id="advisor-today"
+        className="rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-8 text-center"
+      >
+        <p className="text-sm font-light text-[#F3F1EA]/45">
+          Unable to load today&apos;s priorities.
+        </p>
+        {onRefresh ? (
+          <button
+            type="button"
+            onClick={() => void onRefresh()}
+            className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
+          >
+            Retry
+          </button>
+        ) : null}
+      </section>
+    );
+  }
 
-  const reviewCount =
-    pipeline!.summary.overdueCount + pipeline!.summary.dueThisMonthCount;
+  const reviewItems = pipeline
+    ? [
+        ...pipeline.overdue.map((client) => ({
+          clientId: client.clientId,
+          displayName: client.displayName,
+          label: "Review overdue",
+        })),
+        ...pipeline.dueThisMonth.map((client) => ({
+          clientId: client.clientId,
+          displayName: client.displayName,
+          label: "Due this month",
+        })),
+      ].slice(0, 4)
+    : [];
+
+  const reviewCount = pipeline
+    ? pipeline.summary.overdueCount + pipeline.summary.dueThisMonthCount
+    : 0;
 
   return (
     <section
@@ -285,6 +304,12 @@ export default function AdvisorTodayPanel() {
       </div>
 
       <div className="relative space-y-3 px-5 py-5">
+        {notificationsError ? (
+          <p className="text-xs font-light text-[#F3F1EA]/35">
+            Urgent notifications unavailable.
+          </p>
+        ) : null}
+
         <TodaySection
           title="Urgent notifications"
           count={urgentCount}
@@ -303,22 +328,22 @@ export default function AdvisorTodayPanel() {
 
         <TodaySection
           title="Tasks due today"
-          count={tasks!.summary.dueTodayCount}
+          count={tasks?.summary.dueTodayCount ?? 0}
           emptyMessage="No tasks due today."
           onViewAll={() => scrollToSection("advisor-tasks")}
         >
-          {tasks!.dueToday.map((task) => (
+          {(tasks?.dueToday ?? []).map((task) => (
             <TaskRow key={task.id} task={task} />
           ))}
         </TodaySection>
 
         <TodaySection
           title="Overdue tasks"
-          count={tasks!.summary.overdueCount}
+          count={tasks?.summary.overdueCount ?? 0}
           emptyMessage="No overdue tasks."
           onViewAll={() => scrollToSection("advisor-tasks")}
         >
-          {tasks!.overdue.map((task) => (
+          {(tasks?.overdue ?? []).map((task) => (
             <TaskRow key={task.id} task={task} />
           ))}
         </TodaySection>

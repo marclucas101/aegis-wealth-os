@@ -46,77 +46,63 @@ const SECTIONS: PipelineSection[] = [
   },
 ];
 
-type PipelineMode = "loading" | "ready" | "error";
+interface AdvisorReviewPipelinePanelProps {
+  pipeline?: AdvisorReviewPipeline | null;
+  errorMessage?: string | null;
+  onRefresh?: () => Promise<void>;
+}
 
-export default function AdvisorReviewPipelinePanel() {
-  const [mode, setMode] = useState<PipelineMode>("loading");
-  const [pipeline, setPipeline] = useState<AdvisorReviewPipeline | null>(null);
+export default function AdvisorReviewPipelinePanel({
+  pipeline: initialPipeline = null,
+  errorMessage = null,
+  onRefresh,
+}: AdvisorReviewPipelinePanelProps) {
+  const [pipeline, setPipeline] = useState<AdvisorReviewPipeline | null>(
+    initialPipeline,
+  );
   const [activeSection, setActiveSection] =
     useState<PipelineSection["key"]>("overdue");
 
   useEffect(() => {
-    let cancelled = false;
+    setPipeline(initialPipeline);
 
-    async function loadPipeline() {
-      try {
-        const response = await fetch("/api/advisor/review-pipeline", {
-          cache: "no-store",
-        });
-
-        if (cancelled) return;
-
-        if (!response.ok) {
-          setMode("error");
-          return;
-        }
-
-        const data = (await response.json()) as
-          | ({ ok: true } & AdvisorReviewPipeline)
-          | { ok: false };
-
-        if (!data.ok) {
-          setMode("error");
-          return;
-        }
-
-        setPipeline(data);
-
-        const firstNonEmpty = SECTIONS.find(
-          (section) => data[section.key].length > 0,
-        );
-        if (firstNonEmpty) {
-          setActiveSection(firstNonEmpty.key);
-        }
-
-        setMode("ready");
-      } catch {
-        if (cancelled) return;
-        setMode("error");
+    if (initialPipeline) {
+      const firstNonEmpty = SECTIONS.find(
+        (section) => initialPipeline[section.key].length > 0,
+      );
+      if (firstNonEmpty) {
+        setActiveSection(firstNonEmpty.key);
       }
     }
+  }, [initialPipeline]);
 
-    void loadPipeline();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (mode === "loading") {
+  if (errorMessage) {
     return (
-      <section className="relative overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-12 text-center">
+      <section
+        id="advisor-review-pipeline"
+        className="relative scroll-mt-24 overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-8 text-center"
+      >
         <p className="text-sm font-light text-[#F3F1EA]/45">
-          Loading review pipeline…
+          Unable to load review pipeline.
         </p>
+        {onRefresh ? (
+          <button
+            type="button"
+            onClick={() => void onRefresh()}
+            className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
+          >
+            Retry
+          </button>
+        ) : null}
       </section>
     );
   }
 
-  if (mode === "error" || !pipeline) {
+  if (!pipeline) {
     return (
-      <section className="relative overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-8 text-center">
+      <section className="relative overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-12 text-center">
         <p className="text-sm font-light text-[#F3F1EA]/45">
-          Unable to load review pipeline.
+          Loading review pipeline…
         </p>
       </section>
     );

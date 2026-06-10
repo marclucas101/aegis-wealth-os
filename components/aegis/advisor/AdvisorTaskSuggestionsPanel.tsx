@@ -5,55 +5,62 @@ import { useCallback, useEffect, useState } from "react";
 import AdvisorTaskSuggestionCard, {
   type AdvisorTaskSuggestionView,
 } from "@/components/aegis/advisor/AdvisorTaskSuggestionCard";
-
-type PanelMode = "loading" | "ready" | "error";
+import type { AdvisorTaskSuggestionsPayload } from "@/lib/supabase/advisorTaskSuggestions";
 
 type CardState = "idle" | "creating" | "created" | "error";
 
-type SuggestionsPayload = {
-  suggestions: AdvisorTaskSuggestionView[];
-  summary: {
-    totalCount: number;
-    urgentCount: number;
-    highCount: number;
-    clientCount: number;
-  };
-};
-
 const DISPLAY_LIMIT = 12;
 
-export default function AdvisorTaskSuggestionsPanel() {
-  const [mode, setMode] = useState<PanelMode>("loading");
-  const [payload, setPayload] = useState<SuggestionsPayload | null>(null);
+function toSuggestionView(
+  suggestion: AdvisorTaskSuggestionsPayload["suggestions"][number],
+): AdvisorTaskSuggestionView {
+  return suggestion;
+}
+
+interface AdvisorTaskSuggestionsPanelProps {
+  payload?: AdvisorTaskSuggestionsPayload | null;
+  errorMessage?: string | null;
+  onRefresh?: () => Promise<void>;
+}
+
+export default function AdvisorTaskSuggestionsPanel({
+  payload: initialPayload = null,
+  errorMessage = null,
+  onRefresh,
+}: AdvisorTaskSuggestionsPanelProps) {
+  const [payload, setPayload] = useState<AdvisorTaskSuggestionsPayload | null>(
+    initialPayload,
+  );
   const [cardStates, setCardStates] = useState<Record<string, CardState>>({});
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
 
-  const loadSuggestions = useCallback(async () => {
-    setMode("loading");
+  useEffect(() => {
+    setPayload(initialPayload);
+  }, [initialPayload]);
+
+  const reloadSuggestions = useCallback(async () => {
+    if (onRefresh) {
+      await onRefresh();
+      return;
+    }
 
     try {
       const response = await fetch("/api/advisor/task-suggestions", {
         cache: "no-store",
       });
       const data = (await response.json()) as
-        | ({ ok: true } & SuggestionsPayload)
+        | ({ ok: true } & AdvisorTaskSuggestionsPayload)
         | { ok: false; error?: string };
 
       if (!response.ok || !data.ok) {
-        setMode("error");
         return;
       }
 
       setPayload(data);
-      setMode("ready");
     } catch {
-      setMode("error");
+      // keep current suggestions on refresh failure
     }
-  }, []);
-
-  useEffect(() => {
-    void loadSuggestions();
-  }, [loadSuggestions]);
+  }, [onRefresh]);
 
   async function handleCreate(suggestion: AdvisorTaskSuggestionView) {
     setCardStates((current) => ({
@@ -120,6 +127,8 @@ export default function AdvisorTaskSuggestionsPanel() {
           },
         };
       });
+
+      await reloadSuggestions();
     } catch {
       setCardStates((current) => ({
         ...current,
@@ -132,7 +141,33 @@ export default function AdvisorTaskSuggestionsPanel() {
     }
   }
 
-  if (mode === "loading") {
+  if (errorMessage) {
+    return (
+      <section
+        id="advisor-suggested-followups"
+        className="relative scroll-mt-24 overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-8 text-center"
+      >
+        <p className="text-sm font-light text-[#F3F1EA]/45">
+          Unable to load suggested follow-ups.
+        </p>
+        {onRefresh ? (
+          <button
+            type="button"
+            onClick={() => void onRefresh()}
+            className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
+          >
+            Retry
+          </button>
+        ) : null}
+      </section>
+    );
+  }
+
+  const suggestions = payload?.suggestions ?? [];
+  const summary = payload?.summary;
+  const visibleSuggestions = suggestions.slice(0, DISPLAY_LIMIT);
+
+  if (!payload) {
     return (
       <section className="relative overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-12 text-center">
         <p className="text-sm font-light text-[#F3F1EA]/45">
@@ -141,27 +176,6 @@ export default function AdvisorTaskSuggestionsPanel() {
       </section>
     );
   }
-
-  if (mode === "error") {
-    return (
-      <section className="relative overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-8 text-center">
-        <p className="text-sm font-light text-[#F3F1EA]/45">
-          Unable to load suggested follow-ups.
-        </p>
-        <button
-          type="button"
-          onClick={() => void loadSuggestions()}
-          className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[#D1A866]/80 hover:text-[#D1A866]"
-        >
-          Retry
-        </button>
-      </section>
-    );
-  }
-
-  const suggestions = payload?.suggestions ?? [];
-  const summary = payload?.summary;
-  const visibleSuggestions = suggestions.slice(0, DISPLAY_LIMIT);
 
   return (
     <section
@@ -204,7 +218,7 @@ export default function AdvisorTaskSuggestionsPanel() {
             {visibleSuggestions.map((suggestion) => (
               <AdvisorTaskSuggestionCard
                 key={suggestion.id}
-                suggestion={suggestion}
+                suggestion={toSuggestionView(suggestion)}
                 state={cardStates[suggestion.id] ?? "idle"}
                 errorMessage={cardErrors[suggestion.id]}
                 showClient
