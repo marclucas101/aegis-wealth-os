@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import type { MeResponse } from "@/app/api/me/route";
@@ -80,12 +79,16 @@ export default function AuthStatus() {
         </span>
       </div>
 
-      <Link
-        href="/logout"
-        className="rounded-sm border border-[#D1A866]/15 px-2.5 py-1.5 text-[10px] uppercase tracking-[0.12em] text-[#F3F1EA]/45 transition-colors hover:border-[#D1A866]/30 hover:text-[#D1A866]/80"
-      >
-        Sign out
-      </Link>
+      {/* Must be a form POST: a <Link href="/logout"> gets prefetched in
+          production, which used to sign the user out on every page load. */}
+      <form action="/logout" method="post">
+        <button
+          type="submit"
+          className="rounded-sm border border-[#D1A866]/15 px-2.5 py-1.5 text-[10px] uppercase tracking-[0.12em] text-[#F3F1EA]/45 transition-colors hover:border-[#D1A866]/30 hover:text-[#D1A866]/80"
+        >
+          Sign out
+        </button>
+      </form>
     </div>
   );
 }
