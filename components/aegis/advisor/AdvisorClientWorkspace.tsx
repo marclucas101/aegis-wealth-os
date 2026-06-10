@@ -17,6 +17,7 @@ import AdvisorClientRoadmapPanel from "@/components/aegis/advisor/AdvisorClientR
 import AdvisorClientScorePanel from "@/components/aegis/advisor/AdvisorClientScorePanel";
 import AdvisorClientSnapshot from "@/components/aegis/advisor/AdvisorClientSnapshot";
 import AdvisorClientStressPanel from "@/components/aegis/advisor/AdvisorClientStressPanel";
+import AdvisorClientTaskSuggestionsPanel from "@/components/aegis/advisor/AdvisorClientTaskSuggestionsPanel";
 import AdvisorClientTasksPanel from "@/components/aegis/advisor/AdvisorClientTasksPanel";
 import AdvisorClientTimeline from "@/components/aegis/advisor/AdvisorClientTimeline";
 import type { AdvisorTaskRecord } from "@/components/aegis/advisor/AdvisorTaskComposer";
@@ -36,6 +37,7 @@ interface AdvisorClientWorkspaceProps {
 
 const SECTION_NAV = [
   { id: "client-file-quality", label: "File Quality" },
+  { id: "client-suggested-followups", label: "Follow-Ups" },
   { id: "client-overview", label: "Overview" },
   { id: "client-risk", label: "Risk" },
   { id: "client-roadmap", label: "Roadmap" },
@@ -216,6 +218,8 @@ export default function AdvisorClientWorkspace({
       <AdvisorClientActionBar />
 
       <AdvisorClientFileQualityPanel clientId={clientId} />
+
+      <AdvisorClientTaskSuggestionsPanel clientId={clientId} />
 
       <nav
         aria-label="Client file sections"

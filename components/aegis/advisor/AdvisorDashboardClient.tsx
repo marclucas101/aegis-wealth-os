@@ -16,6 +16,7 @@ import AdvisorQuickActions from "@/components/aegis/advisor/AdvisorQuickActions"
 import AdvisorRecentActivity from "@/components/aegis/advisor/AdvisorRecentActivity";
 import AdvisorReviewPipelinePanel from "@/components/aegis/advisor/AdvisorReviewPipelinePanel";
 import AdvisorTaskPanel from "@/components/aegis/advisor/AdvisorTaskPanel";
+import AdvisorTaskSuggestionsPanel from "@/components/aegis/advisor/AdvisorTaskSuggestionsPanel";
 import AdvisorTodayPanel from "@/components/aegis/advisor/AdvisorTodayPanel";
 import AdvisorSearchFilters, {
   type AdvisorFilters,
@@ -36,6 +37,7 @@ const ANCHOR_SECTIONS = [
   { id: "advisor-today", label: "Today" },
   { id: "advisor-review-pipeline", label: "Pipeline" },
   { id: "advisor-tasks", label: "Tasks" },
+  { id: "advisor-suggested-followups", label: "Follow-Ups" },
   { id: "advisor-clients", label: "Clients" },
   { id: "advisor-activity", label: "Activity" },
 ] as const;
@@ -248,6 +250,8 @@ export default function AdvisorDashboardClient() {
       <AdvisorReviewPipelinePanel />
 
       <AdvisorTaskPanel />
+
+      <AdvisorTaskSuggestionsPanel />
 
       <AdvisorClientOnboardingPanel
         defaultExpanded={false}
