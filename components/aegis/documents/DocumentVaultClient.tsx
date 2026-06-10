@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import ClientPortalHeader from "@/components/aegis/client/ClientPortalHeader";
+import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
 import DocumentCategoryFilter, {
   type DocumentCategoryFilterValue,
 } from "@/components/aegis/documents/DocumentCategoryFilter";
@@ -12,6 +14,7 @@ import DocumentList, {
 import DocumentUploadCard, {
   type UploadState,
 } from "@/components/aegis/documents/DocumentUploadCard";
+import { DOCUMENT_CATEGORY_GUIDANCE } from "@/lib/aegis/clientJourney";
 import type { DocumentsListResponse } from "@/app/api/documents/list/route";
 import type { DocumentsDeleteResponse } from "@/app/api/documents/delete/route";
 import type { DocumentsSignedUrlResponse } from "@/app/api/documents/signed-url/route";
@@ -220,7 +223,7 @@ export default function DocumentVaultClient() {
     return (
       <div className="rounded-sm border border-[#D1A866]/12 bg-[#10283A]/40 px-6 py-16 text-center">
         <p className="text-sm font-light text-[#F3F1EA]/45">
-          Loading Document Vault…
+          Loading your Document Vault…
         </p>
       </div>
     );
@@ -230,14 +233,14 @@ export default function DocumentVaultClient() {
     return (
       <div className="rounded-sm border border-[#D1A866]/20 bg-[#10283A]/50 p-8 text-center sm:p-12">
         <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-[#D1A866]/80">
-          Authentication Required
+          Sign in required
         </p>
         <h2 className="mt-3 text-2xl font-light tracking-wide text-[#F3F1EA]">
-          Sign in to access your Document Vault.
+          Sign in to access your Document Vault
         </h2>
         <p className="mt-4 text-sm font-light leading-relaxed text-[#F3F1EA]/45">
-          Document uploads and secure downloads are available after you sign in
-          to your AEGIS client profile.
+          Secure uploads and downloads are available once you sign in to your
+          AEGIS client account.
         </p>
       </div>
     );
@@ -255,6 +258,12 @@ export default function DocumentVaultClient() {
 
   return (
     <div className="space-y-8">
+      <ClientPortalHeader
+        eyebrow="Document Vault"
+        title="Your secure document library"
+        subtitle="Store policies, statements, and estate records in one place. Only you and advisors you authorise can access these files."
+      />
+
       <DocumentUploadCard
         uploadState={uploadState}
         uploadError={uploadError}
@@ -264,14 +273,17 @@ export default function DocumentVaultClient() {
       />
 
       <section className="space-y-4">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-[#D1A866]/80">
-              Vault Library
+              Your library
             </p>
             <h2 className="mt-2 text-xl font-light tracking-wide text-[#F3F1EA]">
               Uploaded documents
             </h2>
+            <p className="mt-1 text-sm font-light text-[#F3F1EA]/45">
+              Filter by category · Open files in a secure new tab
+            </p>
           </div>
 
           <DocumentCategoryFilter
@@ -279,6 +291,12 @@ export default function DocumentVaultClient() {
             onChange={setCategoryFilter}
           />
         </div>
+
+        {categoryFilter !== "all" && DOCUMENT_CATEGORY_GUIDANCE[categoryFilter] && (
+          <p className="text-xs font-light text-[#F3F1EA]/40">
+            {DOCUMENT_CATEGORY_GUIDANCE[categoryFilter].description}
+          </p>
+        )}
 
         {actionError && (
           <p className="text-sm text-red-300">{actionError}</p>
@@ -300,6 +318,8 @@ export default function DocumentVaultClient() {
           />
         )}
       </section>
+
+      <ClientTrustNotice variant="full" context="documents" />
     </div>
   );
 }

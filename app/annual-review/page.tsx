@@ -5,7 +5,7 @@ export default function AnnualReviewPage() {
   return (
     <AppShell
       title="Annual Shield Review™"
-      subtitle="Architecture progression · Four-year shield timeline"
+      subtitle="What changed · What to focus on next"
     >
       <AnnualReviewClient />
     </AppShell>

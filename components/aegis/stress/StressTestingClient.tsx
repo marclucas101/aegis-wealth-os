@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatCurrency } from "@/components/aegis/ShieldScoreCard";
+import ClientPortalHeader from "@/components/aegis/client/ClientPortalHeader";
+import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
 import StressEmptyState from "@/components/aegis/stress/StressEmptyState";
 import StressHistoryPanel, {
   type StressTestHistoryEntry,
@@ -290,29 +291,18 @@ export default function StressTestingClient() {
 
   return (
     <>
-      <header className="mb-8 border-b border-[#D1A866]/15 pb-6 sm:mb-10">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <ProfileSourceBadge source={profileSource} />
-            <p className="mt-3 text-sm text-[#F3F1EA]/45">
-              Institutional scenario modelling across ten disruption events,
-              calibrated to your shield architecture
-            </p>
-          </div>
-
-          <div className="rounded-sm border border-[#D1A866]/15 bg-[#10283A]/40 px-4 py-3 text-right">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-[#F3F1EA]/40">
-              Client Profile
-            </p>
-            <p className="mt-1 text-sm text-[#F3F1EA]">
-              {results.client.occupation ?? "Client"} · Age {results.client.age}
-            </p>
-            <p className="mt-0.5 font-mono text-xs tabular-nums text-[#D1A866]/70">
-              Net Worth {formatCurrency(results.client.netWorth)}
-            </p>
-          </div>
-        </div>
-      </header>
+      <ClientPortalHeader
+        eyebrow="Stress Testing"
+        title="What if life doesn't go to plan?"
+        subtitle="Explore ten everyday scenarios — from income loss to market downturns — and see how your Shield score holds up. Results are for discussion with your advisor, not predictions."
+        clientDetail={
+          results.client.occupation
+            ? `${results.client.occupation} · Age ${results.client.age}`
+            : `Age ${results.client.age}`
+        }
+        netWorth={results.client.netWorth}
+        badge={<ProfileSourceBadge source={profileSource} />}
+      />
 
       <div className="flex flex-col gap-6">
         <div className="space-y-3">
@@ -328,8 +318,8 @@ export default function StressTestingClient() {
           {mode === "cloud" && (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm font-light text-[#F3F1EA]/45">
-                Run the selected scenario at the chosen severity. Results are
-                saved to your cloud profile.
+                Run the selected scenario at your chosen severity. Saved runs
+                appear in your history below.
               </p>
               <button
                 type="button"
@@ -353,11 +343,11 @@ export default function StressTestingClient() {
         <section className="rounded-sm border border-[#D1A866]/15 bg-[#1A2A2B]/25 p-5">
           <div className="mb-4">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#D1A866]/70">
-              Highest Exposure Scenarios
+              Scenarios to watch
             </p>
             <p className="mt-0.5 text-sm font-light text-[#F3F1EA]/50">
-              Top three events with the lowest post-stress shield scores at
-              current severity
+              The three events that would lower your Shield score the most at
+              this severity level
             </p>
           </div>
 
@@ -382,10 +372,10 @@ export default function StressTestingClient() {
         <section>
           <div className="mb-4 border-b border-[#D1A866]/10 pb-3">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#D1A866]/70">
-              All Stress Scenarios
+              All scenarios
             </p>
-            <h3 className="mt-0.5 text-sm font-light text-[#F3F1EA]">
-              Ten institutional disruption events
+            <h3 className="mt-0.5 text-sm font-light text-[#F3F1EA]/55">
+              Tap any scenario to see the impact on your Shield score
             </h3>
           </div>
 
@@ -404,6 +394,8 @@ export default function StressTestingClient() {
         {mode === "cloud" && (
           <StressHistoryPanel runs={history} loading={historyLoading} />
         )}
+
+        <ClientTrustNotice variant="full" context="stress" />
       </div>
     </>
   );

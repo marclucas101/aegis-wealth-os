@@ -5,7 +5,7 @@ export default function DocumentVaultPage() {
   return (
     <AppShell
       title="Document Vault™"
-      subtitle="Secure architecture records"
+      subtitle="Secure storage for your financial records"
     >
       <DocumentVaultClient />
     </AppShell>

@@ -953,17 +953,17 @@ export default function DiscoverWizard() {
   };
 
   const stepSubtitles: Record<number, string> = {
-    0: "Establish identity, residency, and professional context for wealth architecture.",
-    1: "Map dependants, partner relationships, and caregiving obligations.",
-    2: "Capture primary and secondary income streams for survivability analysis.",
-    3: "Document essential and discretionary outflows to establish baseline exposure.",
-    4: "Register liquid, retirement, and property assets across the balance sheet.",
-    5: "Quantify outstanding debt obligations and leverage exposure.",
-    6: "Record protection policies that form the defensive layer of the shield.",
-    7: "Profile investable assets, allocation discipline, and contribution behaviour.",
-    8: "Define retirement targets and projected income requirements.",
-    9: "Assess estate documentation and wealth transfer readiness.",
-    10: "Capture business continuity and family governance structures.",
+    0: "Basic details about you — name, age, and where you live.",
+    1: "Partner, children, and anyone who depends on you financially.",
+    2: "Your salary, bonuses, and other income sources.",
+    3: "Monthly spending — essentials, housing, and discretionary costs.",
+    4: "Savings, CPF, property, and other things you own.",
+    5: "Mortgages, loans, and other money you owe.",
+    6: "Life, health, and disability coverage you already have.",
+    7: "Investments, risk comfort, and how much you save each month.",
+    8: "When you want to retire and the lifestyle you hope for.",
+    9: "Will, CPF nomination, and how wealth passes to loved ones.",
+    10: "Business ownership and family planning, if relevant to you.",
   };
 
   if (showSummary) {
@@ -1000,9 +1000,9 @@ export default function DiscoverWizard() {
       </DiscoverStepCard>
 
       <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-center text-[10px] uppercase tracking-[0.15em] text-[#F3F1EA]/25 sm:text-left">
-          Discover Score™ · {Math.round(scoreResult.discoverScore)} · Confidence{" "}
-          {scoreResult.dataConfidenceFactor.toFixed(3)}
+        <p className="text-center text-xs font-light text-[#F3F1EA]/40 sm:text-left">
+          Profile quality · {Math.round(scoreResult.discoverScore)}/100 · More
+          complete answers improve score accuracy
         </p>
 
         <div className="flex flex-col gap-3 sm:flex-row">

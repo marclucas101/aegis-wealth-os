@@ -1,22 +1,18 @@
 "use client";
 
 import type { StressSeverity } from "@/src/lib/scoring/types";
+import { STRESS_SEVERITY_PLAIN } from "@/lib/aegis/clientJourney";
 
-const SEVERITY_OPTIONS: Array<{
-  value: StressSeverity;
-  label: string;
-  description: string;
-}> = [
-  { value: "mild", label: "Mild", description: "0.50× penalty multiplier" },
-  { value: "moderate", label: "Moderate", description: "1.00× penalty multiplier" },
-  { value: "severe", label: "Severe", description: "1.50× penalty multiplier" },
-  { value: "extreme", label: "Extreme", description: "2.00× penalty multiplier" },
+const SEVERITY_ORDER: StressSeverity[] = [
+  "mild",
+  "moderate",
+  "severe",
+  "extreme",
 ];
 
 interface StressSeveritySelectorProps {
   value: StressSeverity;
   onChange: (severity: StressSeverity) => void;
-  /** When set, only these severity options are shown (e.g. cloud API runs). */
   allowedSeverities?: StressSeverity[];
   disabled?: boolean;
 }
@@ -28,25 +24,32 @@ export default function StressSeveritySelector({
   disabled = false,
 }: StressSeveritySelectorProps) {
   const options = allowedSeverities
-    ? SEVERITY_OPTIONS.filter((option) =>
-        allowedSeverities.includes(option.value),
-      )
-    : SEVERITY_OPTIONS;
+    ? SEVERITY_ORDER.filter((severity) =>
+        allowedSeverities.includes(severity),
+      ).map((severity) => ({
+        value: severity,
+        ...STRESS_SEVERITY_PLAIN[severity],
+      }))
+    : SEVERITY_ORDER.map((severity) => ({
+        value: severity,
+        ...STRESS_SEVERITY_PLAIN[severity],
+      }));
 
   return (
     <div className="rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 p-4 sm:p-5">
       <div className="mb-4">
         <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#D1A866]/70">
-          Scenario Severity
+          How severe should we model?
         </p>
         <p className="mt-0.5 text-sm font-light text-[#F3F1EA]/55">
-          Adjust disruption intensity across all modelled events
+          Choose how big the disruption is. All scenarios update together so
+          you can compare fairly.
         </p>
       </div>
 
       <div
         className={`grid gap-2 ${
-          options.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4"
+          options.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-4"
         }`}
       >
         {options.map((option) => {
@@ -60,7 +63,7 @@ export default function StressSeveritySelector({
               onClick={() => onChange(option.value)}
               className={`rounded-sm border px-3 py-3 text-left transition-colors ${
                 selected
-                  ? "border-[#D1A866]/50 bg-[#D1A866]/15"
+                  ? "border-[#D1A866]/50 bg-[#D1A866]/15 ring-1 ring-[#D1A866]/20"
                   : "border-[#D1A866]/10 bg-[#1A2A2B]/30 hover:border-[#D1A866]/25 hover:bg-[#1A2A2B]/50"
               }`}
             >
@@ -71,7 +74,7 @@ export default function StressSeveritySelector({
               >
                 {option.label}
               </p>
-              <p className="mt-1 font-mono text-[10px] tabular-nums text-[#F3F1EA]/35">
+              <p className="mt-1 text-xs font-light leading-relaxed text-[#F3F1EA]/40">
                 {option.description}
               </p>
             </button>

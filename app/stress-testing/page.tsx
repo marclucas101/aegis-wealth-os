@@ -5,7 +5,7 @@ export default function StressTestingPage() {
   return (
     <AppShell
       title="Stress Testing™"
-      subtitle="Scenario simulations · Shield absorption analysis"
+      subtitle="See how your plan handles life's what-ifs"
     >
       <StressTestingClient />
     </AppShell>

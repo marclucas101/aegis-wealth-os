@@ -5,7 +5,7 @@ export default function WealthBlueprintPage() {
   return (
     <AppShell
       title="Wealth Blueprint™"
-      subtitle="Institutional reports · Architecture diagnostic preview"
+      subtitle="Your personal planning report"
     >
       <WealthBlueprintClient />
     </AppShell>

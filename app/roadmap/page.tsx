@@ -5,7 +5,7 @@ export default function RoadmapPage() {
   return (
     <AppShell
       title="Roadmap™"
-      subtitle="Priority actions · Wealth architecture progression"
+      subtitle="Turn gaps into clear, trackable actions"
     >
       <RoadmapClient />
     </AppShell>

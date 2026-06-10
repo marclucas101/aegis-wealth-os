@@ -8,6 +8,7 @@ import AnnualReviewRoadmapSummary from "@/components/aegis/annual/AnnualReviewRo
 import AnnualReviewScoreCard from "@/components/aegis/annual/AnnualReviewScoreCard";
 import AnnualReviewStressSummary from "@/components/aegis/annual/AnnualReviewStressSummary";
 import AnnualReviewTimeline from "@/components/aegis/annual/AnnualReviewTimeline";
+import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
 import {
   applyRoadmapStatuses,
   computeAnnualReviewFromProfile,
@@ -230,6 +231,73 @@ function buildAnnualReviewNarrative(results: AnnualReviewPageResults): string[] 
   return paragraphs;
 }
 
+function buildReviewHighlights(results: AnnualReviewPageResults): {
+  changed: string[];
+  reviewNext: string[];
+} {
+  const {
+    shield,
+    projected,
+    totalImprovement,
+    weakestPillars,
+    roadmap,
+    topStressExposures,
+  } = results;
+
+  const completedCount = roadmap.filter((item) => item.status === "completed").length;
+  const inProgressCount = roadmap.filter(
+    (item) => item.status === "in_progress",
+  ).length;
+  const primaryPillar = weakestPillars[0];
+
+  const changed: string[] = [
+    `Your Shield score is ${formatScore(shield.adjustedShieldScore)} (${shield.rating}) based on your latest profile.`,
+  ];
+
+  if (completedCount > 0) {
+    changed.push(
+      `${completedCount} roadmap milestone${completedCount === 1 ? "" : "s"} marked complete since your profile was captured.`,
+    );
+  }
+
+  if (totalImprovement > 0) {
+    changed.push(
+      `Completing your roadmap could raise your score toward ${formatScore(projected.projectedAdjustedShieldScore)} over the review horizon.`,
+    );
+  }
+
+  const reviewNext: string[] = [];
+
+  if (primaryPillar) {
+    reviewNext.push(
+      `Focus on ${primaryPillar.label} (score ${formatScore(primaryPillar.score)}) — your biggest improvement opportunity.`,
+    );
+  }
+
+  if (inProgressCount > 0) {
+    reviewNext.push(
+      `Continue ${inProgressCount} in-progress roadmap action${inProgressCount === 1 ? "" : "s"} and update status when done.`,
+    );
+  } else if (roadmap.length > 0 && completedCount < roadmap.length) {
+    reviewNext.push(
+      "Start your top roadmap milestone — small steps compound over the year.",
+    );
+  }
+
+  if (topStressExposures.length > 0) {
+    const label = topStressExposures[0].scenario.replace(/_/g, " ");
+    reviewNext.push(
+      `Revisit stress testing for "${label}" — one of your more sensitive scenarios.`,
+    );
+  }
+
+  reviewNext.push(
+    "Refresh Discover if your income, protection, or family situation has changed.",
+  );
+
+  return { changed, reviewNext };
+}
+
 export default function AnnualReviewClient() {
   const [mode, setMode] = useState<AnnualReviewMode>("loading");
   const [profile, setProfile] = useState<DiscoverStoredProfile | null>(null);
@@ -387,6 +455,7 @@ export default function AnnualReviewClient() {
   const badgeLabel = mode === "cloud" ? "Cloud Profile" : "Local Profile";
 
   const narrative = buildAnnualReviewNarrative(results);
+  const highlights = buildReviewHighlights(results);
   const reviewDate = new Date(results.completedAt).toLocaleDateString("en-SG", {
     day: "numeric",
     month: "long",
@@ -418,8 +487,8 @@ export default function AnnualReviewClient() {
               <h1 className="mt-3 text-2xl font-light tracking-wide text-[#F3F1EA] sm:text-3xl">
                 Annual Shield Review™
               </h1>
-              <p className="mt-2 text-sm font-light text-[#F3F1EA]/45">
-                Four-year architecture progression · Institutional review
+              <p className="mt-2 text-sm font-light text-[#F3F1EA]/50">
+                Your year-ahead summary · Plain-language review
               </p>
             </div>
 
@@ -462,19 +531,55 @@ export default function AnnualReviewClient() {
           saveState={mode === "cloud" ? saveState : undefined}
         />
 
+        <section className="grid gap-6 md:grid-cols-2">
+          <div className="rounded-sm border border-[#D1A866]/15 bg-[#10283A]/45 p-6">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#D1A866]/70">
+              What we see today
+            </p>
+            <ul className="mt-4 space-y-3">
+              {highlights.changed.map((item) => (
+                <li
+                  key={item}
+                  className="flex gap-2 text-sm font-light leading-relaxed text-[#F3F1EA]/65"
+                >
+                  <span className="text-emerald-400/70">·</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="rounded-sm border border-[#D1A866]/20 bg-[#1A2A2B]/40 p-6">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#D1A866]/70">
+              What to review next
+            </p>
+            <ul className="mt-4 space-y-3">
+              {highlights.reviewNext.map((item) => (
+                <li
+                  key={item}
+                  className="flex gap-2 text-sm font-light leading-relaxed text-[#F3F1EA]/65"
+                >
+                  <span className="text-[#D1A866]/70">→</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
         <section className="relative overflow-hidden rounded-sm border border-[#D1A866]/20 bg-[#1A2A2B]/40">
           <div className="absolute inset-0 bg-gradient-to-br from-[#D1A866]/5 via-transparent to-transparent" />
           <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-[#D1A866]/50 to-transparent" />
 
           <div className="relative border-b border-[#D1A866]/10 px-6 py-5 sm:px-8">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#D1A866]/70">
-              Annual Review Narrative
+              Detailed summary
             </p>
             <h3 className="mt-1 text-base font-light tracking-wide text-[#F3F1EA] sm:text-lg">
-              Architecture assessment overview
+              Full review narrative
             </h3>
             <p className="mt-1 text-xs text-[#F3F1EA]/40">
-              Institutional review language · Calm diagnostic framing
+              A deeper read for you and your advisor
             </p>
           </div>
 
@@ -508,6 +613,8 @@ export default function AnnualReviewClient() {
         />
 
         <AnnualReviewRoadmapSummary roadmap={results.roadmap} />
+
+        <ClientTrustNotice variant="full" context="planning" />
       </div>
 
       <footer className="mt-12 border-t border-[#D1A866]/15 pt-8 sm:mt-16">
@@ -534,8 +641,8 @@ export default function AnnualReviewClient() {
           AEGIS Annual Shield Review™ · {badgeLabel} · Confidential · For
           architectural review only
         </p>
-        <p className="mt-2 text-center text-xs font-light text-[#F3F1EA]/30">
-          This document does not constitute financial, legal, or tax advice.
+        <p className="mt-2 text-center text-xs font-light text-[#F3F1EA]/35">
+          Planning support only — not financial, legal, or tax advice.
         </p>
       </footer>
     </article>

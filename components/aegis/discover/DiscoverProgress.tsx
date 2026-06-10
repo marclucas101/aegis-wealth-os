@@ -27,15 +27,18 @@ export default function DiscoverProgress({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-[#D1A866]/70">
-            Discover™ Profile Architecture
+            Your progress
           </p>
-          <p className="mt-1 font-mono text-xs tabular-nums text-[#F3F1EA]/45">
-            Section {currentStep + 1} of {steps.length}
+          <p className="mt-1 text-sm font-light text-[#F3F1EA]/55">
+            Step {currentStep + 1} of {steps.length} ·{" "}
+            <span className="text-[#F3F1EA]/75">
+              {steps[currentStep]?.title}
+            </span>
           </p>
         </div>
         <div className="text-left sm:text-right">
           <p className="text-[10px] uppercase tracking-[0.15em] text-[#F3F1EA]/35">
-            Profile Completeness
+            Profile complete
           </p>
           <p className="font-mono text-sm tabular-nums text-[#D1A866]">
             {Math.round(overallCompleteness)}%

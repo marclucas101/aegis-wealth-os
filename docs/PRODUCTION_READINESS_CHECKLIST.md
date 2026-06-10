@@ -176,6 +176,23 @@
 
 ---
 
+## 12. Client Portal UX (Phase 4T)
+
+Before beta/demo, verify client-facing polish (no scoring or API changes):
+
+- [ ] `/dashboard` — welcome header, journey progress, next best action, module cards, trust notice
+- [ ] `/discover` — guided copy, progress indicator, save-state feedback, “what happens next” summary
+- [ ] `/shield-diagnostic` — plain-language diagnostic explainer, pillar cards, Roadmap CTA
+- [ ] `/roadmap` — client-friendly milestone labels, status labels, empty state
+- [ ] `/stress-testing` — plain scenario descriptions, severity selector copy, impact explanation
+- [ ] `/wealth-blueprint` — report sections, planning-support disclaimer
+- [ ] `/annual-review` — “what changed / what to review next” highlights
+- [ ] `/document-vault` — upload guidance, category help, security notice, empty state
+- [ ] Mobile spot-check on dashboard, Discover wizard, and document upload
+- [ ] Confirm advisor/admin routes unchanged
+
+---
+
 ## Sign-off
 
 | Area | Owner | Date | Pass |

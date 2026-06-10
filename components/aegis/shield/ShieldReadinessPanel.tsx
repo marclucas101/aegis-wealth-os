@@ -23,14 +23,14 @@ export default function ShieldReadinessPanel({
       <div className="relative grid gap-8 p-6 sm:p-8 lg:grid-cols-[1fr_auto] lg:items-start">
         <div>
           <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#D1A866]/80">
-            Structural Readiness
+            Where to focus first
           </p>
           <h3 className="mt-2 text-lg font-light text-[#F3F1EA]">
-            Weakest Three Pillars
+            Your three lowest-scoring pillars
           </h3>
-          <p className="mt-2 max-w-xl text-sm font-light text-[#F3F1EA]/40">
-            Preliminary gaps identified from Discover™ inputs. Full architecture
-            review available on the Shield Dashboard.
+          <p className="mt-2 max-w-xl text-sm font-light text-[#F3F1EA]/45">
+            These are starting points — not judgments. Your Wealth Roadmap turns
+            them into practical steps with expected impact.
           </p>
 
           <ol className="mt-6 space-y-3">
@@ -41,7 +41,7 @@ export default function ShieldReadinessPanel({
               >
                 <div className="flex items-center gap-4">
                   <span className="font-mono text-[10px] text-[#D1A866]/50">
-                    0{index + 1}
+                    {index + 1}
                   </span>
                   <span className="text-sm font-light text-[#F3F1EA]/75">
                     {item.label}
@@ -58,22 +58,28 @@ export default function ShieldReadinessPanel({
         <div className="flex flex-col gap-4 lg:min-w-[16rem]">
           <div className="rounded-sm border border-[#D1A866]/15 bg-[#10283A]/50 p-5">
             <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#D1A866]/70">
-              Recommended Next Step
+              Recommended next step
             </p>
             <p className="mt-2 text-base font-light text-[#F3F1EA]">
-              Review Shield Dashboard
+              Open your Wealth Roadmap
             </p>
-            <p className="mt-1 text-xs font-light text-[#F3F1EA]/40">
-              Benchmark, stress testing, and roadmap prioritisation — Phase 2C
-              integration pending.
+            <p className="mt-1 text-xs font-light text-[#F3F1EA]/45">
+              See prioritised actions tailored to your gaps — mark progress as
+              you go.
             </p>
           </div>
 
           <Link
-            href="/dashboard"
+            href="/roadmap"
             className="rounded-sm border border-[#D1A866]/40 bg-[#D1A866]/10 px-5 py-3 text-center text-[11px] font-medium uppercase tracking-[0.15em] text-[#D1A866] transition-colors hover:bg-[#D1A866]/20"
           >
-            Shield Dashboard →
+            Wealth Roadmap →
+          </Link>
+          <Link
+            href="/dashboard"
+            className="text-center text-[10px] uppercase tracking-[0.14em] text-[#F3F1EA]/40 transition-colors hover:text-[#F3F1EA]/65"
+          >
+            View full dashboard
           </Link>
         </div>
       </div>

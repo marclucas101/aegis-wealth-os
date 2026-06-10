@@ -2,6 +2,7 @@
 
 import { formatScore } from "@/components/aegis/ShieldScoreCard";
 import { PILLAR_LABELS, type RoadmapItemStatus } from "@/lib/aegis/localProfile";
+import { ROADMAP_PRIORITY_LABELS, ROADMAP_STATUS_LABELS } from "@/lib/aegis/clientJourney";
 import type { RoadmapItem } from "@/src/lib/scoring/types";
 
 const PRIORITY_STYLES: Record<RoadmapItem["priority"], string> = {
@@ -18,9 +19,9 @@ const DIFFICULTY_STYLES: Record<RoadmapItem["difficulty"], string> = {
 };
 
 const STATUS_OPTIONS: { value: RoadmapItemStatus; label: string }[] = [
-  { value: "not_started", label: "Not Started" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "completed", label: "Completed" },
+  { value: "not_started", label: ROADMAP_STATUS_LABELS.not_started },
+  { value: "in_progress", label: ROADMAP_STATUS_LABELS.in_progress },
+  { value: "completed", label: ROADMAP_STATUS_LABELS.completed },
 ];
 
 interface RoadmapActionCardProps {
@@ -58,10 +59,10 @@ export default function RoadmapActionCard({
               <span
                 className={`rounded-sm border px-2 py-0.5 text-[9px] uppercase tracking-wider ${PRIORITY_STYLES[item.priority]}`}
               >
-                {item.priority}
+                {ROADMAP_PRIORITY_LABELS[item.priority] ?? item.priority}
               </span>
               <span className="text-[10px] uppercase tracking-[0.12em] text-[#F3F1EA]/35">
-                {PILLAR_LABELS[item.pillar]} Pillar
+                {PILLAR_LABELS[item.pillar]}
               </span>
             </div>
             <h4

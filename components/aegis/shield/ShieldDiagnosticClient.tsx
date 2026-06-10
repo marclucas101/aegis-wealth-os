@@ -1,7 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import ClientEmptyState from "@/components/aegis/client/ClientEmptyState";
+import ClientPortalHeader from "@/components/aegis/client/ClientPortalHeader";
+import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
 import {
   computeShieldDiagnosticResult,
   getWeakestPillars,
@@ -18,58 +20,13 @@ type ShieldMode = "loading" | "empty" | "cloud" | "local";
 type ProfileSource = "cloud" | "local";
 
 function ProfileSourceBadge({ source }: { source: ProfileSource }) {
-  const label = source === "cloud" ? "Cloud Profile" : "Local Profile";
+  const label =
+    source === "cloud" ? "Saved to your account" : "Saved on this device";
 
   return (
-    <span className="inline-flex items-center rounded-sm border border-[#D1A866]/35 bg-[#D1A866]/10 px-2.5 py-1 text-[9px] font-medium uppercase tracking-[0.18em] text-[#D1A866]">
+    <span className="mb-3 inline-flex items-center rounded-sm border border-[#D1A866]/35 bg-[#D1A866]/10 px-2.5 py-1 text-[9px] font-medium uppercase tracking-[0.18em] text-[#D1A866]">
       {label}
     </span>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className="relative overflow-hidden rounded-sm border border-[#D1A866]/20 bg-[#10283A]/50 p-8 sm:p-12">
-      <div className="absolute inset-0 bg-gradient-to-br from-[#D1A866]/5 via-transparent to-transparent" />
-      <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-[#D1A866]/40 to-transparent" />
-
-      <div className="relative mx-auto max-w-lg text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-[#D1A866]/20 bg-[#1A2A2B]/60">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            className="h-7 w-7 text-[#D1A866]/60"
-            aria-hidden
-          >
-            <path
-              d="M12 3L4 7v6c0 5 3.5 9.5 8 11 4.5-1.5 8-6 8-11V7l-8-4z"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-
-        <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-[#D1A866]/80">
-          Shield Diagnostic™
-        </p>
-        <h2 className="mt-3 text-2xl font-light tracking-wide text-[#F3F1EA] sm:text-3xl">
-          Complete Discover™ first
-        </h2>
-        <p className="mt-4 text-sm font-light leading-relaxed text-[#F3F1EA]/45">
-          Shield Diagnostic requires a completed Discover™ financial profile.
-          Complete the onboarding flow to generate preliminary pillar scores
-          and confidence-adjusted shield metrics.
-        </p>
-
-        <Link
-          href="/discover"
-          className="mt-8 inline-flex rounded-sm border border-[#D1A866]/40 bg-[#D1A866]/10 px-8 py-3 text-[11px] font-medium uppercase tracking-[0.15em] text-[#D1A866] transition-colors hover:bg-[#D1A866]/20"
-        >
-          Start Discover™ →
-        </Link>
-      </div>
-    </div>
   );
 }
 
@@ -153,14 +110,27 @@ export default function ShieldDiagnosticClient() {
     return (
       <div className="rounded-sm border border-[#D1A866]/10 bg-[#10283A]/30 p-12 text-center">
         <p className="text-[10px] uppercase tracking-[0.2em] text-[#F3F1EA]/30">
-          Loading diagnostic…
+          Preparing your diagnostic…
         </p>
       </div>
     );
   }
 
   if (mode === "empty") {
-    return <EmptyState />;
+    return (
+      <ClientEmptyState
+        eyebrow="Shield Diagnostic"
+        title="Complete Discover first"
+        description="Your Shield Diagnostic uses the profile you build in Discover. It takes about 15 minutes and unlocks your personalised scores."
+        primaryHref="/discover"
+        primaryLabel="Start Discover"
+        steps={[
+          "Finish your Discover profile",
+          "Return here for pillar scores",
+          "Open your Roadmap for next steps",
+        ]}
+      />
+    );
   }
 
   const isCloud = mode === "cloud";
@@ -176,8 +146,19 @@ export default function ShieldDiagnosticClient() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-end">
-        <ProfileSourceBadge source={profileSource} />
+      <ClientPortalHeader
+        eyebrow="Shield Diagnostic"
+        title="Your seven-pillar financial health check"
+        subtitle="Each pillar reflects a part of your financial life — from everyday stability to long-term legacy. Lower scores highlight where a roadmap action could help most."
+        badge={<ProfileSourceBadge source={profileSource} />}
+      />
+
+      <div className="rounded-sm border border-[#D1A866]/12 bg-[#071B2A]/40 px-5 py-4">
+        <p className="text-sm font-light text-[#F3F1EA]/55">
+          <span className="text-[#F3F1EA]/75">What this means: </span>
+          Your Shield score combines these pillars. Focus on flagged gaps first —
+          they offer the biggest improvement opportunity.
+        </p>
       </div>
 
       <ShieldDiagnosticSummary shield={shield} />
@@ -187,8 +168,10 @@ export default function ShieldDiagnosticClient() {
       />
       <ShieldReadinessPanel weakestPillars={weakestPillars} />
 
+      <ClientTrustNotice variant="compact" context="planning" />
+
       <p className="text-center text-[10px] uppercase tracking-[0.18em] text-[#F3F1EA]/20">
-        Preliminary diagnostic · {footerLabel} · Profile captured{" "}
+        Diagnostic · {footerLabel} · Profile from{" "}
         {new Date(completedAt).toLocaleDateString("en-SG", {
           day: "numeric",
           month: "short",

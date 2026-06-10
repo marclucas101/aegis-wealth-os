@@ -5,7 +5,7 @@ export default function DashboardPage() {
   return (
     <AppShell
       title="Shield Dashboard"
-      subtitle="Strategic Intelligence. Generational Wealth."
+      subtitle="Your financial shield, clearly explained"
     >
       <DashboardClient />
     </AppShell>

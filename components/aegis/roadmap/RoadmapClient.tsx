@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatCurrency } from "@/components/aegis/ShieldScoreCard";
+import ClientPortalHeader from "@/components/aegis/client/ClientPortalHeader";
+import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
 import RoadmapActionCard from "@/components/aegis/roadmap/RoadmapActionCard";
 import RoadmapEmptyState from "@/components/aegis/roadmap/RoadmapEmptyState";
 import RoadmapProgressPanel from "@/components/aegis/roadmap/RoadmapProgressPanel";
@@ -213,29 +214,18 @@ export default function RoadmapClient() {
 
   return (
     <>
-      <header className="mb-8 border-b border-[#D1A866]/15 pb-6 sm:mb-10">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <ProfileSourceBadge source={profileSource} />
-            <p className="mt-3 text-sm text-[#F3F1EA]/45">
-              Prioritised architecture actions derived from your weakest shield
-              pillars
-            </p>
-          </div>
-
-          <div className="rounded-sm border border-[#D1A866]/15 bg-[#10283A]/40 px-4 py-3 text-right">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-[#F3F1EA]/40">
-              Client Profile
-            </p>
-            <p className="mt-1 text-sm text-[#F3F1EA]">
-              {results.client.occupation ?? "Client"} · Age {results.client.age}
-            </p>
-            <p className="mt-0.5 font-mono text-xs tabular-nums text-[#D1A866]/70">
-              Net Worth {formatCurrency(results.client.netWorth)}
-            </p>
-          </div>
-        </div>
-      </header>
+      <ClientPortalHeader
+        eyebrow="Wealth Roadmap"
+        title="Your personalised action plan"
+        subtitle="Each milestone strengthens a weak pillar. Update status as you progress — your projected Shield score adjusts automatically."
+        clientDetail={
+          results.client.occupation
+            ? `${results.client.occupation} · Age ${results.client.age}`
+            : `Age ${results.client.age}`
+        }
+        netWorth={results.client.netWorth}
+        badge={<ProfileSourceBadge source={profileSource} />}
+      />
 
       <div className="flex flex-col gap-6">
         <RoadmapProgressPanel
@@ -245,8 +235,8 @@ export default function RoadmapClient() {
         />
 
         <div className="flex flex-wrap items-center gap-4 rounded-sm border border-[#D1A866]/10 bg-[#1A2A2B]/30 px-5 py-3">
-          <StatPill label="Total Actions" value={String(results.roadmap.length)} />
-          <StatPill label="In Progress" value={String(inProgressCount)} />
+          <StatPill label="Total milestones" value={String(results.roadmap.length)} />
+          <StatPill label="In progress" value={String(inProgressCount)} />
           <StatPill label="Completed" value={String(completedCount)} highlight />
         </div>
 
@@ -254,10 +244,10 @@ export default function RoadmapClient() {
           <div className="space-y-4">
             <div className="border-b border-[#D1A866]/10 pb-3">
               <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#D1A866]/70">
-                Priority Actions
+                Your milestones
               </p>
-              <h3 className="mt-0.5 text-sm font-light text-[#F3F1EA]">
-                Weakest pillar remediation queue
+              <h3 className="mt-0.5 text-sm font-light text-[#F3F1EA]/55">
+                Start at the top — highest impact actions first
               </h3>
             </div>
 
@@ -273,6 +263,8 @@ export default function RoadmapClient() {
 
           <RoadmapTimeline items={results.roadmap} />
         </div>
+
+        <ClientTrustNotice variant="compact" context="planning" />
       </div>
 
       <footer className="mt-10 border-t border-[#D1A866]/10 pt-6 text-center">

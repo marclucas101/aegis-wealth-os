@@ -1,6 +1,7 @@
 "use client";
 
 import { formatScore } from "@/components/aegis/ShieldScoreCard";
+import { STRESS_SCENARIO_PLAIN } from "@/lib/aegis/clientJourney";
 import type { StressScenario, StressTestResult } from "@/src/lib/scoring/types";
 
 export const SCENARIO_LABELS: Record<StressScenario, string> = {
@@ -55,8 +56,11 @@ export default function StressScenarioCard({
               {SCENARIO_LABELS[test.scenario]}
             </p>
           </div>
+          <p className="mt-1 text-xs font-light leading-snug text-[#F3F1EA]/40">
+            {STRESS_SCENARIO_PLAIN[test.scenario]}
+          </p>
           <p className="mt-1 font-mono text-[10px] tabular-nums text-[#F3F1EA]/35">
-            Post-stress {formatScore(test.postStressScore)}
+            Score after event {formatScore(test.postStressScore)}
           </p>
         </div>
 
@@ -69,7 +73,7 @@ export default function StressScenarioCard({
             −{formatScore(impact)}
           </p>
           <p className="text-[9px] uppercase tracking-wider text-[#F3F1EA]/30">
-            Impact
+            Drop
           </p>
         </div>
       </div>

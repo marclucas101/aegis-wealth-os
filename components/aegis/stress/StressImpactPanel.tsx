@@ -80,10 +80,10 @@ function ShieldVisual({
       <div className="absolute bottom-2 text-center">
         <p className="text-[9px] uppercase tracking-[0.15em] text-[#F3F1EA]/35">
           {severelyWeakened
-            ? "Elevated absorption strain"
+            ? "Your plan would be under significant strain"
             : weakened
-              ? "Moderate structural adjustment"
-              : "Architecture remains resilient"}
+              ? "Noticeable impact — worth discussing with your advisor"
+              : "Your shield holds up well in this scenario"}
         </p>
       </div>
     </div>
@@ -136,15 +136,16 @@ export default function StressImpactPanel({
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#D1A866]/70">
-              Scenario Impact Analysis
+              Scenario impact
             </p>
             <h3 className="mt-1 text-lg font-light text-[#F3F1EA]">
               {SCENARIO_LABELS[test.scenario]}
             </h3>
             <p className="mt-2 max-w-xl text-sm font-light leading-relaxed text-[#F3F1EA]/45">
-              This scenario tests how well the client&apos;s architecture absorbs
-              disruption. Outcomes reflect pillar vulnerability, severity
-              calibration, and existing mitigation safeguards.
+              If this happened today, your Shield score would fall from{" "}
+              {formatScore(test.preStressScore)} to{" "}
+              {formatScore(test.postStressScore)}. The bars below show which
+              pillars are most affected.
             </p>
           </div>
 
@@ -161,25 +162,25 @@ export default function StressImpactPanel({
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCell
-              label="Current Shield Score"
+              label="Your score today"
               value={formatScore(test.preStressScore)}
               sublabel={`Rating ${preStressRating}`}
             />
             <MetricCell
-              label="Post-Stress Shield Score"
+              label="Score after event"
               value={formatScore(test.postStressScore)}
               sublabel={`Rating ${postStressRating}`}
               highlight
             />
             <MetricCell
-              label="Score Impact"
+              label="Points lost"
               value={`−${formatScore(scoreImpact)}`}
-              sublabel="Net shield adjustment"
+              sublabel="How much the shield weakens"
             />
             <MetricCell
-              label="Stress Penalty"
-              value={formatScore(test.stressPenalty)}
-              sublabel={`Mitigation +${formatScore(test.mitigationCredit)}`}
+              label="Mitigation offset"
+              value={`+${formatScore(test.mitigationCredit)}`}
+              sublabel={`Stress load ${formatScore(test.stressPenalty)}`}
             />
           </div>
         </div>

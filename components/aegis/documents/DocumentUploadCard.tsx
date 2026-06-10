@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 
 import { DOCUMENT_CATEGORY_OPTIONS } from "@/components/aegis/documents/DocumentCategoryFilter";
+import { DOCUMENT_CATEGORY_GUIDANCE } from "@/lib/aegis/clientJourney";
 
 export type UploadState = "idle" | "uploading" | "success" | "error";
 
@@ -26,6 +27,9 @@ export default function DocumentUploadCard({
 }: DocumentUploadCardProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
+  const categoryHelp =
+    DOCUMENT_CATEGORY_GUIDANCE[selectedCategory]?.description ??
+    "Choose the category that best matches this file.";
 
   async function handleFiles(files: FileList | null) {
     const file = files?.[0];
@@ -37,7 +41,10 @@ export default function DocumentUploadCard({
   }
 
   return (
-    <section className="relative overflow-hidden rounded-sm border border-[#D1A866]/20 bg-[#10283A]/60">
+    <section
+      id="upload"
+      className="relative overflow-hidden rounded-sm border border-[#D1A866]/20 bg-[#10283A]/60 scroll-mt-6"
+    >
       <div className="absolute inset-0 bg-gradient-to-br from-[#D1A866]/5 via-transparent to-transparent" />
       <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-[#D1A866]/40 to-transparent" />
 
@@ -45,14 +52,14 @@ export default function DocumentUploadCard({
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-[#D1A866]/80">
-              Secure Upload
+              Upload documents
             </p>
             <h2 className="mt-2 text-xl font-light tracking-wide text-[#F3F1EA] sm:text-2xl">
-              Add architecture records
+              Add files to your vault
             </h2>
-            <p className="mt-2 max-w-2xl text-sm font-light leading-relaxed text-[#F3F1EA]/45">
-              PDF, images, Word, and Excel files up to 10MB. Documents are
-              stored in your private vault and linked to your client profile.
+            <p className="mt-2 max-w-2xl text-sm font-light leading-relaxed text-[#F3F1EA]/50">
+              PDF, images, Word, and Excel up to 10MB. Pick a category first so
+              your advisor can find files quickly.
             </p>
           </div>
 
@@ -74,6 +81,13 @@ export default function DocumentUploadCard({
             </select>
           </label>
         </div>
+
+        <p className="mb-4 rounded-sm border border-[#F3F1EA]/8 bg-[#071B2A]/40 px-3 py-2 text-xs font-light text-[#F3F1EA]/45">
+          <span className="text-[#F3F1EA]/60">
+            {DOCUMENT_CATEGORY_GUIDANCE[selectedCategory]?.label ?? "Category"}:{" "}
+          </span>
+          {categoryHelp}
+        </p>
 
         <div
           onDragEnter={(event) => {
@@ -146,8 +160,8 @@ export default function DocumentUploadCard({
         </div>
 
         {uploadState === "success" && (
-          <p className="mt-4 text-sm text-[#D1A866]/85">
-            Document uploaded successfully.
+          <p className="mt-4 text-sm text-emerald-300/90">
+            Document uploaded — it appears in your library below.
           </p>
         )}
 

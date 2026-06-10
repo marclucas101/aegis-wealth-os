@@ -36,10 +36,10 @@ export default function ShieldPillarCards({
     <section className="rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60">
       <div className="border-b border-[#D1A866]/10 px-5 py-4 sm:px-6">
         <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#D1A866]/70">
-          Pillar Diagnostic
+          Your seven pillars
         </p>
-        <h3 className="mt-0.5 text-sm font-light text-[#F3F1EA]">
-          Seven-Pillar Preliminary Scores
+        <h3 className="mt-0.5 text-sm font-light text-[#F3F1EA]/60">
+          Each area scored 0–100 · lower scores mean more room to improve
         </h3>
       </div>
 
@@ -64,8 +64,8 @@ export default function ShieldPillarCards({
                   </p>
                 </div>
                 {isWeak && (
-                  <span className="shrink-0 rounded-sm border border-[#F3F1EA]/15 px-1.5 py-px text-[9px] uppercase tracking-wider text-[#F3F1EA]/50">
-                    Priority Gap
+                  <span className="shrink-0 rounded-sm border border-[#D1A866]/30 bg-[#D1A866]/10 px-1.5 py-px text-[9px] uppercase tracking-wider text-[#D1A866]/80">
+                    Focus area
                   </span>
                 )}
               </div>

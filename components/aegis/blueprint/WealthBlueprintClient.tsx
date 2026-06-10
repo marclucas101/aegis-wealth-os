@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import BlueprintClientProfile from "@/components/aegis/blueprint/BlueprintClientProfile";
 import BlueprintEmptyState from "@/components/aegis/blueprint/BlueprintEmptyState";
 import BlueprintExecutiveSummary from "@/components/aegis/blueprint/BlueprintExecutiveSummary";
@@ -8,6 +8,7 @@ import BlueprintPillarAnalysis from "@/components/aegis/blueprint/BlueprintPilla
 import BlueprintRoadmapSummary from "@/components/aegis/blueprint/BlueprintRoadmapSummary";
 import BlueprintScoreOverview from "@/components/aegis/blueprint/BlueprintScoreOverview";
 import BlueprintStressSummary from "@/components/aegis/blueprint/BlueprintStressSummary";
+import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
 import {
   computeBlueprintFromProfile,
   loadDiscoverProfile,
@@ -244,10 +245,10 @@ export default function WealthBlueprintClient() {
                 AEGIS Wealth Operating System™
               </p>
               <h1 className="mt-3 text-2xl font-light tracking-wide text-[#F3F1EA] sm:text-3xl">
-                Wealth Architecture Blueprint™
+                Wealth Blueprint™
               </h1>
-              <p className="mt-2 text-sm font-light text-[#F3F1EA]/45">
-                Institutional Diagnostic Report · Preview Edition
+              <p className="mt-2 text-sm font-light text-[#F3F1EA]/50">
+                Your personal planning report · For review with your advisor
               </p>
             </div>
 
@@ -277,38 +278,76 @@ export default function WealthBlueprintClient() {
         </div>
       </header>
 
+      <nav
+        aria-label="Report sections"
+        className="mb-8 rounded-sm border border-[#D1A866]/12 bg-[#071B2A]/40 px-5 py-4 sm:px-6"
+      >
+        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#D1A866]/70">
+          In this report
+        </p>
+        <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs font-light text-[#F3F1EA]/50">
+          {[
+            "Profile summary",
+            "Executive overview",
+            "Shield scores",
+            "Pillar analysis",
+            "Stress highlights",
+            "Roadmap outlook",
+          ].map((item) => (
+            <li key={item} className="flex items-center gap-1.5">
+              <span className="text-[#D1A866]/50">·</span>
+              {item}
+            </li>
+          ))}
+        </ul>
+      </nav>
+
       <div className="flex flex-col gap-8 sm:gap-10">
-        <BlueprintClientProfile
-          client={results.client}
-          formData={results.formData}
-          completedAt={results.completedAt}
-        />
+        <ReportSection label="Section 1" title="Profile summary">
+          <BlueprintClientProfile
+            client={results.client}
+            formData={results.formData}
+            completedAt={results.completedAt}
+          />
+        </ReportSection>
 
-        <BlueprintExecutiveSummary
-          results={results}
-          saveState={mode === "cloud" ? saveState : undefined}
-        />
+        <ReportSection label="Section 2" title="Executive overview">
+          <BlueprintExecutiveSummary
+            results={results}
+            saveState={mode === "cloud" ? saveState : undefined}
+          />
+        </ReportSection>
 
-        <BlueprintScoreOverview
-          shield={results.shield}
-          awri={results.awri}
-        />
+        <ReportSection label="Section 3" title="Shield scores">
+          <BlueprintScoreOverview
+            shield={results.shield}
+            awri={results.awri}
+          />
+        </ReportSection>
 
-        <BlueprintPillarAnalysis
-          pillarScores={results.shield.pillarScores}
-          weakestPillars={results.weakestPillars}
-        />
+        <ReportSection label="Section 4" title="Pillar analysis">
+          <BlueprintPillarAnalysis
+            pillarScores={results.shield.pillarScores}
+            weakestPillars={results.weakestPillars}
+          />
+        </ReportSection>
 
-        <BlueprintStressSummary
-          topExposures={results.topStressExposures}
-          preStressScore={results.shield.adjustedShieldScore}
-        />
+        <ReportSection label="Section 5" title="Stress highlights">
+          <BlueprintStressSummary
+            topExposures={results.topStressExposures}
+            preStressScore={results.shield.adjustedShieldScore}
+          />
+        </ReportSection>
 
-        <BlueprintRoadmapSummary
-          shield={results.shield}
-          projected={results.projected}
-          roadmap={results.roadmap}
-        />
+        <ReportSection label="Section 6" title="Roadmap outlook">
+          <BlueprintRoadmapSummary
+            shield={results.shield}
+            projected={results.projected}
+            roadmap={results.roadmap}
+          />
+        </ReportSection>
+
+        <ClientTrustNotice variant="full" context="planning" />
       </div>
 
       <footer className="mt-12 border-t border-[#D1A866]/15 pt-8 sm:mt-16">
@@ -318,8 +357,9 @@ export default function WealthBlueprintClient() {
               AEGIS Wealth Blueprint™ · {badgeLabel} · Confidential · For
               architectural review only
             </p>
-            <p className="mt-2 text-xs font-light text-[#F3F1EA]/30">
-              This document does not constitute financial, legal, or tax advice.
+            <p className="mt-2 text-xs font-light text-[#F3F1EA]/35">
+              Planning support only — not financial, legal, or tax advice.
+              Discuss outputs with your qualified advisor before acting.
             </p>
           </div>
 
@@ -368,5 +408,27 @@ export default function WealthBlueprintClient() {
         </div>
       </footer>
     </article>
+  );
+}
+
+function ReportSection({
+  label,
+  title,
+  children,
+}: {
+  label: string;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section>
+      <div className="mb-4 flex items-baseline gap-3 border-b border-[#D1A866]/10 pb-3">
+        <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#D1A866]/60">
+          {label}
+        </span>
+        <h2 className="text-base font-light text-[#F3F1EA]/85">{title}</h2>
+      </div>
+      {children}
+    </section>
   );
 }
