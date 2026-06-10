@@ -16,12 +16,23 @@ const SEVERITY_OPTIONS: Array<{
 interface StressSeveritySelectorProps {
   value: StressSeverity;
   onChange: (severity: StressSeverity) => void;
+  /** When set, only these severity options are shown (e.g. cloud API runs). */
+  allowedSeverities?: StressSeverity[];
+  disabled?: boolean;
 }
 
 export default function StressSeveritySelector({
   value,
   onChange,
+  allowedSeverities,
+  disabled = false,
 }: StressSeveritySelectorProps) {
+  const options = allowedSeverities
+    ? SEVERITY_OPTIONS.filter((option) =>
+        allowedSeverities.includes(option.value),
+      )
+    : SEVERITY_OPTIONS;
+
   return (
     <div className="rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 p-4 sm:p-5">
       <div className="mb-4">
@@ -33,14 +44,19 @@ export default function StressSeveritySelector({
         </p>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-4">
-        {SEVERITY_OPTIONS.map((option) => {
+      <div
+        className={`grid gap-2 ${
+          options.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4"
+        }`}
+      >
+        {options.map((option) => {
           const selected = value === option.value;
 
           return (
             <button
               key={option.value}
               type="button"
+              disabled={disabled}
               onClick={() => onChange(option.value)}
               className={`rounded-sm border px-3 py-3 text-left transition-colors ${
                 selected

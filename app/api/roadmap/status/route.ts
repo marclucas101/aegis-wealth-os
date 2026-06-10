@@ -2,6 +2,15 @@ import { NextResponse } from "next/server";
 
 import type { RoadmapItemStatus } from "@/lib/aegis/localProfile";
 import {
+  getRequestMetadata,
+  parseJsonBodySafely,
+  rejectClientIdInBody,
+  toPublicErrorMessage,
+  validateEnum,
+  validateRequiredString,
+} from "@/lib/security/apiGuards";
+import { writeAuditLog } from "@/lib/supabase/auditLog";
+import {
   isValidRoadmapStatus,
   persistRoadmapItemStatus,
   type PersistRoadmapStatusResult,
@@ -19,16 +28,11 @@ export type RoadmapStatusResponse =
   | ({ ok: true } & PersistRoadmapStatusResult)
   | { ok: false; error: string };
 
-function isValidStatusBody(body: unknown): body is RoadmapStatusRequestBody {
-  if (!body || typeof body !== "object") return false;
-
-  const candidate = body as RoadmapStatusRequestBody;
-  return (
-    typeof candidate.item_key === "string" &&
-    candidate.item_key.trim().length > 0 &&
-    isValidRoadmapStatus(candidate.status)
-  );
-}
+const ROADMAP_STATUSES = [
+  "not_started",
+  "in_progress",
+  "completed",
+] as const satisfies readonly RoadmapItemStatus[];
 
 export async function POST(
   request: Request,
@@ -43,28 +47,44 @@ export async function POST(
       );
     }
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
+    const parsed = await parseJsonBodySafely(request);
+    if (!parsed.ok) {
       return NextResponse.json(
-        { ok: false, error: "Invalid JSON body" },
+        { ok: false, error: parsed.error },
         { status: 400 },
       );
     }
 
-    if (
-      body &&
-      typeof body === "object" &&
-      ("clientId" in body || "client_id" in body)
-    ) {
+    const clientIdReject = rejectClientIdInBody(parsed.body);
+    if (clientIdReject.rejected) {
       return NextResponse.json(
-        { ok: false, error: "client_id must not be supplied by the client" },
+        { ok: false, error: clientIdReject.error },
         { status: 400 },
       );
     }
 
-    if (!isValidStatusBody(body)) {
+    if (!parsed.body || typeof parsed.body !== "object") {
+      return NextResponse.json(
+        { ok: false, error: "Missing or invalid item_key or status" },
+        { status: 400 },
+      );
+    }
+
+    const body = parsed.body as Record<string, unknown>;
+    const itemKeyResult = validateRequiredString(body.item_key, "item_key");
+    if (!itemKeyResult.ok) {
+      return NextResponse.json(
+        { ok: false, error: itemKeyResult.error },
+        { status: 400 },
+      );
+    }
+
+    const statusResult = validateEnum(
+      body.status,
+      ROADMAP_STATUSES,
+      "status",
+    );
+    if (!statusResult.ok || !isValidRoadmapStatus(statusResult.value)) {
       return NextResponse.json(
         { ok: false, error: "Missing or invalid item_key or status" },
         { status: 400 },
@@ -73,16 +93,33 @@ export async function POST(
 
     const result = await persistRoadmapItemStatus(
       session.client,
-      body.item_key.trim(),
-      body.status,
+      itemKeyResult.value,
+      statusResult.value,
     );
+
+    const metadata = getRequestMetadata(request);
+    await writeAuditLog({
+      clientId: session.client.id,
+      userId: session.authUser.id,
+      action: "roadmap_status_updated",
+      entityType: "roadmap_items",
+      entityId: null,
+      metadata: {
+        item_key: result.item_key,
+        status: result.status,
+      },
+      ipAddress: metadata.ip_address,
+      userAgent: metadata.user_agent,
+    });
 
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Failed to update roadmap status";
+    const message = toPublicErrorMessage(
+      err,
+      "Failed to update roadmap status",
+    );
 
-    console.error("[api/roadmap/status]", message);
+    console.error("[api/roadmap/status]", err);
 
     const status = message === "Roadmap item not found" ? 404 : 500;
 

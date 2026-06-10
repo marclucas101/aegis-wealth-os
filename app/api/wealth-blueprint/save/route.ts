@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 
 import {
+  getRequestMetadata,
+  parseJsonBodySafely,
+  rejectClientIdInBody,
+  toPublicErrorMessage,
+} from "@/lib/security/apiGuards";
+import { writeAuditLog } from "@/lib/supabase/auditLog";
+import {
   persistWealthBlueprintSnapshot,
   type PersistReportSnapshotResult,
 } from "@/lib/supabase/reportPersistence";
@@ -11,14 +18,6 @@ export const dynamic = "force-dynamic";
 export type WealthBlueprintSaveResponse =
   | ({ ok: true } & PersistReportSnapshotResult)
   | { ok: false; reason: "no_profile" | "unauthenticated"; error?: string };
-
-function rejectsClientId(body: unknown): boolean {
-  return (
-    !!body &&
-    typeof body === "object" &&
-    ("clientId" in body || "client_id" in body)
-  );
-}
 
 export async function POST(
   request: Request,
@@ -33,25 +32,21 @@ export async function POST(
       );
     }
 
-    let body: unknown = null;
-    try {
-      const text = await request.text();
-      if (text.trim()) {
-        body = JSON.parse(text) as unknown;
-      }
-    } catch {
+    const parsed = await parseJsonBodySafely(request, { allowEmpty: true });
+    if (!parsed.ok) {
       return NextResponse.json(
-        { ok: false, reason: "no_profile", error: "Invalid JSON body" },
+        { ok: false, reason: "no_profile", error: parsed.error },
         { status: 400 },
       );
     }
 
-    if (rejectsClientId(body)) {
+    const clientIdReject = rejectClientIdInBody(parsed.body);
+    if (clientIdReject.rejected) {
       return NextResponse.json(
         {
           ok: false,
           reason: "no_profile",
-          error: "client_id must not be supplied by the client",
+          error: clientIdReject.error,
         },
         { status: 400 },
       );
@@ -59,18 +54,32 @@ export async function POST(
 
     const result = await persistWealthBlueprintSnapshot(session.client);
 
+    const metadata = getRequestMetadata(request);
+    await writeAuditLog({
+      clientId: session.client.id,
+      userId: session.authUser.id,
+      action: "wealth_blueprint_saved",
+      entityType: "wealth_blueprints",
+      entityId: result.id,
+      metadata: {
+        generated_at: result.generated_at,
+      },
+      ipAddress: metadata.ip_address,
+      userAgent: metadata.user_agent,
+    });
+
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
-    const message =
-      err instanceof Error
-        ? err.message
-        : "Failed to save wealth blueprint snapshot";
+    const message = toPublicErrorMessage(
+      err,
+      "Failed to save wealth blueprint snapshot",
+    );
 
     if (message === "no_profile") {
       return NextResponse.json({ ok: false, reason: "no_profile" });
     }
 
-    console.error("[api/wealth-blueprint/save]", message);
+    console.error("[api/wealth-blueprint/save]", err);
 
     return NextResponse.json(
       { ok: false, reason: "no_profile", error: message },

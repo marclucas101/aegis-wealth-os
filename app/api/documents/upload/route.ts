@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 
 import {
+  getRequestMetadata,
+  rejectClientIdInFormData,
+  toPublicErrorMessage,
+  validateEnum,
+} from "@/lib/security/apiGuards";
+import { writeAuditLog } from "@/lib/supabase/auditLog";
+import {
+  DOCUMENT_CATEGORIES,
   isValidDocumentCategory,
   uploadClientDocument,
   type DocumentCategory,
@@ -37,22 +45,27 @@ export async function POST(
       );
     }
 
-    if (formData.has("client_id") || formData.has("clientId")) {
+    const clientIdReject = rejectClientIdInFormData(formData);
+    if (clientIdReject.rejected) {
       return NextResponse.json(
-        { ok: false, error: "client_id must not be supplied by the client" },
+        { ok: false, error: clientIdReject.error },
         { status: 400 },
       );
     }
 
-    const categoryValue = formData.get("category");
-    if (!isValidDocumentCategory(categoryValue)) {
+    const categoryResult = validateEnum(
+      formData.get("category"),
+      DOCUMENT_CATEGORIES,
+      "category",
+    );
+    if (!categoryResult.ok || !isValidDocumentCategory(categoryResult.value)) {
       return NextResponse.json(
         { ok: false, error: "Missing or invalid category" },
         { status: 400 },
       );
     }
 
-    const category = categoryValue as DocumentCategory;
+    const category = categoryResult.value as DocumentCategory;
     const fileEntry = formData.get("file");
 
     if (!(fileEntry instanceof File)) {
@@ -69,12 +82,26 @@ export async function POST(
       category,
     );
 
+    const metadata = getRequestMetadata(request);
+    await writeAuditLog({
+      clientId: session.client.id,
+      userId: session.authUser.id,
+      action: "document_uploaded",
+      entityType: "documents",
+      entityId: document.id,
+      metadata: {
+        category,
+        file_size: document.file_size,
+      },
+      ipAddress: metadata.ip_address,
+      userAgent: metadata.user_agent,
+    });
+
     return NextResponse.json({ ok: true, document });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Failed to upload document";
+    const message = toPublicErrorMessage(err, "Failed to upload document");
 
-    console.error("[api/documents/upload]", message);
+    console.error("[api/documents/upload]", err);
 
     const status =
       message.includes("size limit") ||

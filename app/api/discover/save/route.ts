@@ -5,6 +5,13 @@ import type {
   SaveDiscoverProfileInput,
 } from "@/lib/aegis/localProfile";
 import {
+  toPublicErrorMessage,
+  getRequestMetadata,
+  parseJsonBodySafely,
+  rejectClientIdInBody,
+} from "@/lib/security/apiGuards";
+import { writeAuditLog } from "@/lib/supabase/auditLog";
+import {
   persistDiscoverProfile,
   type PersistDiscoverResult,
 } from "@/lib/supabase/discoverPersistence";
@@ -46,30 +53,30 @@ export async function POST(
       );
     }
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
+    const parsed = await parseJsonBodySafely(request);
+    if (!parsed.ok) {
       return NextResponse.json(
-        { ok: false, error: "Invalid JSON body" },
+        { ok: false, error: parsed.error },
         { status: 400 },
       );
     }
 
-    if (!isValidSaveBody(body)) {
+    const clientIdReject = rejectClientIdInBody(parsed.body);
+    if (clientIdReject.rejected) {
+      return NextResponse.json(
+        { ok: false, error: clientIdReject.error },
+        { status: 400 },
+      );
+    }
+
+    if (!isValidSaveBody(parsed.body)) {
       return NextResponse.json(
         { ok: false, error: "Missing or invalid discover profile fields" },
         { status: 400 },
       );
     }
 
-    if ("clientId" in body || "client_id" in body) {
-      return NextResponse.json(
-        { ok: false, error: "client_id must not be supplied by the client" },
-        { status: 400 },
-      );
-    }
-
+    const body = parsed.body;
     const result = await persistDiscoverProfile(session.client, {
       formData: body.formData,
       completeness: body.completeness,
@@ -79,12 +86,30 @@ export async function POST(
       roadmapStatuses: body.roadmapStatuses,
     });
 
+    const metadata = getRequestMetadata(request);
+    await writeAuditLog({
+      clientId: session.client.id,
+      userId: session.authUser.id,
+      action: "discover_profile_saved",
+      entityType: "discover_profiles",
+      entityId: result.discoverProfileId,
+      metadata: {
+        score: result.adjustedShieldScore,
+        rating: result.rating,
+        discover_score: body.discoverScore,
+      },
+      ipAddress: metadata.ip_address,
+      userAgent: metadata.user_agent,
+    });
+
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Failed to save discover profile";
+    const message = toPublicErrorMessage(
+      err,
+      "Failed to save discover profile",
+    );
 
-    console.error("[api/discover/save]", message);
+    console.error("[api/discover/save]", err);
 
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

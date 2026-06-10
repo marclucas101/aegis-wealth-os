@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatCurrency } from "@/components/aegis/ShieldScoreCard";
 import StressEmptyState from "@/components/aegis/stress/StressEmptyState";
+import StressHistoryPanel, {
+  type StressTestHistoryEntry,
+} from "@/components/aegis/stress/StressHistoryPanel";
 import StressImpactPanel from "@/components/aegis/stress/StressImpactPanel";
 import StressScenarioCard from "@/components/aegis/stress/StressScenarioCard";
 import StressSeveritySelector from "@/components/aegis/stress/StressSeveritySelector";
@@ -13,7 +16,7 @@ import {
   type StressTestingPageResults,
 } from "@/lib/aegis/localProfile";
 import type { StressTestingSnapshot } from "@/lib/supabase/moduleQueries";
-import type { StressScenario, StressSeverity } from "@/src/lib/scoring/types";
+import type { StressScenario, StressSeverity, StressTestResult } from "@/src/lib/scoring/types";
 
 const SCENARIO_ORDER: StressScenario[] = [
   "income_loss",
@@ -28,8 +31,15 @@ const SCENARIO_ORDER: StressScenario[] = [
   "estate_delay",
 ];
 
+const CLOUD_ALLOWED_SEVERITIES: StressSeverity[] = [
+  "mild",
+  "moderate",
+  "severe",
+];
+
 type StressMode = "loading" | "empty" | "cloud" | "local";
 type ProfileSource = "cloud" | "local";
+type RunState = "idle" | "running" | "error";
 
 function ProfileSourceBadge({ source }: { source: ProfileSource }) {
   const label = source === "cloud" ? "Cloud Profile" : "Local Profile";
@@ -71,6 +81,37 @@ export default function StressTestingClient() {
   const [severity, setSeverity] = useState<StressSeverity>("moderate");
   const [selectedScenario, setSelectedScenario] =
     useState<StressScenario>("income_loss");
+  const [cloudRunOverrides, setCloudRunOverrides] = useState<
+    Partial<Record<StressScenario, StressTestResult>>
+  >({});
+  const [runState, setRunState] = useState<RunState>("idle");
+  const [runError, setRunError] = useState<string | null>(null);
+  const [history, setHistory] = useState<StressTestHistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+
+    try {
+      const response = await fetch("/api/stress-testing/history", {
+        cache: "no-store",
+      });
+
+      if (!response.ok) return;
+
+      const data = (await response.json()) as
+        | { ok: true; runs: StressTestHistoryEntry[] }
+        | { ok: false };
+
+      if (data.ok) {
+        setHistory(data.runs);
+      }
+    } catch {
+      // History is optional for display; ignore fetch errors.
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,6 +162,63 @@ export default function StressTestingClient() {
     };
   }, []);
 
+  useEffect(() => {
+    if (mode !== "cloud") {
+      setHistory([]);
+      setCloudRunOverrides({});
+      setRunState("idle");
+      setRunError(null);
+      return;
+    }
+
+    void loadHistory();
+  }, [mode, loadHistory]);
+
+  const handleRunStressTest = useCallback(async () => {
+    if (mode !== "cloud") return;
+
+    setRunState("running");
+    setRunError(null);
+
+    try {
+      const response = await fetch("/api/stress-testing/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scenario: selectedScenario,
+          severity,
+        }),
+      });
+
+      const data = (await response.json()) as
+        | {
+            ok: true;
+            result: StressTestResult;
+          }
+        | { ok: false; error?: string };
+
+      if (!response.ok || !data.ok) {
+        setRunState("error");
+        setRunError(
+          data.ok === false
+            ? (data.error ?? "Failed to save stress test run")
+            : "Failed to save stress test run",
+        );
+        return;
+      }
+
+      setCloudRunOverrides((current) => ({
+        ...current,
+        [selectedScenario]: data.result,
+      }));
+      setRunState("idle");
+      void loadHistory();
+    } catch {
+      setRunState("error");
+      setRunError("Failed to save stress test run");
+    }
+  }, [mode, selectedScenario, severity, loadHistory]);
+
   const localResults: StressTestingPageResults | null = useMemo(() => {
     if (mode !== "local" || !profile) return null;
     return computeStressTestingFromProfile(profile, severity);
@@ -133,25 +231,41 @@ export default function StressTestingClient() {
 
   const results = mode === "cloud" ? cloudResults : localResults;
 
-  const orderedTests = useMemo(() => {
+  const displayedStressTests = useMemo(() => {
     if (!results) return [];
+
+    if (mode !== "cloud") {
+      return results.stressTests;
+    }
+
+    return results.stressTests.map((test) => {
+      const override = cloudRunOverrides[test.scenario];
+      return override ?? test;
+    });
+  }, [results, mode, cloudRunOverrides]);
+
+  const orderedTests = useMemo(() => {
     const byScenario = new Map(
-      results.stressTests.map((test) => [test.scenario, test]),
+      displayedStressTests.map((test) => [test.scenario, test]),
     );
     return SCENARIO_ORDER.map(
       (scenario) => byScenario.get(scenario)!,
     ).filter(Boolean);
-  }, [results]);
+  }, [displayedStressTests]);
 
   const topDamaging = useMemo(() => {
     if (!results) return [];
-    if (mode === "cloud" && cloudSnapshot) {
-      return cloudSnapshot.topStressExposures;
+
+    if (mode === "cloud") {
+      return [...displayedStressTests]
+        .sort((a, b) => a.postStressScore - b.postStressScore)
+        .slice(0, 3);
     }
+
     return [...results.stressTests]
       .sort((a, b) => a.postStressScore - b.postStressScore)
       .slice(0, 3);
-  }, [results, mode, cloudSnapshot]);
+  }, [results, mode, displayedStressTests]);
 
   const selectedTest = useMemo(() => {
     return orderedTests.find((test) => test.scenario === selectedScenario) ?? null;
@@ -172,6 +286,7 @@ export default function StressTestingClient() {
   }
 
   const profileSource: ProfileSource = mode === "cloud" ? "cloud" : "local";
+  const isRunning = runState === "running";
 
   return (
     <>
@@ -200,10 +315,40 @@ export default function StressTestingClient() {
       </header>
 
       <div className="flex flex-col gap-6">
-        <StressSeveritySelector
-          value={mode === "cloud" ? "moderate" : severity}
-          onChange={mode === "local" ? setSeverity : () => undefined}
-        />
+        <div className="space-y-3">
+          <StressSeveritySelector
+            value={severity}
+            onChange={setSeverity}
+            allowedSeverities={
+              mode === "cloud" ? CLOUD_ALLOWED_SEVERITIES : undefined
+            }
+            disabled={isRunning}
+          />
+
+          {mode === "cloud" && (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm font-light text-[#F3F1EA]/45">
+                Run the selected scenario at the chosen severity. Results are
+                saved to your cloud profile.
+              </p>
+              <button
+                type="button"
+                onClick={() => void handleRunStressTest()}
+                disabled={isRunning}
+                className="shrink-0 rounded-sm border border-[#D1A866]/40 bg-[#D1A866]/15 px-5 py-2.5 text-[10px] font-medium uppercase tracking-[0.18em] text-[#D1A866] transition-colors hover:bg-[#D1A866]/25 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isRunning ? "Running…" : "Run Stress Test"}
+              </button>
+            </div>
+          )}
+
+          {mode === "cloud" && runState === "error" && runError && (
+            <p className="text-sm text-[#F3F1EA]/55">
+              {runError}. Your on-screen result is still visible, but this run
+              was not saved.
+            </p>
+          )}
+        </div>
 
         <section className="rounded-sm border border-[#D1A866]/15 bg-[#1A2A2B]/25 p-5">
           <div className="mb-4">
@@ -255,6 +400,10 @@ export default function StressTestingClient() {
             ))}
           </div>
         </section>
+
+        {mode === "cloud" && (
+          <StressHistoryPanel runs={history} loading={historyLoading} />
+        )}
       </div>
     </>
   );
