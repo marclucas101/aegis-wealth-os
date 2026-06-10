@@ -25,7 +25,10 @@ export type AuthCookiesDebugResponse = {
   incomingRawCookieHeaderPresent: boolean;
   incomingRawCookieHeaderContainsProjectRef: boolean;
   basicCookiePresent: boolean;
+  bigCookiePresent: boolean;
+  sbNamedCookiePresent: boolean;
   probeCookiePresent: boolean;
+  supabaseAuthCookiePresent: boolean;
   environment: string | null;
   production: boolean;
 };
@@ -48,7 +51,14 @@ export async function GET(): Promise<NextResponse<AuthCookiesDebugResponse>> {
         ? rawCookieHeader?.includes(projectRef) ?? false
         : false,
       basicCookiePresent: incomingCookieNames.includes("aegis-basic-cookie"),
+      bigCookiePresent: incomingCookieNames.includes("aegis-big-cookie"),
+      sbNamedCookiePresent: incomingCookieNames.includes("sb-size-probe"),
       probeCookiePresent: incomingCookieNames.includes("aegis-cookie-probe"),
+      supabaseAuthCookiePresent: projectRef
+        ? incomingCookieNames.some((name) =>
+            name.startsWith(`sb-${projectRef}-auth-token`),
+          )
+        : false,
       environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? null,
       production: process.env.NODE_ENV === "production",
     },

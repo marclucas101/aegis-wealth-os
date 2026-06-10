@@ -18,6 +18,16 @@ export async function GET(request: NextRequest): Promise<Response> {
     "Set-Cookie",
     buildSetCookieHeader("aegis-basic-cookie", "1", { maxAge: 3600 }),
   );
+  headers.append(
+    "Set-Cookie",
+    buildSetCookieHeader("aegis-big-cookie", "x".repeat(2700), {
+      maxAge: 3600,
+    }),
+  );
+  headers.append(
+    "Set-Cookie",
+    buildSetCookieHeader("sb-size-probe", "1", { maxAge: 3600 }),
+  );
   headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
   headers.set(
     "Location",
