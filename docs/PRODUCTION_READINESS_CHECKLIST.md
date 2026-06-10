@@ -1,9 +1,11 @@
-# Production Readiness Checklist — Phase 4R
+# Production Readiness Checklist — Phase 4R / 4S
 
 **Date:** 2026-06-10  
 **Purpose:** Pre-deploy gate for Aegis Wealth OS. Complete before production traffic or major releases.
 
 **Related docs:** [QA Smoke Test Plan](./QA_SMOKE_TEST_PLAN.md) · [Security Test Plan](./SECURITY_TEST_PLAN.md) · [API Route Inventory](./API_ROUTE_INVENTORY.md) · [Role Access Matrix](./ROLE_ACCESS_MATRIX.md) · [Supabase Security Review](./SUPABASE_SECURITY_REVIEW.md)
+
+**Deployment (Phase 4S):** [Vercel + Supabase Deployment](./DEPLOYMENT_VERCEL_SUPABASE.md) · [Deployment Checklist](./DEPLOYMENT_CHECKLIST.md) · [Environment Variables](./ENVIRONMENT_VARIABLES.md) · [Supabase Production Setup](./SUPABASE_PRODUCTION_SETUP.md) · [Post-Deployment QA](./POST_DEPLOYMENT_QA.md)
 
 ---
 
@@ -142,14 +144,23 @@
 
 ## 13. Deployment Readiness
 
+> **Warning:** Do not deploy with real client data until legal, compliance, and security review is complete.
+
+- [ ] Follow [Deployment Checklist](./DEPLOYMENT_CHECKLIST.md) phases A–E
+- [ ] `npm run deploy:check` passes locally or in CI
+- [ ] `npm run deploy:config -- --production` passes (or warnings reviewed)
+- [ ] [Environment Variables](./ENVIRONMENT_VARIABLES.md) set on Vercel — service role **not** `NEXT_PUBLIC_`
+- [ ] [Supabase Production Setup](./SUPABASE_PRODUCTION_SETUP.md) complete (auth redirects, migrations, RLS, storage, backups)
 - [ ] Production env vars configured on host (not committed to git)
 - [ ] `NODE_ENV=production` health endpoint returns minimal payload (no internal diagnostics)
 - [ ] Consider restricting `/api/health/supabase` and `/supabase-health` in production
 - [ ] CDN / WAF / bot protection planned for public endpoints
 - [ ] Backup drill for Postgres + `client-documents` bucket documented
 - [ ] Monitoring for 5xx rates and audit log failures
-- [ ] Rollback plan documented (previous deploy + migration compatibility)
+- [ ] Rollback plan documented (see [Vercel + Supabase Deployment](./DEPLOYMENT_VERCEL_SUPABASE.md#rollback))
+- [ ] In-memory rate limiting limitation acknowledged — not multi-instance production-grade
 - [ ] Run full [QA Smoke Test Plan](./QA_SMOKE_TEST_PLAN.md) on staging before promote
+- [ ] Complete [Post-Deployment QA](./POST_DEPLOYMENT_QA.md) after first deploy
 
 ---
 
@@ -160,6 +171,8 @@
 | `npm run qa:env` | Verify required env vars (no secrets printed) |
 | `npm run qa:routes` | Scan API routes; flag missing rate limits |
 | `npm run qa:smoke` | Unauthenticated API smoke tests (server must be running) |
+| `npm run deploy:check` | Pre-deploy gate: env names, scripts, route inventory |
+| `npm run deploy:config` | Production config review (URL shape, localhost warnings) |
 
 ---
 

@@ -29,8 +29,21 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## Deploy on Vercel + Supabase
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Aegis Wealth OS uses Supabase for auth, database, and storage. Before deploying:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run deploy:check
+npm run build
+npx tsc --noEmit
+```
+
+Deployment guides:
+
+- [Vercel + Supabase Deployment](docs/DEPLOYMENT_VERCEL_SUPABASE.md)
+- [Deployment Checklist](docs/DEPLOYMENT_CHECKLIST.md)
+- [Environment Variables](docs/ENVIRONMENT_VARIABLES.md)
+- [Post-Deployment QA](docs/POST_DEPLOYMENT_QA.md)
+
+> Do not deploy with real client data until legal, compliance, and security review is complete.

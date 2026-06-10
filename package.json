@@ -9,7 +9,9 @@
     "lint": "eslint",
     "qa:env": "npx tsx scripts/verify-env.ts",
     "qa:routes": "npx tsx scripts/check-api-routes.ts",
-    "qa:smoke": "npx tsx scripts/smoke-test-api.ts"
+    "qa:smoke": "npx tsx scripts/smoke-test-api.ts",
+    "deploy:check": "npx tsx scripts/predeploy-check.ts",
+    "deploy:config": "npx tsx scripts/verify-production-config.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
