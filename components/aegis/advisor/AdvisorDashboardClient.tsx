@@ -10,6 +10,7 @@ import AdvisorMetricCard from "@/components/aegis/advisor/AdvisorMetricCard";
 import AdvisorPriorityClients from "@/components/aegis/advisor/AdvisorPriorityClients";
 import AdvisorRecentActivity from "@/components/aegis/advisor/AdvisorRecentActivity";
 import AdvisorReviewPipelinePanel from "@/components/aegis/advisor/AdvisorReviewPipelinePanel";
+import AdvisorTaskPanel from "@/components/aegis/advisor/AdvisorTaskPanel";
 import AdvisorSearchFilters, {
   type AdvisorFilters,
 } from "@/components/aegis/advisor/AdvisorSearchFilters";
@@ -193,6 +194,8 @@ export default function AdvisorDashboardClient() {
       </div>
 
       <AdvisorReviewPipelinePanel />
+
+      <AdvisorTaskPanel />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <AdvisorPriorityClients clients={overview.priorityClients} />

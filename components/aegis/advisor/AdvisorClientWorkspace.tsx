@@ -6,6 +6,7 @@ import AdvisorClientAccessDenied from "@/components/aegis/advisor/AdvisorClientA
 import AdvisorClientActivityPanel from "@/components/aegis/advisor/AdvisorClientActivityPanel";
 import AdvisorClientDocumentsPanel from "@/components/aegis/advisor/AdvisorClientDocumentsPanel";
 import AdvisorClientNotesPanel from "@/components/aegis/advisor/AdvisorClientNotesPanel";
+import AdvisorClientTasksPanel from "@/components/aegis/advisor/AdvisorClientTasksPanel";
 import AdvisorClientHeader from "@/components/aegis/advisor/AdvisorClientHeader";
 import AdvisorClientReviewPanel from "@/components/aegis/advisor/AdvisorClientReviewPanel";
 import AdvisorClientPillarPanel from "@/components/aegis/advisor/AdvisorClientPillarPanel";
@@ -192,6 +193,8 @@ export default function AdvisorClientWorkspace({
         />
         <AdvisorClientActivityPanel activity={workspace.recentActivity} />
       </div>
+
+      <AdvisorClientTasksPanel clientId={clientId} />
 
       <AdvisorClientNotesPanel clientId={clientId} />
 
