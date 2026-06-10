@@ -3,7 +3,9 @@
 **Date:** 2026-06-10  
 **Purpose:** Manual security verification beyond automated smoke tests.
 
-**Related:** [Supabase Security Review](./SUPABASE_SECURITY_REVIEW.md) · [Role Access Matrix](./ROLE_ACCESS_MATRIX.md) · [API Route Inventory](./API_ROUTE_INVENTORY.md)
+**Related:** [Security Audit Report](./SECURITY_AUDIT_REPORT.md) · [Advisor & Admin Access Review](./ADVISOR_ADMIN_ACCESS_REVIEW.md) · [Supabase Security Review](./SUPABASE_SECURITY_REVIEW.md) · [Role Access Matrix](./ROLE_ACCESS_MATRIX.md) · [API Route Inventory](./API_ROUTE_INVENTORY.md)
+
+**Automation:** `npm run security:audit` · `npm run security:api` · `npm run security:service-role`
 
 ---
 

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import {
   getRequestMetadata,
   parseJsonBodySafely,
+  rateLimitOrThrow,
   toPublicErrorMessage,
   validateRequiredString,
 } from "@/lib/security/apiGuards";
@@ -68,6 +69,14 @@ export async function POST(
         },
         { status: access.reason === "unauthenticated" ? 401 : 403 },
       );
+    }
+
+    const rateLimit = rateLimitOrThrow<AdminCreatePlaceholderResponse>(request, {
+      userId: access.authUser.id,
+      bucket: "writeHeavy",
+    });
+    if (!rateLimit.ok) {
+      return rateLimit.response;
     }
 
     const parsed = await parseJsonBodySafely(request);

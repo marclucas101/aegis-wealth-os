@@ -5,6 +5,8 @@
 
 **Guides:** [Vercel + Supabase Deployment](./DEPLOYMENT_VERCEL_SUPABASE.md) · [Supabase Production Setup](./SUPABASE_PRODUCTION_SETUP.md) · [Environment Variables](./ENVIRONMENT_VARIABLES.md) · [Post-Deployment QA](./POST_DEPLOYMENT_QA.md) · [Operations Runbook](./OPERATIONS_RUNBOOK.md) · [Monitoring & Logging](./MONITORING_AND_LOGGING.md)
 
+**Security (Phase 4X):** [Security Audit Report](./SECURITY_AUDIT_REPORT.md) · `npm run security:audit`
+
 ---
 
 > **Warning:** Do not deploy with real client data until legal, compliance, and security review is complete.
@@ -23,6 +25,7 @@
 - [ ] `npx tsc --noEmit` passes
 - [ ] `npm run build` succeeds
 - [ ] `npm run qa:routes` reviewed — no unexpected auth/rate-limit gaps
+- [ ] `npm run security:audit` passes (review WARN items in [API Security Review](./API_SECURITY_REVIEW.md))
 - [ ] [Production Readiness Checklist](./PRODUCTION_READINESS_CHECKLIST.md) sections 1–12 reviewed
 
 ---

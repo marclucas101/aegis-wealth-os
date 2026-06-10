@@ -5,6 +5,8 @@
 
 **Related docs:** [QA Smoke Test Plan](./QA_SMOKE_TEST_PLAN.md) · [Security Test Plan](./SECURITY_TEST_PLAN.md) · [API Route Inventory](./API_ROUTE_INVENTORY.md) · [Role Access Matrix](./ROLE_ACCESS_MATRIX.md) · [Supabase Security Review](./SUPABASE_SECURITY_REVIEW.md)
 
+**Security audit (Phase 4X):** [Security Audit Report](./SECURITY_AUDIT_REPORT.md) · [RLS Policy Review](./RLS_POLICY_REVIEW.md) · [Storage Policy Review](./STORAGE_POLICY_REVIEW.md) · [Service Role Usage Review](./SERVICE_ROLE_USAGE_REVIEW.md) · [API Security Review](./API_SECURITY_REVIEW.md) · [Advisor & Admin Access Review](./ADVISOR_ADMIN_ACCESS_REVIEW.md)
+
 **Deployment (Phase 4S):** [Vercel + Supabase Deployment](./DEPLOYMENT_VERCEL_SUPABASE.md) · [Deployment Checklist](./DEPLOYMENT_CHECKLIST.md) · [Environment Variables](./ENVIRONMENT_VARIABLES.md) · [Supabase Production Setup](./SUPABASE_PRODUCTION_SETUP.md) · [Post-Deployment QA](./POST_DEPLOYMENT_QA.md)
 
 **Operations (Phase 4W):** [Operations Runbook](./OPERATIONS_RUNBOOK.md) · [Monitoring & Logging](./MONITORING_AND_LOGGING.md) · [Backup & Recovery](./BACKUP_AND_RECOVERY.md) · [Incident Response](./INCIDENT_RESPONSE.md) · [Audit Log Review](./AUDIT_LOG_REVIEW.md)
@@ -110,6 +112,10 @@
 
 - [ ] Unauthenticated protected routes return **401** or **403**, not **500**
 - [ ] Run `npm run qa:smoke` with dev server — all checks pass
+- [ ] Run `npm run security:audit` — no critical service-role findings; review WARN items
+- [ ] Complete [Security Audit Report](./SECURITY_AUDIT_REPORT.md) sign-off checklist
+- [ ] Review [RLS Policy Review](./RLS_POLICY_REVIEW.md) — plan migration for `users.role` escalation gap
+- [ ] Run manual tests in [Advisor & Admin Access Review](./ADVISOR_ADMIN_ACCESS_REVIEW.md)
 - [ ] Sensitive body fields rejected (`client_id`, `role`, `user_id`, etc.)
 - [ ] Error responses sanitized — no raw DB errors in production
 - [ ] Service role used only in server modules (`import "server-only"` where applicable)
@@ -181,6 +187,9 @@
 | `npm run deploy:check` | Pre-deploy gate: env names, scripts, route inventory |
 | `npm run deploy:config` | Production config review (URL shape, localhost warnings) |
 | `npm run ops:check` | Ops docs, health routes, env names (no credentials) |
+| `npm run security:audit` | Phase 4X: service-role scan + API auth patterns + doc check |
+| `npm run security:api` | API route auth / rate-limit / audit flags |
+| `npm run security:service-role` | Unsafe service-role import detection |
 
 ---
 

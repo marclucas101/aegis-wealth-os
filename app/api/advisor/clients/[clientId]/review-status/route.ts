@@ -3,7 +3,9 @@ import { NextResponse } from "next/server";
 import {
   getRequestMetadata,
   parseJsonBodySafely,
+  rateLimitOrThrow,
   rejectClientIdInBody,
+  rejectUnexpectedFields,
   toPublicErrorMessage,
   validateEnum,
 } from "@/lib/security/apiGuards";
@@ -150,10 +152,26 @@ export async function PATCH(
       );
     }
 
+    const rateLimit = rateLimitOrThrow<ClientReviewStatusPatchResponse>(request, {
+      userId: access.authUser.id,
+      bucket: "writeHeavy",
+    });
+    if (!rateLimit.ok) {
+      return rateLimit.response;
+    }
+
     const parsed = await parseJsonBodySafely(request);
     if (!parsed.ok) {
       return NextResponse.json(
         { ok: false, reason: "error", error: parsed.error },
+        { status: 400 },
+      );
+    }
+
+    const unexpected = rejectUnexpectedFields(parsed.body);
+    if (unexpected.rejected) {
+      return NextResponse.json(
+        { ok: false, reason: "error", error: unexpected.error },
         { status: 400 },
       );
     }

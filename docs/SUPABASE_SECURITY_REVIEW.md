@@ -1,8 +1,18 @@
-# Supabase Security Review — Phase 3O
+# Supabase Security Review — Phase 3O / 4X
 
 **Date:** 2026-06-10  
-**Scope:** Client portal Supabase integration (Phases 3B–3N)  
-**Status:** Review complete — ready for Advisor Dashboard (Phase 4)
+**Scope:** Client portal Supabase integration (Phases 3B–3N) + full-stack audit (Phase 4X)  
+**Status:** Review complete — see Phase 4X audit pack before private beta
+
+**Phase 4X audit pack:**
+
+- [Security Audit Report](./SECURITY_AUDIT_REPORT.md)
+- [RLS Policy Review](./RLS_POLICY_REVIEW.md)
+- [Storage Policy Review](./STORAGE_POLICY_REVIEW.md)
+- [Service Role Usage Review](./SERVICE_ROLE_USAGE_REVIEW.md)
+- [API Security Review](./API_SECURITY_REVIEW.md)
+- [Advisor & Admin Access Review](./ADVISOR_ADMIN_ACCESS_REVIEW.md)
+- Automation: `npm run security:audit`
 
 ---
 
@@ -46,15 +56,18 @@ Browser (anon key + cookie session)
 | `/wealth-blueprint` | Wealth Blueprint |
 | `/annual-review` | Annual Review |
 | `/document-vault` | Document Vault |
-| `/advisor` | Advisor (placeholder) |
+| `/advisor` | Advisor OS |
+| `/admin` | Admin console |
 
 **Public pages (no auth required):**
 
 - `/` — landing
 - `/login`, `/signup` — auth pages (logged-in users redirect to `/dashboard`)
 - `/auth/callback` — OAuth/magic-link callback
+- `/legal/*` — terms, privacy, disclaimer, consent
 - `/supabase-health` — connectivity UI
-- `/api/health/supabase` — health probe
+- `/api/health/app` — app runtime probe
+- `/api/health/supabase` — DB health probe
 
 **API routes** are not middleware-gated; each handler calls `ensureUserClientProfile()` and returns `401` when unauthenticated. This is intentional — API auth is handler-level, not page-level.
 
@@ -368,4 +381,38 @@ Existing write routes already emit audit events. No new audit actions were requi
 | Standalone `GET /api/advisor/task-suggestions` | Returns dashboard-capped top 20 (backward compatible, lighter than pre-4O.2 full book) |
 | Partial suggestions | `partial: true` + `warning` when time budget or cap applies — UI may show fewer than total actionable items |
 | Cold Supabase latency | First request after idle may still exceed 3–5s on slow networks |
+
+---
+
+## 16. Phase 4X — Security Audit & RLS Review
+
+**Date:** 2026-06-10  
+**Scope:** Full API route review, RLS/storage/service-role/middleware audit, automated scans
+
+### Deliverables
+
+| Item | Location |
+|------|----------|
+| Master audit report | `docs/SECURITY_AUDIT_REPORT.md` |
+| RLS table review | `docs/RLS_POLICY_REVIEW.md` |
+| Storage policy review | `docs/STORAGE_POLICY_REVIEW.md` |
+| Service role inventory | `docs/SERVICE_ROLE_USAGE_REVIEW.md` |
+| API security matrix | `docs/API_SECURITY_REVIEW.md` |
+| Advisor/admin boundaries | `docs/ADVISOR_ADMIN_ACCESS_REVIEW.md` |
+| Service-role import scan | `npm run security:service-role` |
+| API auth pattern scan | `npm run security:api` |
+| Combined runner | `npm run security:audit` |
+
+### Code fixes (4X)
+
+- `writeHeavy` rate limit on advisor/admin `create-placeholder` and advisor `review-status` PATCH
+- `rejectUnexpectedFields` on advisor `review-status` PATCH
+
+### Top findings (not fixed in 4X — migration deferred)
+
+1. **Critical:** `users_update_own` RLS may allow `role` self-escalation via direct Supabase client
+2. **Medium:** In-memory rate limits not multi-instance safe
+3. **Medium:** `clients` UPDATE policy does not restrict sensitive columns at RLS layer
+
+See [Security Audit Report](./SECURITY_AUDIT_REPORT.md) for full severity table and manual test checklist.
 

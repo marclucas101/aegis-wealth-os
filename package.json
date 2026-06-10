@@ -12,7 +12,10 @@
     "qa:smoke": "npx tsx scripts/smoke-test-api.ts",
     "deploy:check": "npx tsx scripts/predeploy-check.ts",
     "deploy:config": "npx tsx scripts/verify-production-config.ts",
-    "ops:check": "npx tsx scripts/ops-check.ts"
+    "ops:check": "npx tsx scripts/ops-check.ts",
+    "security:service-role": "npx tsx scripts/check-service-role-imports.ts",
+    "security:api": "npx tsx scripts/check-api-auth-patterns.ts",
+    "security:audit": "npx tsx scripts/security-audit.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",

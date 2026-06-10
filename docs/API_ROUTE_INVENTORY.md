@@ -73,7 +73,7 @@ Returns `{ authenticated: false }` with 200 when logged out. Returns own client 
 | `/api/advisor/task-suggestions/create-task` | POST | Yes | advisor, admin | W | Yes (`writeHeavy`) | `advisor_suggested_task_created` |
 | `/api/advisor/client-invitations` | GET | Yes | advisor, admin | R | No | — |
 | `/api/advisor/client-invitations` | POST | Yes | advisor, admin | W | Yes (`writeHeavy`) | `client_invitation_created` / `client_invitation_failed` |
-| `/api/advisor/clients/create-placeholder` | POST | Yes | advisor, admin | W | No‡ | `client_placeholder_created` |
+| `/api/advisor/clients/create-placeholder` | POST | Yes | advisor, admin | W | Yes (`writeHeavy`) | `client_placeholder_created` |
 | `/api/advisor/clients/[clientId]` | GET | Yes | advisor‡, admin | R | No | — |
 | `/api/advisor/clients/[clientId]/command-center` | GET | Yes | advisor‡, admin | R | Yes (`commandCenter`) | — |
 | `/api/advisor/clients/[clientId]/notes` | GET | Yes | advisor‡, admin | R | No | — |
@@ -83,7 +83,7 @@ Returns `{ authenticated: false }` with 200 when logged out. Returns own client 
 | `/api/advisor/clients/[clientId]/tasks` | GET | Yes | advisor‡, admin | R | No | — |
 | `/api/advisor/clients/[clientId]/task-suggestions` | GET | Yes | advisor‡, admin | R | No | — |
 | `/api/advisor/clients/[clientId]/review-status` | GET | Yes | advisor‡, admin | R | No | — |
-| `/api/advisor/clients/[clientId]/review-status` | PATCH | Yes | advisor‡, admin | W | No‡ | `client_review_status_updated` |
+| `/api/advisor/clients/[clientId]/review-status` | PATCH | Yes | advisor‡, admin | W | Yes (`writeHeavy`) | `client_review_status_updated` |
 | `/api/advisor/clients/[clientId]/file-quality` | GET | Yes | advisor‡, admin | R | No | — |
 | `/api/advisor/clients/[clientId]/documents/upload` | POST | Yes | advisor‡, admin | W | Yes (`writeHeavy`) | `advisor_document_uploaded` |
 | `/api/advisor/clients/[clientId]/documents/[documentId]/delete` | POST | Yes | advisor‡, admin | W | Yes (`writeHeavy`) | `advisor_document_deleted` |
@@ -103,7 +103,7 @@ Returns `{ authenticated: false }` with 200 when logged out. Returns own client 
 | `/api/admin/users/[userId]/role` | PATCH | Yes | admin | W | Yes (`writeHeavy`) | `user_role_updated` |
 | `/api/admin/clients` | GET | Yes | admin | R | No | — |
 | `/api/admin/clients/[clientId]/advisor` | PATCH | Yes | admin | W | Yes (`writeHeavy`) | `client_advisor_assigned` / `client_advisor_unassigned` |
-| `/api/admin/clients/create-placeholder` | POST | Yes | admin | W | No‡ | `client_placeholder_created` |
+| `/api/admin/clients/create-placeholder` | POST | Yes | admin | W | Yes (`writeHeavy`) | `client_placeholder_created` |
 | `/api/admin/client-invitations` | GET | Yes | admin | R | No | — |
 | `/api/admin/client-invitations` | POST | Yes | admin | W | Yes (`writeHeavy`) | `client_invitation_created` / `client_invitation_failed` |
 
@@ -121,17 +121,16 @@ Returns `{ authenticated: false }` with 200 when logged out. Returns own client 
 
 ## Routes Flagged for Review (no rate limit on write)
 
-These authenticated writes do **not** call `rateLimitOrThrow` as of Phase 4R inventory:
+These authenticated writes do **not** call `rateLimitOrThrow` as of Phase 4X:
 
 | Route | Method | Notes |
 |-------|--------|-------|
-| `/api/advisor/clients/create-placeholder` | POST | Consider adding `writeHeavy` |
-| `/api/admin/clients/create-placeholder` | POST | Consider adding `writeHeavy` |
-| `/api/advisor/clients/[clientId]/review-status` | PATCH | Consider adding `writeHeavy` |
-| `/api/documents/signed-url` | POST | Read-like but mutates access; consider light limit |
+| `/api/documents/signed-url` | POST | Read-like but mints URL; consider light limit |
 | `/api/advisor/clients/[clientId]/documents/[documentId]/signed-url` | POST | Access audit only; consider light limit |
 
-Detected automatically by `npm run qa:routes`.
+Phase 4X added `writeHeavy` to create-placeholder and review-status PATCH routes.
+
+Detected automatically by `npm run qa:routes` or `npm run security:api`.
 
 ---
 
