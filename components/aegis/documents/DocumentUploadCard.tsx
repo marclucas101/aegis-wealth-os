@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 
+import DocumentUploadConsent from "@/components/aegis/legal/DocumentUploadConsent";
 import { DOCUMENT_CATEGORY_OPTIONS } from "@/components/aegis/documents/DocumentCategoryFilter";
 import { DOCUMENT_CATEGORY_GUIDANCE } from "@/lib/aegis/clientJourney";
 
@@ -88,6 +89,8 @@ export default function DocumentUploadCard({
           </span>
           {categoryHelp}
         </p>
+
+        <DocumentUploadConsent />
 
         <div
           onDragEnter={(event) => {

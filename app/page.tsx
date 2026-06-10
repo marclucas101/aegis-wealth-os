@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { LEGAL_LINKS } from "@/lib/aegis/legal";
+
 function TriSpireHero() {
   return (
     <svg
@@ -228,8 +230,26 @@ export default function HomePage() {
         </section>
 
         <footer className="mt-12 border-t border-[#D1A866]/10 pt-6 text-center sm:mt-16">
+          <nav
+            aria-label="Legal"
+            className="mb-4 flex flex-wrap justify-center gap-x-5 gap-y-2"
+          >
+            {LEGAL_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-[10px] uppercase tracking-[0.16em] text-[#F3F1EA]/30 transition-colors hover:text-[#D1A866]/70"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
           <p className="text-[10px] uppercase tracking-[0.2em] text-[#F3F1EA]/20">
             AEGIS Wealth Operating System™ · Confidential Architecture Platform
+          </p>
+          <p className="mt-2 text-[10px] font-light tracking-wide text-[#F3F1EA]/15">
+            Draft legal templates — review with qualified counsel before
+            commercial use
           </p>
         </footer>
       </div>

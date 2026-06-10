@@ -72,6 +72,8 @@
 - [ ] Rate limiting limitation acknowledged — [in-memory, not multi-instance](./DEPLOYMENT_VERCEL_SUPABASE.md#rate-limiting-limitation)
 - [ ] Monitoring plan for 5xx and auth failures
 - [ ] Rollback procedure tested or documented
+- [ ] Legal pages reviewed — [Legal & Compliance Notes](./LEGAL_COMPLIANCE_NOTES.md)
+- [ ] Draft legal templates acknowledged; **lawyer review required** before real client data
 - [ ] Legal / compliance / security review complete **before real client data**
 
 ---

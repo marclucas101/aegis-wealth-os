@@ -193,6 +193,22 @@ Before beta/demo, verify client-facing polish (no scoring or API changes):
 
 ---
 
+## 13. Legal & Compliance (Phase 4V)
+
+Before beta/demo with sensitive data, verify the MVP legal layer:
+
+- [ ] `/legal/terms`, `/legal/privacy`, `/legal/disclaimer`, `/legal/consent` load and show draft-template warning
+- [ ] Consent banner appears on first visit; dismiss persists via localStorage
+- [ ] Home page footer links to all legal pages
+- [ ] Dashboard trust notice includes disclaimer / privacy / consent links
+- [ ] Document vault upload shows document-upload consent language
+- [ ] Wealth Blueprint and Annual Review show on-screen disclaimer blocks
+- [ ] Print exports include `ReportDisclaimer` block
+- [ ] Review [Legal & Compliance Notes](./LEGAL_COMPLIANCE_NOTES.md)
+- [ ] **Qualified lawyer review complete** before commercial use or real client data
+
+---
+
 ## 14. Report Export / Print (Phase 4U)
 
 Before client-ready report packaging sign-off:

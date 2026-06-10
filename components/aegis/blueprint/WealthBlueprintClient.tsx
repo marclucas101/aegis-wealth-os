@@ -10,6 +10,7 @@ import BlueprintRoadmapSummary from "@/components/aegis/blueprint/BlueprintRoadm
 import BlueprintScoreOverview from "@/components/aegis/blueprint/BlueprintScoreOverview";
 import BlueprintStressSummary from "@/components/aegis/blueprint/BlueprintStressSummary";
 import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
+import ReportDisclaimerBlock from "@/components/aegis/legal/ReportDisclaimerBlock";
 import {
   computeBlueprintFromProfile,
   loadDiscoverProfile,
@@ -349,6 +350,8 @@ export default function WealthBlueprintClient() {
         </ReportSection>
 
         <ClientTrustNotice variant="full" context="planning" />
+
+        <ReportDisclaimerBlock className="mt-6" />
       </div>
 
       <footer className="mt-12 border-t border-[#D1A866]/15 pt-8 sm:mt-16">
@@ -358,10 +361,7 @@ export default function WealthBlueprintClient() {
               AEGIS Wealth Blueprint™ · {badgeLabel} · Confidential · For
               architectural review only
             </p>
-            <p className="mt-2 text-xs font-light text-[#F3F1EA]/35">
-              Planning support only — not financial, legal, or tax advice.
-              Discuss outputs with your qualified advisor before acting.
-            </p>
+            <ReportDisclaimerBlock variant="compact" className="mt-2" />
           </div>
 
           <div className="flex flex-col items-center gap-3 sm:flex-row">

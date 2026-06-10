@@ -10,6 +10,7 @@ import AnnualReviewScoreCard from "@/components/aegis/annual/AnnualReviewScoreCa
 import AnnualReviewStressSummary from "@/components/aegis/annual/AnnualReviewStressSummary";
 import AnnualReviewTimeline from "@/components/aegis/annual/AnnualReviewTimeline";
 import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
+import ReportDisclaimerBlock from "@/components/aegis/legal/ReportDisclaimerBlock";
 import {
   applyRoadmapStatuses,
   computeAnnualReviewFromProfile,
@@ -616,6 +617,8 @@ export default function AnnualReviewClient() {
         <AnnualReviewRoadmapSummary roadmap={results.roadmap} />
 
         <ClientTrustNotice variant="full" context="planning" />
+
+        <ReportDisclaimerBlock className="mt-6" />
       </div>
 
       <footer className="mt-12 border-t border-[#D1A866]/15 pt-8 sm:mt-16">
@@ -665,9 +668,7 @@ export default function AnnualReviewClient() {
           AEGIS Annual Shield Review™ · {badgeLabel} · Confidential · For
           architectural review only
         </p>
-        <p className="mt-2 text-center text-xs font-light text-[#F3F1EA]/35">
-          Planning support only — not financial, legal, or tax advice.
-        </p>
+        <ReportDisclaimerBlock variant="compact" className="mt-2 text-center" />
       </footer>
     </article>
   );

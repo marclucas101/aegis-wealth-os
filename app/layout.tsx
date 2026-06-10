@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+
+import ConsentBanner from "@/components/aegis/legal/ConsentBanner";
 import "./globals.css";
 
 const inter = Inter({
@@ -33,6 +35,7 @@ export default function RootLayout({
         className={`${inter.className} min-h-full bg-[#071B2A] text-[#F3F1EA] antialiased`}
       >
         {children}
+        <ConsentBanner />
       </body>
     </html>
   );
