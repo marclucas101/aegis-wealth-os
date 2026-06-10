@@ -7,6 +7,7 @@ import AdvisorClientActivityPanel from "@/components/aegis/advisor/AdvisorClient
 import AdvisorClientDocumentsPanel from "@/components/aegis/advisor/AdvisorClientDocumentsPanel";
 import AdvisorClientNotesPanel from "@/components/aegis/advisor/AdvisorClientNotesPanel";
 import AdvisorClientHeader from "@/components/aegis/advisor/AdvisorClientHeader";
+import AdvisorClientReviewPanel from "@/components/aegis/advisor/AdvisorClientReviewPanel";
 import AdvisorClientPillarPanel from "@/components/aegis/advisor/AdvisorClientPillarPanel";
 import AdvisorClientReportsPanel from "@/components/aegis/advisor/AdvisorClientReportsPanel";
 import AdvisorClientRoadmapPanel from "@/components/aegis/advisor/AdvisorClientRoadmapPanel";
@@ -142,6 +143,20 @@ export default function AdvisorClientWorkspace({
         client={workspace.client}
         adjustedShieldScore={workspace.shield?.adjustedShieldScore ?? null}
         rating={workspace.shield?.rating ?? null}
+      />
+
+      <AdvisorClientReviewPanel
+        clientId={clientId}
+        onStatusUpdated={(newStatus) => {
+          setWorkspace((current) =>
+            current
+              ? {
+                  ...current,
+                  client: { ...current.client, status: newStatus },
+                }
+              : current,
+          );
+        }}
       />
 
       <AdvisorClientScorePanel
