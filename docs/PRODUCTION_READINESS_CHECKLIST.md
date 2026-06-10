@@ -7,6 +7,8 @@
 
 **Deployment (Phase 4S):** [Vercel + Supabase Deployment](./DEPLOYMENT_VERCEL_SUPABASE.md) · [Deployment Checklist](./DEPLOYMENT_CHECKLIST.md) · [Environment Variables](./ENVIRONMENT_VARIABLES.md) · [Supabase Production Setup](./SUPABASE_PRODUCTION_SETUP.md) · [Post-Deployment QA](./POST_DEPLOYMENT_QA.md)
 
+**Operations (Phase 4W):** [Operations Runbook](./OPERATIONS_RUNBOOK.md) · [Monitoring & Logging](./MONITORING_AND_LOGGING.md) · [Backup & Recovery](./BACKUP_AND_RECOVERY.md) · [Incident Response](./INCIDENT_RESPONSE.md) · [Audit Log Review](./AUDIT_LOG_REVIEW.md)
+
 ---
 
 ## 1. Environment Variables
@@ -26,6 +28,7 @@
 - [ ] Supabase project matches intended environment (dev vs staging vs prod)
 - [ ] Auth providers configured (email/password minimum)
 - [ ] Redirect URLs include `/auth/callback` for each deployed origin
+- [ ] `GET /api/health/app` returns `ok: true` (runtime probe)
 - [ ] `GET /api/health/supabase` returns `ok: true` when DB is healthy
 - [ ] `/supabase-health` UI loads and shows connectivity (dev/staging only)
 - [ ] Storage bucket `client-documents` exists and policies applied
@@ -155,8 +158,12 @@
 - [ ] `NODE_ENV=production` health endpoint returns minimal payload (no internal diagnostics)
 - [ ] Consider restricting `/api/health/supabase` and `/supabase-health` in production
 - [ ] CDN / WAF / bot protection planned for public endpoints
-- [ ] Backup drill for Postgres + `client-documents` bucket documented
-- [ ] Monitoring for 5xx rates and audit log failures
+- [ ] [Backup & Recovery](./BACKUP_AND_RECOVERY.md) reviewed — RPO/RTO documented, restore drill scheduled
+- [ ] [Monitoring & Logging](./MONITORING_AND_LOGGING.md) — structured logging and health endpoints understood
+- [ ] [Incident Response](./INCIDENT_RESPONSE.md) — on-call owner and severity table agreed
+- [ ] [Audit Log Review](./AUDIT_LOG_REVIEW.md) — weekly review cadence assigned
+- [ ] `npm run ops:check` passes
+- [ ] Monitoring for 5xx rates and audit log failures (Vercel + Supabase logs)
 - [ ] Rollback plan documented (see [Vercel + Supabase Deployment](./DEPLOYMENT_VERCEL_SUPABASE.md#rollback))
 - [ ] In-memory rate limiting limitation acknowledged — not multi-instance production-grade
 - [ ] Run full [QA Smoke Test Plan](./QA_SMOKE_TEST_PLAN.md) on staging before promote
@@ -173,6 +180,24 @@
 | `npm run qa:smoke` | Unauthenticated API smoke tests (server must be running) |
 | `npm run deploy:check` | Pre-deploy gate: env names, scripts, route inventory |
 | `npm run deploy:config` | Production config review (URL shape, localhost warnings) |
+| `npm run ops:check` | Ops docs, health routes, env names (no credentials) |
+
+---
+
+## 15. Operations & Monitoring (Phase 4W)
+
+Before private beta / demo with operational confidence:
+
+- [ ] `lib/ops/logger.ts` — team knows JSON logs go to Vercel stdout; secrets redacted
+- [ ] `lib/ops/errorReporting.ts` — `captureServerError` pattern for future API adoption
+- [ ] `GET /api/health/app` — returns version, environment, uptime; rate-limited
+- [ ] `GET /api/health/supabase` — production mode omits raw DB errors
+- [ ] [Operations Runbook](./OPERATIONS_RUNBOOK.md) — upload/auth/500/429 playbooks reviewed
+- [ ] [Backup & Recovery](./BACKUP_AND_RECOVERY.md) — Supabase backups + storage strategy documented
+- [ ] [Incident Response](./INCIDENT_RESPONSE.md) — first 15 minutes and security checklist read
+- [ ] [Audit Log Review](./AUDIT_LOG_REVIEW.md) — sample SQL queries run in staging
+- [ ] External error tracking (Sentry/Axiom/Logtail) **deferred** — placeholders only in Phase 4W
+- [ ] `npm run ops:check` passes in CI or pre-deploy script
 
 ---
 

@@ -11,7 +11,8 @@
     "qa:routes": "npx tsx scripts/check-api-routes.ts",
     "qa:smoke": "npx tsx scripts/smoke-test-api.ts",
     "deploy:check": "npx tsx scripts/predeploy-check.ts",
-    "deploy:config": "npx tsx scripts/verify-production-config.ts"
+    "deploy:config": "npx tsx scripts/verify-production-config.ts",
+    "ops:check": "npx tsx scripts/ops-check.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
