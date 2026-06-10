@@ -12,14 +12,9 @@ import type { Database } from "./types";
 /**
  * Server-side Supabase client (anon key, cookie session).
  *
- * Use in Server Components, Route Handlers, and Server Actions when you need
- * a normal, RLS-respecting client with the current user's session.
- *
- * Prefer this over client.ts for any server-rendered data fetching.
- * Use admin.ts only when RLS must be bypassed for trusted server work.
- *
- * For Route Handlers that return redirects, use route-handler.ts instead so
- * auth cookies are written onto the outgoing NextResponse.
+ * Use in Server Actions, Server Components, and Route Handlers that return
+ * rendered output (not redirects). For redirect Route Handlers, use
+ * route-handler.ts so Set-Cookie headers bind to the NextResponse.
  */
 export async function createServerSupabaseClient(): Promise<
   SupabaseClient<Database>
@@ -39,15 +34,10 @@ export async function createServerSupabaseClient(): Promise<
           value: string;
           options: CookieOptions;
         }[],
-        _headers: Record<string, string>,
       ) {
-        try {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        } catch {
-          // Server Components cannot mutate cookies; middleware refreshes sessions.
-        }
+        cookiesToSet.forEach(({ name, value, options }) => {
+          cookieStore.set(name, value, options);
+        });
       },
     },
   });
