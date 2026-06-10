@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import AdminMetricCard from "@/components/aegis/admin/AdminMetricCard";
 import ClientAssignmentPanel from "@/components/aegis/admin/ClientAssignmentPanel";
+import ClientOnboardingPanel from "@/components/aegis/admin/ClientOnboardingPanel";
 import UserRoleManagementPanel from "@/components/aegis/admin/UserRoleManagementPanel";
 import type {
   AdminClientRecord,
@@ -129,6 +130,20 @@ export default function AdminDashboardClient() {
           sublabel={`${clients.length - metrics.assignedClients} unassigned`}
         />
       </div>
+
+      <ClientOnboardingPanel
+        users={users}
+        onClientCreated={() => {
+          void fetch("/api/admin/clients", { cache: "no-store" })
+            .then((response) => response.json())
+            .then((data: { ok: boolean; clients?: AdminClientRecord[] }) => {
+              if (data.ok && data.clients) {
+                setClients(data.clients);
+              }
+            })
+            .catch(() => undefined);
+        }}
+      />
 
       <UserRoleManagementPanel
         users={users}

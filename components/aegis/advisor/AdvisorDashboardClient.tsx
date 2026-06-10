@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import AdvisorAccessDenied from "@/components/aegis/advisor/AdvisorAccessDenied";
+import AdvisorClientOnboardingPanel from "@/components/aegis/advisor/AdvisorClientOnboardingPanel";
 import AdvisorClientTable from "@/components/aegis/advisor/AdvisorClientTable";
 import AdvisorEmptyState from "@/components/aegis/advisor/AdvisorEmptyState";
 import AdvisorMetricCard from "@/components/aegis/advisor/AdvisorMetricCard";
@@ -136,11 +137,33 @@ export default function AdvisorDashboardClient() {
   }
 
   if (mode === "empty" || !overview) {
-    return <AdvisorEmptyState />;
+    return (
+      <div className="space-y-6 sm:space-y-8">
+        <AdvisorClientOnboardingPanel
+          onClientCreated={() => {
+            window.location.reload();
+          }}
+        />
+        <AdvisorEmptyState />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6 sm:space-y-8">
+      <AdvisorClientOnboardingPanel
+        onClientCreated={() => {
+          void fetch("/api/advisor/overview", { cache: "no-store" })
+            .then((response) => response.json())
+            .then((data: ({ ok: true } & AdvisorOverview) | { ok: false }) => {
+              if (data.ok) {
+                setOverview(data);
+                setMode(data.totalClients === 0 ? "empty" : "ready");
+              }
+            })
+            .catch(() => undefined);
+        }}
+      />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <AdvisorMetricCard
           label="Total clients"

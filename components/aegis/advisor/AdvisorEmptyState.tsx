@@ -40,8 +40,8 @@ export default function AdvisorEmptyState() {
           institutional monitoring and follow-up.
         </p>
         <p className="mt-3 text-xs font-light leading-relaxed text-[#F3F1EA]/30">
-          Assign clients by setting clients.advisor_user_id in Supabase. Advisor
-          role assignment is also managed manually in public.users.role.
+          Use the onboarding panel above to add prospective clients and invite
+          them to sign up. They will be assigned to your mandate automatically.
         </p>
       </div>
     </div>
