@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
 import ConsentBanner from "@/components/aegis/legal/ConsentBanner";
+import { BRAND } from "@/lib/brand";
 import "./globals.css";
 
 const inter = Inter({
@@ -12,11 +13,10 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "AEGIS Wealth Operating System™",
-    template: "%s · AEGIS Wealth OS™",
+    default: `${BRAND.appName}™`,
+    template: `%s · ${BRAND.name} Wealth OS™`,
   },
-  description:
-    "Institutional-grade wealth architecture platform. Strategic Intelligence. Generational Wealth.",
+  description: `${BRAND.tagline}. Strategic Intelligence. Generational Wealth.`,
 };
 
 export const viewport: Viewport = {

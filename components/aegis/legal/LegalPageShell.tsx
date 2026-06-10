@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import BrandLogo from "@/components/brand/BrandLogo";
 import { DRAFT_LEGAL_WARNING, LEGAL_LINKS } from "@/lib/aegis/legal";
 
 interface LegalPageShellProps {
@@ -25,10 +26,15 @@ export default function LegalPageShell({
         <header className="mb-10 border-b border-[#D1A866]/15 pb-8">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[#F3F1EA]/35 transition-colors hover:text-[#D1A866]/70"
+            className="inline-flex items-center gap-3 transition-opacity hover:opacity-80"
           >
-            <span aria-hidden>←</span>
-            AEGIS Wealth OS
+            <span
+              aria-hidden
+              className="text-[10px] uppercase tracking-[0.2em] text-[#F3F1EA]/35"
+            >
+              ←
+            </span>
+            <BrandLogo variant="full" size="sm" />
           </Link>
 
           <p className="mt-6 text-[10px] font-medium uppercase tracking-[0.28em] text-[#D1A866]/80">

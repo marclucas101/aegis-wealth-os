@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import BrandLogo from "@/components/brand/BrandLogo";
+
 export interface NavItem {
   label: string;
   href: string;
@@ -77,38 +79,6 @@ const NAV_SECTIONS: NavSection[] = [
 
 const NAV_ITEMS: NavItem[] = NAV_SECTIONS.flatMap((section) => section.items);
 
-function TriSpireMark({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 32 36"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      aria-hidden
-    >
-      <path
-        d="M6 34V14L16 4L26 14V34"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M11 34V20L16 14L21 20V34"
-        stroke="currentColor"
-        strokeWidth="1"
-        strokeLinejoin="round"
-        opacity="0.6"
-      />
-      <path
-        d="M16 4V34"
-        stroke="currentColor"
-        strokeWidth="0.8"
-        opacity="0.35"
-      />
-    </svg>
-  );
-}
-
 interface SidebarNavProps {
   onNavigate?: () => void;
 }
@@ -149,19 +119,9 @@ export default function SidebarNav({ onNavigate }: SidebarNavProps) {
         <Link
           href="/"
           onClick={onNavigate}
-          className="group flex items-center gap-3 transition-opacity hover:opacity-80"
+          className="group transition-opacity hover:opacity-80"
         >
-          <div className="text-[#D1A866]">
-            <TriSpireMark className="h-8 w-7" />
-          </div>
-          <div>
-            <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-[#D1A866]">
-              AEGIS
-            </p>
-            <p className="text-[9px] uppercase tracking-[0.12em] text-[#F3F1EA]/35">
-              Wealth OS™
-            </p>
-          </div>
+          <BrandLogo variant="full" size="sm" />
         </Link>
       </div>
 

@@ -1,48 +1,7 @@
 import Link from "next/link";
 
+import BrandLogo from "@/components/brand/BrandLogo";
 import { LEGAL_LINKS } from "@/lib/aegis/legal";
-
-function TriSpireHero() {
-  return (
-    <svg
-      viewBox="0 0 80 96"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="h-20 w-16 sm:h-24 sm:w-20"
-      aria-hidden
-    >
-      <path
-        d="M12 90V28L40 6L68 28V90"
-        stroke="#D1A866"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-        opacity="0.9"
-      />
-      <path
-        d="M24 90V48L40 32L56 48V90"
-        stroke="#D1A866"
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-        opacity="0.55"
-      />
-      <path
-        d="M40 6V90"
-        stroke="#D1A866"
-        strokeWidth="0.8"
-        opacity="0.25"
-      />
-      <line
-        x1="12"
-        y1="90"
-        x2="68"
-        y2="90"
-        stroke="#D1A866"
-        strokeWidth="0.8"
-        opacity="0.35"
-      />
-    </svg>
-  );
-}
 
 function ShieldRing() {
   return (
@@ -126,17 +85,7 @@ export default function HomePage() {
 
       <div className="relative mx-auto flex min-h-screen max-w-6xl flex-col px-5 py-10 sm:px-8 sm:py-14 lg:px-12 lg:py-16">
         <header className="flex items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <TriSpireHero />
-            <div>
-              <p className="text-[10px] font-medium uppercase tracking-[0.32em] text-[#D1A866]">
-                AEGIS
-              </p>
-              <p className="text-[10px] uppercase tracking-[0.14em] text-[#F3F1EA]/40">
-                Wealth Operating System™
-              </p>
-            </div>
-          </div>
+          <BrandLogo variant="full" size="hero" priority />
 
           <div className="flex items-center gap-4 sm:gap-6">
             <p className="hidden text-[10px] uppercase tracking-[0.2em] text-[#F3F1EA]/30 md:block">
