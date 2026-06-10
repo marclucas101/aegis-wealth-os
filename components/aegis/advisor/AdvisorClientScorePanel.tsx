@@ -66,11 +66,22 @@ export default function AdvisorClientScorePanel({
           <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#D1A866]/70">
             Score Overview
           </p>
+          <p className="mt-1 text-sm font-light text-[#F3F1EA]/45">
+            Detailed Shield diagnostic and benchmark positioning
+          </p>
         </div>
-        <div className="px-5 py-8 text-center">
-          <p className="text-sm font-light text-[#F3F1EA]/45">
-            No Shield Score available. Client has not completed Discover
-            onboarding.
+        <div className="relative px-5 py-12 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-[#D1A866]/15 bg-[#071B2A]/50">
+            <span className="font-mono text-sm text-[#D1A866]/50" aria-hidden>
+              —
+            </span>
+          </div>
+          <p className="text-sm font-light text-[#F3F1EA]/50">
+            No Shield Score available yet.
+          </p>
+          <p className="mt-2 text-xs font-light text-[#F3F1EA]/30">
+            The client has not completed Discover onboarding. Score diagnostics
+            will populate automatically once intake is finished.
           </p>
         </div>
       </section>

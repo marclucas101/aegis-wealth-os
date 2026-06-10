@@ -80,6 +80,8 @@ export type AdvisorClientRecord = {
   onboardingStep: string | null;
   lastReviewAt: string | null;
   nextReviewDue: string | null;
+  advisorUserId: string | null;
+  advisorFullName: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -174,7 +176,10 @@ function toNumber(value: number | string | null | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function mapClientRecord(client: AppClientRow): AdvisorClientRecord {
+function mapClientRecord(
+  client: AppClientRow,
+  advisorFullName: string | null = null,
+): AdvisorClientRecord {
   return {
     id: client.id,
     displayName: client.display_name,
@@ -185,6 +190,8 @@ function mapClientRecord(client: AppClientRow): AdvisorClientRecord {
     onboardingStep: client.onboarding_step,
     lastReviewAt: client.last_review_at,
     nextReviewDue: client.next_review_due,
+    advisorUserId: client.advisor_user_id,
+    advisorFullName,
     createdAt: client.created_at,
     updatedAt: client.updated_at,
   };
@@ -420,8 +427,20 @@ export async function loadAdvisorClientWorkspace(
     }),
   );
 
+  let advisorFullName: string | null = null;
+  if (client.advisor_user_id) {
+    const { data: advisorRow } = await admin
+      .from("users")
+      .select("full_name")
+      .eq("id", client.advisor_user_id)
+      .maybeSingle();
+
+    advisorFullName =
+      (advisorRow as { full_name: string | null } | null)?.full_name ?? null;
+  }
+
   const workspace: AdvisorClientWorkspace = {
-    client: mapClientRecord(client),
+    client: mapClientRecord(client, advisorFullName),
     discover,
     profile: snapshot?.client ?? null,
     shield: snapshot?.shield ?? null,

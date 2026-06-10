@@ -151,9 +151,12 @@ export default function AdvisorClientReportsPanel({
               Wealth Blueprint
             </p>
             {wealthBlueprintHistory.length === 0 ? (
-              <div className="px-5 py-6 text-center">
-                <p className="text-sm font-light text-[#F3F1EA]/45">
+              <div className="px-5 py-8 text-center">
+                <p className="text-sm font-light text-[#F3F1EA]/50">
                   No blueprint reports saved.
+                </p>
+                <p className="mt-2 text-xs font-light text-[#F3F1EA]/30">
+                  Wealth Architecture Blueprints appear after client generation.
                 </p>
               </div>
             ) : (
@@ -209,9 +212,12 @@ export default function AdvisorClientReportsPanel({
               Annual Review
             </p>
             {annualReviewHistory.length === 0 ? (
-              <div className="px-5 py-6 text-center">
-                <p className="text-sm font-light text-[#F3F1EA]/45">
+              <div className="px-5 py-8 text-center">
+                <p className="text-sm font-light text-[#F3F1EA]/50">
                   No annual reviews saved.
+                </p>
+                <p className="mt-2 text-xs font-light text-[#F3F1EA]/30">
+                  Annual review snapshots are saved from the client review flow.
                 </p>
               </div>
             ) : (

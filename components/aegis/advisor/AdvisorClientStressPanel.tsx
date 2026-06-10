@@ -56,9 +56,15 @@ export default function AdvisorClientStressPanel({
             Top Exposures
           </p>
           {topStressExposures.length === 0 ? (
-            <p className="text-sm font-light text-[#F3F1EA]/45">
-              No stress test data available.
-            </p>
+            <div className="rounded-sm border border-[#D1A866]/8 bg-[#071B2A]/30 px-4 py-6 text-center">
+              <p className="text-sm font-light text-[#F3F1EA]/50">
+                No stress test data available.
+              </p>
+              <p className="mt-2 text-xs font-light text-[#F3F1EA]/30">
+                Run stress scenarios from the client portal to surface
+                vulnerability exposures here.
+              </p>
+            </div>
           ) : (
             <ul className="space-y-2">
               {topStressExposures.map((test) => (
@@ -96,9 +102,11 @@ export default function AdvisorClientStressPanel({
             Recent History
           </p>
           {stressHistory.length === 0 ? (
-            <p className="text-sm font-light text-[#F3F1EA]/45">
-              No saved stress runs yet.
-            </p>
+            <div className="rounded-sm border border-[#D1A866]/8 bg-[#071B2A]/30 px-4 py-6 text-center">
+              <p className="text-sm font-light text-[#F3F1EA]/50">
+                No saved stress runs yet.
+              </p>
+            </div>
           ) : (
             <ul className="divide-y divide-[#D1A866]/8 rounded-sm border border-[#D1A866]/10">
               {stressHistory.slice(0, 6).map((run) => (

@@ -203,9 +203,33 @@ export default function AdvisorClientDocumentsPanel({
       />
 
       {documents.length === 0 ? (
-        <div className="relative px-5 py-8 text-center">
-          <p className="text-sm font-light text-[#F3F1EA]/45">
-            No documents uploaded for this client.
+        <div className="relative px-5 py-12 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-[#D1A866]/15 bg-[#071B2A]/50">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              className="h-5 w-5 text-[#D1A866]/50"
+              aria-hidden
+            >
+              <path
+                d="M4 19V5h16v14H4z"
+                stroke="currentColor"
+                strokeWidth="1"
+              />
+              <path
+                d="M8 9h8M8 13h5"
+                stroke="currentColor"
+                strokeWidth="1"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+          <p className="text-sm font-light text-[#F3F1EA]/50">
+            No documents in the client vault yet.
+          </p>
+          <p className="mt-2 text-xs font-light text-[#F3F1EA]/30">
+            Use the upload panel above to add insurance, estate, or advisory
+            records on the client&apos;s behalf.
           </p>
         </div>
       ) : (

@@ -64,9 +64,17 @@ export default function AdvisorClientRoadmapPanel({
       </div>
 
       {roadmap.length === 0 ? (
-        <div className="relative px-5 py-8 text-center">
-          <p className="text-sm font-light text-[#F3F1EA]/45">
+        <div className="relative px-5 py-12 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-[#D1A866]/15 bg-[#071B2A]/50">
+            <span className="text-lg text-[#D1A866]/40" aria-hidden>
+              ◇
+            </span>
+          </div>
+          <p className="text-sm font-light text-[#F3F1EA]/50">
             No active roadmap items for this client.
+          </p>
+          <p className="mt-2 text-xs font-light text-[#F3F1EA]/30">
+            Roadmap actions are generated from Discover and Shield diagnostics.
           </p>
         </div>
       ) : (

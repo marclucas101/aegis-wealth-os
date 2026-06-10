@@ -15,8 +15,8 @@ export default async function AdvisorClientPage({
 
   return (
     <AppShell
-      title="Client Workspace"
-      subtitle="Read-only intelligence view for assigned client oversight"
+      title="Client File"
+      subtitle="Institutional client intelligence, servicing workflow, and advisory oversight"
     >
       {access.allowed ? (
         <AdvisorClientWorkspace clientId={clientId} />
