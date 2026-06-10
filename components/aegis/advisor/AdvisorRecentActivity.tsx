@@ -20,7 +20,10 @@ export default function AdvisorRecentActivity({
   activity,
 }: AdvisorRecentActivityProps) {
   return (
-    <section className="relative overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60">
+    <section
+      id="advisor-activity"
+      className="relative scroll-mt-24 overflow-hidden rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60"
+    >
       <div className="absolute inset-0 bg-gradient-to-br from-[#D1A866]/5 via-transparent to-transparent" />
       <div className="relative border-b border-[#D1A866]/10 px-5 py-4">
         <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#D1A866]/70">

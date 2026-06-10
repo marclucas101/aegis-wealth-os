@@ -23,6 +23,23 @@ function statusLabel(status: AdvisorClientRow["status"]): string {
   return status.replace(/_/g, " ");
 }
 
+function statusStyles(status: AdvisorClientRow["status"]): string {
+  switch (status) {
+    case "active":
+      return "border-emerald-400/25 bg-emerald-400/10 text-emerald-200";
+    case "onboarding":
+      return "border-[#D1A866]/30 bg-[#D1A866]/10 text-[#D1A866]/90";
+    case "prospect":
+      return "border-[#F3F1EA]/15 bg-[#F3F1EA]/5 text-[#F3F1EA]/60";
+    case "review_due":
+      return "border-amber-400/30 bg-amber-400/10 text-amber-200";
+    case "archived":
+      return "border-[#F3F1EA]/10 bg-[#071B2A]/50 text-[#F3F1EA]/35";
+    default:
+      return "border-[#F3F1EA]/12 bg-[#071B2A]/40 text-[#F3F1EA]/50";
+  }
+}
+
 function riskStyles(riskLevel: AdvisorClientRow["riskLevel"]): string {
   switch (riskLevel) {
     case "high":
@@ -66,9 +83,10 @@ export default function AdvisorClientTable({ clients }: AdvisorClientTableProps)
                 "Docs",
                 "Last activity",
                 "Risk",
+                "",
               ].map((heading) => (
                 <th
-                  key={heading}
+                  key={heading || "action"}
                   className="px-4 py-3 text-[9px] font-medium uppercase tracking-[0.16em] text-[#F3F1EA]/35"
                 >
                   {heading}
@@ -96,7 +114,9 @@ export default function AdvisorClientTable({ clients }: AdvisorClientTableProps)
                   </Link>
                 </td>
                 <td className="px-4 py-4">
-                  <span className="text-xs uppercase tracking-[0.12em] text-[#F3F1EA]/55">
+                  <span
+                    className={`inline-flex rounded-sm border px-2 py-1 text-[9px] uppercase tracking-[0.12em] ${statusStyles(client.status)}`}
+                  >
                     {statusLabel(client.status)}
                   </span>
                 </td>
@@ -132,6 +152,14 @@ export default function AdvisorClientTable({ clients }: AdvisorClientTableProps)
                     {client.riskLevel}
                   </span>
                 </td>
+                <td className="px-4 py-4">
+                  <Link
+                    href={`/advisor/clients/${client.id}`}
+                    className="inline-flex rounded-sm border border-[#D1A866]/30 bg-[#D1A866]/10 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-[#D1A866] transition-colors hover:bg-[#D1A866]/18"
+                  >
+                    Open workspace
+                  </Link>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -141,13 +169,9 @@ export default function AdvisorClientTable({ clients }: AdvisorClientTableProps)
       <ul className="divide-y divide-[#D1A866]/8 lg:hidden">
         {clients.map((client) => (
           <li key={client.id} className="px-4 py-4">
-            <Link
-              href={`/advisor/clients/${client.id}`}
-              className="group block"
-            >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate text-sm font-light text-[#F3F1EA] transition-colors group-hover:text-[#D1A866]">
+                <p className="truncate text-sm font-light text-[#F3F1EA]">
                   {client.displayName}
                 </p>
                 <p className="mt-0.5 truncate text-xs text-[#F3F1EA]/40">
@@ -161,6 +185,14 @@ export default function AdvisorClientTable({ clients }: AdvisorClientTableProps)
               </span>
             </div>
 
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span
+                className={`inline-flex rounded-sm border px-2 py-1 text-[9px] uppercase tracking-[0.12em] ${statusStyles(client.status)}`}
+              >
+                {statusLabel(client.status)}
+              </span>
+            </div>
+
             <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
               <div>
                 <p className="text-[#F3F1EA]/35">Shield</p>
@@ -169,12 +201,6 @@ export default function AdvisorClientTable({ clients }: AdvisorClientTableProps)
                     ? formatScore(client.adjustedShieldScore)
                     : "—"}{" "}
                   {client.rating ? `· ${client.rating}` : ""}
-                </p>
-              </div>
-              <div>
-                <p className="text-[#F3F1EA]/35">Status</p>
-                <p className="mt-0.5 uppercase tracking-[0.1em] text-[#F3F1EA]/60">
-                  {statusLabel(client.status)}
                 </p>
               </div>
               <div>
@@ -190,6 +216,12 @@ export default function AdvisorClientTable({ clients }: AdvisorClientTableProps)
                 </p>
               </div>
             </div>
+
+            <Link
+              href={`/advisor/clients/${client.id}`}
+              className="mt-4 inline-flex rounded-sm border border-[#D1A866]/30 bg-[#D1A866]/10 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-[#D1A866] transition-colors hover:bg-[#D1A866]/18"
+            >
+              Open workspace
             </Link>
           </li>
         ))}

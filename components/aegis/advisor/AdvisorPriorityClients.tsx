@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { formatScore } from "@/components/aegis/ShieldScoreCard";
 import type { PriorityClient } from "@/lib/supabase/advisorQueries";
 
@@ -35,9 +37,12 @@ export default function AdvisorPriorityClients({
             <li key={client.clientId} className="px-5 py-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-light text-[#F3F1EA]">
+                  <Link
+                    href={`/advisor/clients/${client.clientId}`}
+                    className="text-sm font-light text-[#F3F1EA] transition-colors hover:text-[#D1A866]"
+                  >
                     {client.displayName}
-                  </p>
+                  </Link>
                   <p className="mt-1 text-xs uppercase tracking-[0.12em] text-[#F3F1EA]/40">
                     {client.status.replace(/_/g, " ")}
                   </p>
@@ -64,6 +69,13 @@ export default function AdvisorPriorityClients({
                   </span>
                 ))}
               </div>
+
+              <Link
+                href={`/advisor/clients/${client.clientId}`}
+                className="mt-3 inline-flex text-[10px] uppercase tracking-[0.12em] text-[#D1A866]/75 hover:text-[#D1A866]"
+              >
+                Open workspace →
+              </Link>
             </li>
           ))}
         </ul>

@@ -7,10 +7,7 @@ export default async function AdvisorPage() {
   const access = await requireAdvisorAccess();
 
   return (
-    <AppShell
-      title="Advisor Console"
-      subtitle="Multi-client command centre for Shield Score monitoring and advisory follow-up"
-    >
+    <AppShell>
       {access.allowed ? <AdvisorDashboardClient /> : <AdvisorAccessDenied />}
     </AppShell>
   );

@@ -26,11 +26,14 @@ function statusLabel(status: OnboardingClientRecord["status"]): string {
 
 interface AdvisorClientOnboardingPanelProps {
   onClientCreated?: () => void;
+  defaultExpanded?: boolean;
 }
 
 export default function AdvisorClientOnboardingPanel({
   onClientCreated,
+  defaultExpanded = true,
 }: AdvisorClientOnboardingPanelProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const [clients, setClients] = useState<OnboardingClientRecord[]>([]);
   const [listState, setListState] = useState<"loading" | "ready" | "error">(
     "loading",
@@ -222,20 +225,34 @@ export default function AdvisorClientOnboardingPanel({
   }
 
   return (
-    <div className="space-y-4">
+    <section
+      id="advisor-onboarding"
+      className="scroll-mt-24 space-y-4"
+    >
       <div className="rounded-sm border border-[#D1A866]/12 bg-[#10283A]/40 p-4 sm:p-5">
-        <div className="mb-4">
-          <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#D1A866]/70">
-            Client Onboarding
-          </p>
-          <p className="mt-1 text-sm font-light text-[#F3F1EA]/45">
-            Add prospective clients to your mandate and invite them to sign up.
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#D1A866]/70">
+              Client Onboarding
+            </p>
+            <p className="mt-1 text-sm font-light text-[#F3F1EA]/45">
+              Add prospective clients to your mandate and invite them to sign up.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setExpanded((open) => !open)}
+            className="shrink-0 rounded-sm border border-[#D1A866]/15 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-[#F3F1EA]/45 transition-colors hover:border-[#D1A866]/30 hover:text-[#D1A866]"
+          >
+            {expanded ? "Collapse" : "Expand"}
+          </button>
         </div>
 
+        {expanded ? (
+        <>
         <form
           onSubmit={handleCreateProspective}
-          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+          className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
         >
           <label className="flex min-w-0 flex-col gap-1.5">
             <span className="text-[9px] uppercase tracking-[0.16em] text-[#F3F1EA]/35">
@@ -299,9 +316,15 @@ export default function AdvisorClientOnboardingPanel({
             {formSuccess}
           </p>
         ) : null}
+        </>
+        ) : (
+          <p className="mt-4 text-xs font-light text-[#F3F1EA]/35">
+            Onboarding tools collapsed. Expand to add clients or send invites.
+          </p>
+        )}
       </div>
 
-      {manualInvite ? (
+      {expanded && manualInvite ? (
         <div className="rounded-sm border border-[#D1A866]/20 bg-[#1A2A2B]/40 p-4 sm:p-5">
           <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#D1A866]/70">
             Copy invite instructions
@@ -342,7 +365,7 @@ export default function AdvisorClientOnboardingPanel({
         </div>
       ) : null}
 
-      {listState === "loading" ? (
+      {expanded && listState === "loading" ? (
         <div className="rounded-sm border border-[#D1A866]/12 bg-[#10283A]/40 px-5 py-10 text-center">
           <p className="text-sm font-light text-[#F3F1EA]/45">
             Loading onboarding clients…
@@ -350,7 +373,7 @@ export default function AdvisorClientOnboardingPanel({
         </div>
       ) : null}
 
-      {listState === "error" ? (
+      {expanded && listState === "error" ? (
         <div className="rounded-sm border border-red-400/20 bg-red-400/5 px-5 py-10 text-center">
           <p className="text-sm font-light text-red-200/80">
             {listError ?? "Failed to load onboarding clients."}
@@ -358,7 +381,7 @@ export default function AdvisorClientOnboardingPanel({
         </div>
       ) : null}
 
-      {listState === "ready" && clients.length === 0 ? (
+      {expanded && listState === "ready" && clients.length === 0 ? (
         <div className="rounded-sm border border-[#D1A866]/12 bg-[#10283A]/40 px-5 py-10 text-center">
           <p className="text-sm font-light text-[#F3F1EA]/45">
             No prospective clients yet. Add one above to begin onboarding.
@@ -366,7 +389,7 @@ export default function AdvisorClientOnboardingPanel({
         </div>
       ) : null}
 
-      {listState === "ready" && clients.length > 0 ? (
+      {expanded && listState === "ready" && clients.length > 0 ? (
         <div className="overflow-x-auto rounded-sm border border-[#D1A866]/12 bg-[#10283A]/40">
           <table className="min-w-full text-left text-sm font-light">
             <thead>
@@ -454,6 +477,6 @@ export default function AdvisorClientOnboardingPanel({
           </table>
         </div>
       ) : null}
-    </div>
+    </section>
   );
 }
