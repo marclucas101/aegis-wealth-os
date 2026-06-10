@@ -2,6 +2,9 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { createRouteHandlerSupabaseClient } from "@/lib/supabase/route-handler";
 
+/** After POST login, use 303 so the browser follows redirects with GET. */
+const POST_AUTH_REDIRECT_STATUS = 303;
+
 function readCredentials(formData: FormData): {
   email: string;
   password: string;
@@ -41,12 +44,13 @@ export async function POST(request: NextRequest) {
   if (validationError) {
     const loginUrl = loginRedirectUrl(request, next);
     loginUrl.searchParams.set("error", validationError);
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(loginUrl, POST_AUTH_REDIRECT_STATUS);
   }
 
   const redirectPath = next.startsWith("/") ? next : "/dashboard";
   const redirectResponse = NextResponse.redirect(
     new URL(redirectPath, request.url),
+    POST_AUTH_REDIRECT_STATUS,
   );
 
   const supabase = createRouteHandlerSupabaseClient(request, redirectResponse);
@@ -55,7 +59,7 @@ export async function POST(request: NextRequest) {
   if (error) {
     const loginUrl = loginRedirectUrl(request, next);
     loginUrl.searchParams.set("error", error.message);
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(loginUrl, POST_AUTH_REDIRECT_STATUS);
   }
 
   return redirectResponse;
