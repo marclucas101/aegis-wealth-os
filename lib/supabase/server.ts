@@ -33,17 +33,20 @@ export async function createServerSupabaseClient(): Promise<
       getAll() {
         return cookieStore.getAll();
       },
-      setAll(cookiesToSet: {
-        name: string;
-        value: string;
-        options: CookieOptions;
-      }[]) {
+      setAll(
+        cookiesToSet: {
+          name: string;
+          value: string;
+          options: CookieOptions;
+        }[],
+        _headers: Record<string, string>,
+      ) {
         try {
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, options);
           });
         } catch {
-          // Called from a Server Component where cookies cannot be set.
+          // Server Components cannot mutate cookies; middleware refreshes sessions.
         }
       },
     },

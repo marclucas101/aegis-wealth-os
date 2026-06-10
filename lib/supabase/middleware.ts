@@ -19,9 +19,15 @@ export type SessionUpdateResult = {
   applyCookies: (target: NextResponse) => NextResponse;
 };
 
+function getSupabaseCookieNames(request: NextRequest): string[] {
+  return request.cookies
+    .getAll()
+    .map(({ name }) => name)
+    .filter((name) => name.startsWith("sb-"));
+}
+
 /**
  * Copies refreshed Supabase auth cookies (with full options) onto redirect responses.
- * NextResponse.cookies.getAll() omits options, so we track pending cookies from setAll.
  */
 export function applySessionCookies(
   source: SessionUpdateResult,
@@ -37,7 +43,7 @@ export function applySessionCookies(
 export async function updateSession(
   request: NextRequest,
 ): Promise<SessionUpdateResult> {
-  const response = NextResponse.next({ request });
+  let response = NextResponse.next({ request });
   const pendingCookies = new Map<string, PendingCookie>();
   let pendingHeaders: Record<string, string> = {};
   const { url, anonKey } = getSupabasePublicEnv();
@@ -58,6 +64,11 @@ export async function updateSession(
 
         cookiesToSet.forEach(({ name, value, options }) => {
           pendingCookies.set(name, { name, value, options });
+        });
+
+        response = NextResponse.next({ request });
+
+        pendingCookies.forEach(({ name, value, options }) => {
           response.cookies.set(name, value, options);
         });
 
@@ -72,6 +83,14 @@ export async function updateSession(
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (process.env.NODE_ENV === "development") {
+    console.info("[middleware] session", {
+      path: request.nextUrl.pathname,
+      hasUser: Boolean(user),
+      sbCookieNames: getSupabaseCookieNames(request),
+    });
+  }
 
   const applyCookies = (target: NextResponse): NextResponse => {
     pendingCookies.forEach(({ name, value, options }) => {

@@ -40,7 +40,7 @@ export async function middleware(request: NextRequest) {
     loginUrl.searchParams.set("next", pathname);
     return applySessionCookies(
       session,
-      NextResponse.redirect(loginUrl),
+      NextResponse.redirect(loginUrl, { status: 303 }),
     );
   }
 
@@ -50,7 +50,7 @@ export async function middleware(request: NextRequest) {
     dashboardUrl.search = "";
     return applySessionCookies(
       session,
-      NextResponse.redirect(dashboardUrl),
+      NextResponse.redirect(dashboardUrl, { status: 303 }),
     );
   }
 
