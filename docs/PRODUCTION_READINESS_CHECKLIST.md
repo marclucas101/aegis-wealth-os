@@ -13,6 +13,8 @@
 
 **Demo environment (Phase 4Y):** [Demo Environment](./DEMO_ENVIRONMENT.md) · [Demo Script](./DEMO_SCRIPT.md) · [Seeding and Reset](./SEEDING_AND_RESET.md)
 
+**Final launch (Phase 4Z):** [Final Beta Launch Checklist](./FINAL_BETA_LAUNCH_CHECKLIST.md) · [Go / No-Go Criteria](./GO_NO_GO_CRITERIA.md) · [Launch Day Runbook](./LAUNCH_DAY_RUNBOOK.md) · [Final Demo Checklist](./FINAL_DEMO_CHECKLIST.md) · [Final Security Checklist](./FINAL_SECURITY_CHECKLIST.md) · [Beta Limitations & Risks](./BETA_LIMITATIONS_AND_RISKS.md) · `npm run final:check`
+
 ---
 
 ## 1. Environment Variables
@@ -116,7 +118,7 @@
 - [ ] Run `npm run qa:smoke` with dev server — all checks pass
 - [ ] Run `npm run security:audit` — no critical service-role findings; review WARN items
 - [ ] Complete [Security Audit Report](./SECURITY_AUDIT_REPORT.md) sign-off checklist
-- [ ] Review [RLS Policy Review](./RLS_POLICY_REVIEW.md) — plan migration for `users.role` escalation gap
+- [ ] Confirm [RLS Policy Review](./RLS_POLICY_REVIEW.md) C-1 fix applied — migration `202606100014_fix_users_role_self_escalation.sql`
 - [ ] Run manual tests in [Advisor & Admin Access Review](./ADVISOR_ADMIN_ACCESS_REVIEW.md)
 - [ ] Sensitive body fields rejected (`client_id`, `role`, `user_id`, etc.)
 - [ ] Error responses sanitized — no raw DB errors in production
@@ -192,6 +194,7 @@
 | `npm run security:audit` | Phase 4X: service-role scan + API auth patterns + doc check |
 | `npm run security:api` | API route auth / rate-limit / audit flags |
 | `npm run security:service-role` | Unsafe service-role import detection |
+| `npm run final:check` | Phase 4Z structural launch readiness (docs + scripts) |
 
 ---
 

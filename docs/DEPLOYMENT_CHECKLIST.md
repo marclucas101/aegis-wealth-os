@@ -9,6 +9,8 @@
 
 **Demo (Phase 4Y):** [Demo Environment](./DEMO_ENVIRONMENT.md) · `npm run demo:seed` (dev/staging only — never in production deploy)
 
+**Final launch (Phase 4Z):** [Final Beta Launch Checklist](./FINAL_BETA_LAUNCH_CHECKLIST.md) · [Launch Day Runbook](./LAUNCH_DAY_RUNBOOK.md) · [Go / No-Go Criteria](./GO_NO_GO_CRITERIA.md) · `npm run final:check`
+
 ---
 
 > **Warning:** Do not deploy with real client data until legal, compliance, and security review is complete.
@@ -17,6 +19,7 @@
 
 ## Phase A — Local and repo readiness
 
+- [ ] `npm run final:check` passes (Phase 4Z launch package)
 - [ ] `.env.example` documents all required variable names
 - [ ] `.env.local` configured locally (not committed)
 - [ ] `npm run qa:env` passes
@@ -91,6 +94,7 @@
 
 | Command | When |
 |---------|------|
+| `npm run final:check` | Before demo / beta — docs + scripts gate |
 | `npm run deploy:check` | Before every deploy |
 | `npm run deploy:config` | After setting Vercel env vars |
 | `npm run deploy:config -- --production` | Before production promotion |

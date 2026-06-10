@@ -17,7 +17,8 @@
     "security:api": "npx tsx scripts/check-api-auth-patterns.ts",
     "security:audit": "npx tsx scripts/security-audit.ts",
     "demo:seed": "npx tsx scripts/seed-demo-data.ts",
-    "demo:clear": "npx tsx scripts/clear-demo-data.ts"
+    "demo:clear": "npx tsx scripts/clear-demo-data.ts",
+    "final:check": "npx tsx scripts/final-readiness-check.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",

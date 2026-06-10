@@ -47,3 +47,21 @@ Deployment guides:
 - [Post-Deployment QA](docs/POST_DEPLOYMENT_QA.md)
 
 > Do not deploy with real client data until legal, compliance, and security review is complete.
+
+## Final readiness
+
+Before demo or private beta, run the consolidated launch gate:
+
+```bash
+npm run final:check
+```
+
+Launch package (Phase 4Z):
+
+- [Final Beta Launch Checklist](docs/FINAL_BETA_LAUNCH_CHECKLIST.md) — master execution plan
+- [Go / No-Go Criteria](docs/GO_NO_GO_CRITERIA.md)
+- [Launch Day Runbook](docs/LAUNCH_DAY_RUNBOOK.md)
+- [Final Demo Checklist](docs/FINAL_DEMO_CHECKLIST.md)
+- [Final Security Checklist](docs/FINAL_SECURITY_CHECKLIST.md)
+- [Beta Limitations & Risks](docs/BETA_LIMITATIONS_AND_RISKS.md)
+- [Beta Roadmap After Launch](docs/BETA_ROADMAP_AFTER_LAUNCH.md)

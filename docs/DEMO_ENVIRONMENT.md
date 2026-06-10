@@ -2,7 +2,7 @@
 
 **Purpose:** Safe, repeatable demo setup with fictional data for sales, QA, and stakeholder walkthroughs.
 
-**Related:** [Demo Script](./DEMO_SCRIPT.md) · [Demo Data Dictionary](./DEMO_DATA_DICTIONARY.md) · [Seeding and Reset](./SEEDING_AND_RESET.md)
+**Related:** [Demo Script](./DEMO_SCRIPT.md) · [Demo Data Dictionary](./DEMO_DATA_DICTIONARY.md) · [Seeding and Reset](./SEEDING_AND_RESET.md) · [Final Demo Checklist](./FINAL_DEMO_CHECKLIST.md) · [Final Beta Launch Checklist](./FINAL_BETA_LAUNCH_CHECKLIST.md)
 
 ---
 
@@ -21,6 +21,9 @@
 ## Setup steps
 
 ```bash
+# 0. Structural launch gate (optional but recommended)
+npm run final:check
+
 # 1. Verify environment
 npm run qa:env
 
