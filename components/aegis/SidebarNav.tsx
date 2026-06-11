@@ -41,6 +41,11 @@ const NAV_SECTIONS: NavSection[] = [
         description: "Scenario simulations",
       },
       { label: "Roadmap", href: "/roadmap", description: "Priority actions" },
+      {
+        label: "Budget Optimiser",
+        href: "/budget-optimiser",
+        description: "Capital allocation discipline",
+      },
     ],
   },
   {
@@ -61,12 +66,32 @@ const NAV_SECTIONS: NavSection[] = [
         href: "/document-vault",
         description: "Architecture records",
       },
+      {
+        label: "Promotions",
+        href: "/promotions",
+        description: "Curated opportunities",
+      },
     ],
   },
   {
     title: "Advisory",
     items: [
       { label: "Advisor OS", href: "/advisor", description: "Client monitoring" },
+      {
+        label: "Promotions Manager",
+        href: "/advisor/promotions",
+        description: "Campaigns & opportunities",
+      },
+      {
+        label: "Client Feedback",
+        href: "/advisor/feedback",
+        description: "Experience & testimonials",
+      },
+      {
+        label: "Protection Report",
+        href: "/advisor/protection-report",
+        description: "Portfolio summary generator",
+      },
       {
         label: "Admin Console",
         href: "/admin",
@@ -78,6 +103,14 @@ const NAV_SECTIONS: NavSection[] = [
 ];
 
 const NAV_ITEMS: NavItem[] = NAV_SECTIONS.flatMap((section) => section.items);
+
+function resolveActiveNavItem(pathname: string, items: NavItem[]): NavItem | undefined {
+  return items
+    .filter(
+      (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
+    )
+    .sort((a, b) => b.href.length - a.href.length)[0];
+}
 
 interface SidebarNavProps {
   onNavigate?: () => void;
@@ -132,12 +165,13 @@ export default function SidebarNav({ onNavigate }: SidebarNavProps) {
               {section.title}
             </p>
             <ul className="space-y-0.5">
-              {section.items
-                .filter((item) => !item.adminOnly || isAdmin)
-                .map((item) => {
-                const isActive =
-                  pathname === item.href ||
-                  pathname.startsWith(`${item.href}/`);
+              {(() => {
+                const visibleItems = section.items.filter(
+                  (navItem) => !navItem.adminOnly || isAdmin
+                );
+                const activeItem = resolveActiveNavItem(pathname, visibleItems);
+                return visibleItems.map((item) => {
+                const isActive = activeItem?.href === item.href;
 
                 return (
                   <li key={item.href}>
@@ -168,7 +202,8 @@ export default function SidebarNav({ onNavigate }: SidebarNavProps) {
                     </Link>
                   </li>
                 );
-              })}
+              });
+              })()}
             </ul>
           </div>
         ))}

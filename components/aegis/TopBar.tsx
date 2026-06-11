@@ -12,10 +12,9 @@ interface TopBarProps {
 }
 
 function resolvePageTitle(pathname: string): string | undefined {
-  const match = NAV_ITEMS.find(
-    (item) =>
-      pathname === item.href || pathname.startsWith(`${item.href}/`),
-  );
+  const match = NAV_ITEMS.filter(
+    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
+  ).sort((a, b) => b.href.length - a.href.length)[0];
   return match?.label;
 }
 
@@ -29,7 +28,7 @@ export default function TopBar({
   const resolvedTitle = title ?? resolvePageTitle(pathname) ?? "Wealth Architecture";
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-[#D1A866]/10 bg-[#071B2A]/90 px-4 backdrop-blur-md sm:h-16 sm:px-6 lg:px-8">
+    <header className="report-no-print sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-[#D1A866]/10 bg-[#071B2A]/90 px-4 backdrop-blur-md sm:h-16 sm:px-6 lg:px-8">
       <div className="flex min-w-0 items-center gap-4">
         <button
           type="button"

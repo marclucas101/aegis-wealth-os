@@ -1,7 +1,10 @@
 import "server-only";
 
 import {
+  ADVISOR_PROTECTION_REPORT_SOURCE,
+  buildProtectionReportStoragePath,
   deleteClientDocument,
+  PROTECTION_PORTFOLIO_SUMMARY_TAG,
   uploadClientDocument,
   type DocumentCategory,
   type VaultDocumentRecord,
@@ -138,6 +141,70 @@ export async function uploadAdvisorClientDocument(
     authUserId,
     file,
     category,
+  );
+
+  return { ok: true, document };
+}
+
+export type ProtectionReportVaultMetadata = {
+  householdName: string;
+  primaryContact: string;
+  statementPeriod: string;
+  adviserName: string;
+  adviserCompany: string;
+  policyCount: number;
+  totalCoverage: number;
+  monthlyPremium: number;
+};
+
+/**
+ * Uploads a generated protection portfolio summary PDF to the client vault.
+ */
+export async function uploadAdvisorProtectionReport(
+  authUserId: string,
+  userRole: "advisor" | "admin",
+  clientId: string,
+  file: File,
+  metadata: ProtectionReportVaultMetadata,
+): Promise<AdvisorDocumentMutationResult> {
+  const access = await resolveAccessibleClient(authUserId, userRole, clientId);
+
+  if (access.status === "not_found") {
+    return { ok: false, reason: "not_found" };
+  }
+
+  if (access.status === "forbidden") {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const title = `Protection Portfolio Summary — ${metadata.householdName} — ${metadata.statementPeriod}`;
+  const fileName = `${metadata.householdName.replace(/[^\w.\-()+ ]/g, "_").slice(0, 80)}-protection-summary.pdf`;
+  const storagePath = buildProtectionReportStoragePath(
+    access.client.id,
+    metadata.householdName,
+    metadata.statementPeriod,
+  );
+
+  const document = await uploadClientDocument(
+    access.client,
+    authUserId,
+    file,
+    "insurance",
+    {
+      title,
+      fileName,
+      storagePath,
+      description: JSON.stringify({
+        document_type: PROTECTION_PORTFOLIO_SUMMARY_TAG,
+        source_feature: ADVISOR_PROTECTION_REPORT_SOURCE,
+        ...metadata,
+      }),
+      tags: [
+        "insurance",
+        PROTECTION_PORTFOLIO_SUMMARY_TAG,
+        ADVISOR_PROTECTION_REPORT_SOURCE,
+      ],
+    },
   );
 
   return { ok: true, document };

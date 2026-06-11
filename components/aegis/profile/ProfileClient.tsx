@@ -2,6 +2,7 @@
 
 import type { AppClientRow, AppUserRow } from "@/lib/supabase/userProfile";
 
+import CallMyAdviserPanel from "@/components/aegis/adviser/CallMyAdviserPanel";
 import ProfileStatusCard, {
   OnboardingBanner,
 } from "@/components/aegis/profile/ProfileStatusCard";
@@ -53,6 +54,10 @@ export default function ProfileClient({ user, client }: ProfileClientProps) {
           />
           <ProfileStatusCard label="Currency" value={client.currency_code} />
         </div>
+      </div>
+
+      <div className="mt-8">
+        <CallMyAdviserPanel />
       </div>
     </div>
   );

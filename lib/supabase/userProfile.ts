@@ -29,6 +29,7 @@ export type AppUserRow = {
   role: UserRole;
   avatar_url: string | null;
   organisation: string | null;
+  phone: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -45,6 +46,9 @@ export type AppClientRow = {
   onboarding_step: string | null;
   last_review_at: string | null;
   next_review_due: string | null;
+  feedback_prompted_at: string | null;
+  feedback_submitted_at: string | null;
+  feedback_prompt_dismissed_at: string | null;
   created_at: string;
   updated_at: string;
 };

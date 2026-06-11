@@ -12,6 +12,7 @@ const PROTECTED_PREFIXES = [
   "/wealth-blueprint",
   "/annual-review",
   "/document-vault",
+  "/promotions",
   "/advisor",
   "/admin",
 ] as const;

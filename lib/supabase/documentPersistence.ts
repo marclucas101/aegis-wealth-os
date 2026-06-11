@@ -21,6 +21,9 @@ export const DOCUMENT_CATEGORIES = [
 
 export type DocumentCategory = (typeof DOCUMENT_CATEGORIES)[number];
 
+export const PROTECTION_PORTFOLIO_SUMMARY_TAG = "protection_portfolio_summary";
+export const ADVISOR_PROTECTION_REPORT_SOURCE = "advisor_protection_report";
+
 export type VaultDocumentRecord = {
   id: string;
   file_name: string;
@@ -28,6 +31,9 @@ export type VaultDocumentRecord = {
   file_type: string | null;
   file_size: number | null;
   category: DocumentCategory;
+  title: string;
+  description: string | null;
+  source_feature: string | null;
   uploaded_by: string | null;
   created_at: string;
 };
@@ -85,6 +91,7 @@ type DocumentRow = {
   uploaded_by_user_id: string | null;
   category: DbDocumentCategory;
   title: string;
+  description: string | null;
   file_name: string;
   mime_type: string | null;
   file_size_bytes: number | null;
@@ -128,6 +135,32 @@ export function buildDocumentStoragePath(
   const safeName = sanitizeFileName(fileName);
   return `clients/${clientId}/documents/${timestamp}-${safeName}`;
 }
+
+export function buildProtectionReportStoragePath(
+  clientId: string,
+  householdName: string,
+  statementPeriod: string,
+): string {
+  const date = new Date().toISOString().slice(0, 10);
+  const safeHousehold = (householdName || "household")
+    .replace(/[^\w.\-()+ ]/g, "_")
+    .replace(/\s+/g, "-")
+    .slice(0, 60);
+  const safePeriod = (statementPeriod || "statement")
+    .replace(/[^\w.\- ]/g, "_")
+    .replace(/\s+/g, "-")
+    .slice(0, 24);
+  const fileName = `${date}-${safeHousehold}-${safePeriod}-protection-summary.pdf`;
+  return `clients/${clientId}/protection-reports/${fileName}`;
+}
+
+export type UploadDocumentOptions = {
+  title?: string;
+  description?: string;
+  tags?: string[];
+  storagePath?: string;
+  fileName?: string;
+};
 
 export function validateUploadFile(file: File): {
   ok: true;
@@ -188,6 +221,14 @@ function resolveUiCategory(row: DocumentRow): DocumentCategory {
   return reverseMap[row.category] ?? "other";
 }
 
+function resolveSourceFeature(tags: string[] | null | undefined): string | null {
+  if (!tags?.length) return null;
+  if (tags.includes(ADVISOR_PROTECTION_REPORT_SOURCE)) {
+    return ADVISOR_PROTECTION_REPORT_SOURCE;
+  }
+  return null;
+}
+
 function mapRowToRecord(row: DocumentRow): VaultDocumentRecord {
   return {
     id: row.id,
@@ -196,6 +237,9 @@ function mapRowToRecord(row: DocumentRow): VaultDocumentRecord {
     file_type: row.mime_type,
     file_size: row.file_size_bytes,
     category: resolveUiCategory(row),
+    title: row.title,
+    description: row.description,
+    source_feature: resolveSourceFeature(row.tags),
     uploaded_by: row.uploaded_by_user_id,
     created_at: row.created_at,
   };
@@ -210,7 +254,7 @@ async function fetchOwnedDocument(
   const { data, error } = await admin
     .from("documents")
     .select(
-      "id, client_id, uploaded_by_user_id, category, title, file_name, mime_type, file_size_bytes, storage_bucket, storage_path, tags, is_archived, created_at",
+      "id, client_id, uploaded_by_user_id, category, title, description, file_name, mime_type, file_size_bytes, storage_bucket, storage_path, tags, is_archived, created_at",
     )
     .eq("id", documentId)
     .eq("client_id", clientId)
@@ -233,7 +277,7 @@ export async function listClientDocuments(
   const { data, error } = await admin
     .from("documents")
     .select(
-      "id, client_id, uploaded_by_user_id, category, title, file_name, mime_type, file_size_bytes, storage_bucket, storage_path, tags, is_archived, created_at",
+      "id, client_id, uploaded_by_user_id, category, title, description, file_name, mime_type, file_size_bytes, storage_bucket, storage_path, tags, is_archived, created_at",
     )
     .eq("client_id", client.id)
     .eq("is_archived", false)
@@ -255,6 +299,7 @@ export async function uploadClientDocument(
   uploadedByUserId: string,
   file: File,
   category: DocumentCategory,
+  options?: UploadDocumentOptions,
 ): Promise<VaultDocumentRecord> {
   const validation = validateUploadFile(file);
   if (!validation.ok) {
@@ -262,10 +307,14 @@ export async function uploadClientDocument(
   }
 
   const admin = createAdminSupabaseClient();
-  const storagePath = buildDocumentStoragePath(client.id, file.name);
+  const resolvedFileName = options?.fileName ?? file.name;
+  const storagePath =
+    options?.storagePath ??
+    buildDocumentStoragePath(client.id, resolvedFileName);
   const buffer = Buffer.from(await file.arrayBuffer());
   const dbCategory = CATEGORY_TO_DB[category];
-  const title = sanitizeFileName(file.name);
+  const title = options?.title?.trim() || sanitizeFileName(resolvedFileName);
+  const tags = options?.tags?.length ? options.tags : [category];
 
   const { error: uploadError } = await admin.storage
     .from(DOCUMENT_BUCKET)
@@ -285,15 +334,16 @@ export async function uploadClientDocument(
       uploaded_by_user_id: uploadedByUserId,
       category: dbCategory,
       title,
-      file_name: file.name,
+      description: options?.description ?? null,
+      file_name: resolvedFileName,
       mime_type: validation.mimeType,
       file_size_bytes: file.size,
       storage_bucket: DOCUMENT_BUCKET,
       storage_path: storagePath,
-      tags: [category],
+      tags,
     } as never)
     .select(
-      "id, client_id, uploaded_by_user_id, category, title, file_name, mime_type, file_size_bytes, storage_bucket, storage_path, tags, is_archived, created_at",
+      "id, client_id, uploaded_by_user_id, category, title, description, file_name, mime_type, file_size_bytes, storage_bucket, storage_path, tags, is_archived, created_at",
     )
     .single();
 

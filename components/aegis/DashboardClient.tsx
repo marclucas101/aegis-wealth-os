@@ -7,6 +7,8 @@ import ClientJourneyProgress from "@/components/aegis/client/ClientJourneyProgre
 import ClientModuleCard from "@/components/aegis/client/ClientModuleCard";
 import ClientNextBestAction from "@/components/aegis/client/ClientNextBestAction";
 import ClientPortalHeader from "@/components/aegis/client/ClientPortalHeader";
+import CallMyAdviserPanel from "@/components/aegis/adviser/CallMyAdviserPanel";
+import AdviserFeedbackPrompt from "@/components/aegis/feedback/AdviserFeedbackPrompt";
 import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
 import PillarBreakdown from "@/components/aegis/PillarBreakdown";
 import PriorityGaps from "@/components/aegis/PriorityGaps";
@@ -278,6 +280,8 @@ export default function DashboardClient() {
           secondaryHref="/shield-diagnostic"
           secondaryLabel="Review diagnostic"
         />
+        <CallMyAdviserPanel />
+        <AdviserFeedbackPrompt />
       </div>
 
       <ShieldScoreExplainer

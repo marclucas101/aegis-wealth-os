@@ -38,8 +38,8 @@ export default function AppShell({
 
   return (
     <div className="min-h-screen bg-[#071B2A] text-[#F3F1EA]">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top_right,_#1A2A2B_0%,_transparent_50%)]" />
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_#10283A_0%,_transparent_40%)]" />
+      <div className="report-no-print pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top_right,_#1A2A2B_0%,_transparent_50%)]" />
+      <div className="report-no-print pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_#10283A_0%,_transparent_40%)]" />
 
       <div className="relative flex min-h-screen">
         {menuOpen && (
@@ -52,7 +52,7 @@ export default function AppShell({
         )}
 
         <aside
-          className={`fixed inset-y-0 left-0 z-50 w-[min(18rem,85vw)] border-r border-[#D1A866]/10 bg-[#071B2A]/98 backdrop-blur-md transition-transform duration-300 ease-out lg:static lg:z-auto lg:w-64 lg:translate-x-0 lg:bg-[#071B2A]/60 ${
+          className={`report-no-print fixed inset-y-0 left-0 z-50 w-[min(18rem,85vw)] border-r border-[#D1A866]/10 bg-[#071B2A]/98 backdrop-blur-md transition-transform duration-300 ease-out lg:static lg:z-auto lg:w-64 lg:translate-x-0 lg:bg-[#071B2A]/60 ${
             menuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >

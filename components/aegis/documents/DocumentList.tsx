@@ -9,9 +9,25 @@ export type VaultDocumentItem = {
   file_type: string | null;
   file_size: number | null;
   category: string;
+  title?: string;
+  source_feature?: string | null;
   uploaded_by: string | null;
   created_at: string;
 };
+
+function displayDocumentName(document: VaultDocumentItem): string {
+  if (document.source_feature === "advisor_protection_report" && document.title) {
+    return document.title;
+  }
+  return document.title?.trim() || document.file_name;
+}
+
+function displayCategoryLabel(document: VaultDocumentItem): string {
+  if (document.source_feature === "advisor_protection_report") {
+    return "Protection Portfolio Summary";
+  }
+  return categoryLabel(document.category);
+}
 
 function formatFileSize(bytes: number | null): string {
   if (bytes == null || bytes <= 0) return "—";
@@ -72,15 +88,15 @@ export default function DocumentList({
               <div className="grid gap-3 sm:grid-cols-[minmax(0,1.6fr)_0.8fr_0.7fr_1fr_0.7fr] sm:items-center sm:gap-4">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-light text-[#F3F1EA]">
-                    {document.file_name}
+                    {displayDocumentName(document)}
                   </p>
                   <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[#F3F1EA]/30 sm:hidden">
-                    {categoryLabel(document.category)}
+                    {displayCategoryLabel(document)}
                   </p>
                 </div>
 
                 <span className="hidden text-xs text-[#F3F1EA]/60 sm:block">
-                  {categoryLabel(document.category)}
+                  {displayCategoryLabel(document)}
                 </span>
 
                 <span className="text-xs text-[#F3F1EA]/55">
