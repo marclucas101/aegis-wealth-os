@@ -13,19 +13,34 @@ import { loadClientTaskSuggestions } from "./advisorTaskSuggestions";
 import type { AdvisorNoteRecord } from "./advisorNotesPersistence";
 import { listAdvisorNotesForClient } from "./advisorNotesPersistence";
 
-export type AdvisorClientCommandCenterTiming = {
+export type AdvisorClientCommandCenterShellTiming = {
   totalMs: number;
   workspaceMs: number | null;
   reviewMs: number | null;
+};
+
+export type AdvisorClientCommandCenterHeavyTiming = {
+  totalMs: number;
   fileQualityMs: number | null;
   taskSuggestionsMs: number | null;
   tasksMs: number | null;
   notesMs: number | null;
 };
 
-export type AdvisorClientCommandCenterPayload = AdvisorClientWorkspace & {
+export type AdvisorClientCommandCenterTiming = AdvisorClientCommandCenterShellTiming &
+  AdvisorClientCommandCenterHeavyTiming;
+
+export type AdvisorClientCommandCenterShellPayload = AdvisorClientWorkspace & {
   review: ClientReviewStatusDetail | null;
   reviewError: string | null;
+  documentsError: string | null;
+  reportsError: string | null;
+  activityError: string | null;
+  viewer: { userId: string; role: "advisor" | "admin" };
+  timing: AdvisorClientCommandCenterShellTiming;
+};
+
+export type AdvisorClientCommandCenterHeavyPayload = {
   fileQuality: ClientFileQuality | null;
   fileQualityError: string | null;
   taskSuggestions: AdvisorTaskSuggestionsPayload | null;
@@ -34,17 +49,28 @@ export type AdvisorClientCommandCenterPayload = AdvisorClientWorkspace & {
   tasksError: string | null;
   notes: AdvisorNoteRecord[];
   notesError: string | null;
-  documentsError: string | null;
-  reportsError: string | null;
-  activityError: string | null;
-  viewer: { userId: string; role: "advisor" | "admin" };
-  timing: AdvisorClientCommandCenterTiming;
+  timing: AdvisorClientCommandCenterHeavyTiming;
 };
+
+export type AdvisorClientCommandCenterPayload = AdvisorClientCommandCenterShellPayload &
+  AdvisorClientCommandCenterHeavyPayload & {
+    timing: AdvisorClientCommandCenterTiming;
+  };
 
 export type LoadAdvisorClientCommandCenterResult =
   | { ok: false; reason: "not_found" }
   | { ok: false; reason: "forbidden" }
   | { ok: true; payload: AdvisorClientCommandCenterPayload };
+
+export type LoadAdvisorClientCommandCenterShellResult =
+  | { ok: false; reason: "not_found" }
+  | { ok: false; reason: "forbidden" }
+  | { ok: true; payload: AdvisorClientCommandCenterShellPayload };
+
+export type LoadAdvisorClientCommandCenterHeavyResult =
+  | { ok: false; reason: "not_found" }
+  | { ok: false; reason: "forbidden" }
+  | { ok: true; payload: AdvisorClientCommandCenterHeavyPayload };
 
 type SectionResult<T> =
   | { ok: true; data: T; ms: number }
@@ -237,14 +263,13 @@ async function loadNotesSection(
 }
 
 /**
- * Loads consolidated advisor client workspace data in parallel sections.
- * Workspace access is required; supplementary sections degrade gracefully.
+ * Loads workspace + review first for fast initial paint.
  */
-export async function loadAdvisorClientCommandCenter(
+export async function loadAdvisorClientCommandCenterShell(
   authUserId: string,
   userRole: "advisor" | "admin",
   clientId: string,
-): Promise<LoadAdvisorClientCommandCenterResult> {
+): Promise<LoadAdvisorClientCommandCenterShellResult> {
   const totalStarted = performance.now();
 
   const workspaceResult = await loadSection("workspace", () =>
@@ -261,19 +286,11 @@ export async function loadAdvisorClientCommandCenter(
     return { ok: false, reason: workspaceLoad.reason };
   }
 
-  const [
-    reviewResult,
-    fileQualityResult,
-    suggestionsResult,
-    tasksResult,
-    notesResult,
-  ] = await Promise.all([
-    loadReviewSection(authUserId, userRole, clientId),
-    loadFileQualitySection(authUserId, userRole, clientId),
-    loadSuggestionsSection(authUserId, userRole, clientId),
-    loadTasksSection(authUserId, userRole, clientId),
-    loadNotesSection(authUserId, userRole, clientId),
-  ]);
+  const reviewResult = await loadReviewSection(
+    authUserId,
+    userRole,
+    clientId,
+  );
 
   const workspace = workspaceLoad.workspace;
 
@@ -283,14 +300,6 @@ export async function loadAdvisorClientCommandCenter(
       ...workspace,
       review: reviewResult.ok ? reviewResult.data : null,
       reviewError: reviewResult.ok ? null : reviewResult.error,
-      fileQuality: fileQualityResult.ok ? fileQualityResult.data : null,
-      fileQualityError: fileQualityResult.ok ? null : fileQualityResult.error,
-      taskSuggestions: suggestionsResult.ok ? suggestionsResult.data : null,
-      suggestionsError: suggestionsResult.ok ? null : suggestionsResult.error,
-      tasks: tasksResult.ok ? tasksResult.data : [],
-      tasksError: tasksResult.ok ? null : tasksResult.error,
-      notes: notesResult.ok ? notesResult.data : [],
-      notesError: notesResult.ok ? null : notesResult.error,
       documentsError: null,
       reportsError: null,
       activityError: null,
@@ -299,10 +308,110 @@ export async function loadAdvisorClientCommandCenter(
         totalMs: Math.round(performance.now() - totalStarted),
         workspaceMs: workspaceResult.ms,
         reviewMs: reviewResult.ms,
+      },
+    },
+  };
+}
+
+/**
+ * Loads deferred panels (file quality, suggestions, tasks, notes) in parallel.
+ */
+export async function loadAdvisorClientCommandCenterHeavy(
+  authUserId: string,
+  userRole: "advisor" | "admin",
+  clientId: string,
+): Promise<LoadAdvisorClientCommandCenterHeavyResult> {
+  const totalStarted = performance.now();
+
+  const access = await loadAdvisorClientWorkspace(
+    authUserId,
+    userRole,
+    clientId,
+  );
+
+  if (!access.ok) {
+    return { ok: false, reason: access.reason };
+  }
+
+  const [
+    fileQualityResult,
+    suggestionsResult,
+    tasksResult,
+    notesResult,
+  ] = await Promise.all([
+    loadFileQualitySection(authUserId, userRole, clientId),
+    loadSuggestionsSection(authUserId, userRole, clientId),
+    loadTasksSection(authUserId, userRole, clientId),
+    loadNotesSection(authUserId, userRole, clientId),
+  ]);
+
+  return {
+    ok: true,
+    payload: {
+      fileQuality: fileQualityResult.ok ? fileQualityResult.data : null,
+      fileQualityError: fileQualityResult.ok ? null : fileQualityResult.error,
+      taskSuggestions: suggestionsResult.ok ? suggestionsResult.data : null,
+      suggestionsError: suggestionsResult.ok ? null : suggestionsResult.error,
+      tasks: tasksResult.ok ? tasksResult.data : [],
+      tasksError: tasksResult.ok ? null : tasksResult.error,
+      notes: notesResult.ok ? notesResult.data : [],
+      notesError: notesResult.ok ? null : notesResult.error,
+      timing: {
+        totalMs: Math.round(performance.now() - totalStarted),
         fileQualityMs: fileQualityResult.ms,
         taskSuggestionsMs: suggestionsResult.ms,
         tasksMs: tasksResult.ms,
         notesMs: notesResult.ms,
+      },
+    },
+  };
+}
+
+/**
+ * Loads consolidated advisor client workspace data in parallel sections.
+ * Prefer shell + heavy split for faster initial paint.
+ */
+export async function loadAdvisorClientCommandCenter(
+  authUserId: string,
+  userRole: "advisor" | "admin",
+  clientId: string,
+): Promise<LoadAdvisorClientCommandCenterResult> {
+  const shellResult = await loadAdvisorClientCommandCenterShell(
+    authUserId,
+    userRole,
+    clientId,
+  );
+
+  if (!shellResult.ok) {
+    return shellResult;
+  }
+
+  const heavyResult = await loadAdvisorClientCommandCenterHeavy(
+    authUserId,
+    userRole,
+    clientId,
+  );
+
+  if (!heavyResult.ok) {
+    return heavyResult;
+  }
+
+  const shell = shellResult.payload;
+  const heavy = heavyResult.payload;
+
+  return {
+    ok: true,
+    payload: {
+      ...shell,
+      ...heavy,
+      timing: {
+        totalMs: shell.timing.totalMs + heavy.timing.totalMs,
+        workspaceMs: shell.timing.workspaceMs,
+        reviewMs: shell.timing.reviewMs,
+        fileQualityMs: heavy.timing.fileQualityMs,
+        taskSuggestionsMs: heavy.timing.taskSuggestionsMs,
+        tasksMs: heavy.timing.tasksMs,
+        notesMs: heavy.timing.notesMs,
       },
     },
   };

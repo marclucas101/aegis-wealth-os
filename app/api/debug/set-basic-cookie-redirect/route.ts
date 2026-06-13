@@ -1,5 +1,6 @@
 import { type NextRequest } from "next/server";
 
+import { blockDebugRouteInProduction } from "@/lib/security/debugRouteGuard";
 import { buildSetCookieHeader } from "@/lib/supabase/set-cookie";
 
 export const runtime = "nodejs";
@@ -13,6 +14,11 @@ export const dynamic = "force-dynamic";
  * survive a redirect response in the browser. No Supabase, no auth required.
  */
 export async function GET(request: NextRequest): Promise<Response> {
+  const blocked = blockDebugRouteInProduction();
+  if (blocked) {
+    return blocked;
+  }
+
   const headers = new Headers();
   headers.append(
     "Set-Cookie",

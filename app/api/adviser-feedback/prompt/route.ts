@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import type { FeedbackPromptState } from "@/lib/aegis/adviserFeedback";
-import { toPublicErrorMessage } from "@/lib/security/apiGuards";
+import { rateLimitOrThrow, toPublicErrorMessage } from "@/lib/security/apiGuards";
 import {
   dismissFeedbackPrompt,
   loadFeedbackPromptState,
@@ -49,8 +49,17 @@ export async function GET(): Promise<NextResponse<FeedbackPromptResponse>> {
   }
 }
 
-export async function POST(): Promise<NextResponse<FeedbackDismissResponse>> {
+export async function POST(
+  request: Request,
+): Promise<NextResponse<FeedbackDismissResponse>> {
   try {
+    const rateLimit = rateLimitOrThrow<FeedbackDismissResponse>(request, {
+      bucket: "writeHeavy",
+    });
+    if (!rateLimit.ok) {
+      return rateLimit.response;
+    }
+
     const result = await dismissFeedbackPrompt();
 
     if (!result.ok) {

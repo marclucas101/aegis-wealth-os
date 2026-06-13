@@ -4,8 +4,12 @@ import type { User } from "@supabase/supabase-js";
 
 import type { ShieldRating } from "@/src/lib/scoring/types";
 
+import {
+  isAdminRole,
+  type AccessDeniedReason,
+  requireAuthenticatedUser,
+} from "./authGuards";
 import { createAdminSupabaseClient } from "./admin";
-import { createServerSupabaseClient } from "./server";
 import type { AppClientRow, AppUserRow, ClientStatus, UserRole } from "./userProfile";
 
 const UUID_RE =
@@ -14,7 +18,7 @@ const UUID_RE =
 const USER_ROLES: UserRole[] = ["client", "advisor", "admin"];
 const ADVISOR_ASSIGNABLE_ROLES: UserRole[] = ["advisor", "admin"];
 
-export type AdminAccessDeniedReason = "unauthenticated" | "forbidden";
+export type AdminAccessDeniedReason = AccessDeniedReason;
 
 export type RequireAdminAccessResult =
   | { allowed: false; reason: AdminAccessDeniedReason }
@@ -83,34 +87,17 @@ export function isUserRole(value: string): value is UserRole {
  * Identity is derived from supabase.auth.getUser() — never from browser input.
  */
 export async function requireAdminAccess(): Promise<RequireAdminAccessResult> {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user: authUser },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const auth = await requireAuthenticatedUser();
 
-  if (authError || !authUser) {
+  if (!auth.authenticated) {
     return { allowed: false, reason: "unauthenticated" };
   }
 
-  const admin = createAdminSupabaseClient();
-  const { data, error } = await admin
-    .from("users")
-    .select("*")
-    .eq("id", authUser.id)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Failed to load user profile: ${error.message}`);
-  }
-
-  const userRow = data as AppUserRow | null;
-
-  if (!userRow || userRow.role !== "admin") {
+  if (!isAdminRole(auth.user.role)) {
     return { allowed: false, reason: "forbidden" };
   }
 
-  return { allowed: true, authUser, user: userRow };
+  return { allowed: true, authUser: auth.authUser, user: auth.user };
 }
 
 function toNumber(value: number | string | null | undefined): number | null {

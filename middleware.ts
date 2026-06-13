@@ -13,6 +13,7 @@ const PROTECTED_PREFIXES = [
   "/annual-review",
   "/document-vault",
   "/promotions",
+  "/my-adviser",
   "/advisor",
   "/admin",
 ] as const;

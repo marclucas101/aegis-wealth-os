@@ -59,11 +59,11 @@ export default function AdvisorClientCommandHeader({
 
       <div className="relative border-b border-[#D1A866]/10 px-5 py-3 sm:px-6">
         <Link
-          href="/advisor"
+          href="/advisor/clients"
           className="inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-[#D1A866]/70 transition-colors hover:text-[#D1A866]"
         >
           <span aria-hidden>←</span>
-          Advisor Console
+          My Clients
         </Link>
       </div>
 

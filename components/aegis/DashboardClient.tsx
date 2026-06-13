@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import BenchmarkCard from "@/components/aegis/BenchmarkCard";
 import DashboardEmptyState from "@/components/aegis/DashboardEmptyState";
@@ -12,7 +13,6 @@ import AdviserFeedbackPrompt from "@/components/aegis/feedback/AdviserFeedbackPr
 import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
 import PillarBreakdown from "@/components/aegis/PillarBreakdown";
 import PriorityGaps from "@/components/aegis/PriorityGaps";
-import ShieldRadarChart from "@/components/aegis/ShieldRadarChart";
 import ShieldScoreCard, { formatScore } from "@/components/aegis/ShieldScoreCard";
 import StressTestPreview from "@/components/aegis/StressTestPreview";
 import {
@@ -29,8 +29,22 @@ import {
 import type { DashboardSnapshot } from "@/lib/supabase/dashboardQueries";
 import {
   mockClientProfile,
+  mockFinancialProfile,
   runMockScoringDemo,
 } from "@/src/lib/scoring/mockExample";
+import { calculateProtectionCore } from "@/src/lib/scoring/calculateProtectionCore";
+
+const ShieldArchitectureModule = dynamic(
+  () => import("@/components/aegis/charts/ShieldArchitectureModule"),
+  {
+    loading: () => (
+      <div className="rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 px-5 py-10 text-center text-sm font-light text-[#F3F1EA]/45">
+        Loading shield architecture…
+      </div>
+    ),
+    ssr: false,
+  },
+);
 
 type DashboardMode = "loading" | "empty" | "cloud" | "local" | "demo";
 type ProfileSource = "cloud" | "local" | "demo";
@@ -60,6 +74,7 @@ function ProfileSourceBadge({ source }: { source: ProfileSource }) {
 function cloudSnapshotToResults(snapshot: DashboardSnapshot): DashboardResults {
   return {
     shield: snapshot.shield,
+    protectionCore: snapshot.protectionCore,
     awri: snapshot.awri,
     benchmark: snapshot.benchmark,
     stressTests: snapshot.stressTests,
@@ -199,6 +214,20 @@ export default function DashboardClient() {
 
   const demoResults = useMemo(() => runMockScoringDemo(), []);
 
+  const demoProtectionCore = useMemo(
+    () =>
+      calculateProtectionCore({
+        annualIncome: mockFinancialProfile.protect.annualIncome,
+        monthlyExpenses:
+          mockFinancialProfile.foundation.monthlyEssentialExpenses,
+        deathCoverage: mockFinancialProfile.protect.existingLifeCoverage,
+        tpdCoverage: null,
+        criticalIllnessCoverage: mockFinancialProfile.protect.existingCICoverage,
+        emergencySavings: mockFinancialProfile.foundation.liquidEmergencyAssets,
+      }),
+    [],
+  );
+
   if (mode === "loading") {
     return (
       <div className="rounded-sm border border-[#D1A866]/10 bg-[#10283A]/30 p-12 text-center">
@@ -223,6 +252,8 @@ export default function DashboardClient() {
       : null;
 
   const shield = activeResults?.shield ?? demoResults.shield;
+  const protectionCore =
+    activeResults?.protectionCore ?? demoProtectionCore;
   const awri = activeResults?.awri ?? demoResults.awri;
   const benchmark = activeResults?.benchmark ?? demoResults.benchmark;
   const stressTests = activeResults?.stressTests ?? demoResults.stressTests;
@@ -293,14 +324,19 @@ export default function DashboardClient() {
       <div className="mt-6 flex flex-col gap-6">
         <ShieldScoreCard shield={shield} awri={awri} />
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <ShieldRadarChart pillarScores={shield.pillarScores} />
-          <PillarBreakdown
-            pillarScores={shield.pillarScores}
-            weakestPillar={insights.weakestPillar}
-            strongestPillar={insights.strongestPillar}
-          />
-        </div>
+        <ShieldArchitectureModule
+          pillarScores={shield.pillarScores}
+          protectionCore={protectionCore}
+          roadmap={roadmap}
+          weakestPillar={insights.weakestPillar}
+          strongestPillar={insights.strongestPillar}
+        />
+
+        <PillarBreakdown
+          pillarScores={shield.pillarScores}
+          weakestPillar={insights.weakestPillar}
+          strongestPillar={insights.strongestPillar}
+        />
 
         <section>
           <div className="mb-4 border-b border-[#D1A866]/10 pb-3">

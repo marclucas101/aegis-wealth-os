@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import SidebarNav from "@/components/aegis/SidebarNav";
 import TopBar from "@/components/aegis/TopBar";
+import type { NavSection } from "@/lib/navigation";
 
 interface AppShellProps {
   children: ReactNode;
@@ -10,6 +11,8 @@ interface AppShellProps {
   subtitle?: string;
   /** When true, children render without the default content container. */
   fullBleed?: boolean;
+  /** Role-filtered navigation resolved server-side. */
+  navSections?: NavSection[];
 }
 
 export default function AppShell({
@@ -17,6 +20,7 @@ export default function AppShell({
   title,
   subtitle,
   fullBleed = false,
+  navSections,
 }: AppShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -56,7 +60,10 @@ export default function AppShell({
             menuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <SidebarNav onNavigate={() => setMenuOpen(false)} />
+          <SidebarNav
+            navSections={navSections}
+            onNavigate={() => setMenuOpen(false)}
+          />
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">

@@ -8,3 +8,6 @@ export * from "./stressTests";
 export * from "./benchmarks";
 export * from "./roadmap";
 export * from "./mockExample";
+export * from "./protectionBenchmarks";
+export * from "./protectionCoreTypes";
+export * from "./calculateProtectionCore";

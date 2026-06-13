@@ -3,14 +3,14 @@ import { NextResponse } from "next/server";
 import { rateLimitOrThrow, toPublicErrorMessage } from "@/lib/security/apiGuards";
 import { requireAdvisorAccess } from "@/lib/supabase/advisorAuth";
 import {
-  loadAdvisorClientCommandCenter,
-  type AdvisorClientCommandCenterPayload,
+  loadAdvisorClientCommandCenterShell,
+  type AdvisorClientCommandCenterShellPayload,
 } from "@/lib/supabase/advisorClientCommandCenter";
 
 export const dynamic = "force-dynamic";
 
 export type AdvisorClientCommandCenterResponse =
-  | ({ ok: true } & AdvisorClientCommandCenterPayload)
+  | ({ ok: true } & AdvisorClientCommandCenterShellPayload)
   | {
       ok: false;
       reason:
@@ -77,7 +77,7 @@ export async function GET(
       return rateLimit.response;
     }
 
-    const result = await loadAdvisorClientCommandCenter(
+    const result = await loadAdvisorClientCommandCenterShell(
       access.authUser.id,
       role,
       clientId,

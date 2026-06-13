@@ -12,12 +12,10 @@ import type {
 } from "@/src/lib/scoring/types";
 
 import { createAdminSupabaseClient } from "./admin";
+import { resolveAccessibleClient } from "./advisorClientAccess";
 import type { AdvisorActivityItem } from "./advisorQueries";
 import { loadDashboardSnapshot } from "./dashboardQueries";
 import type { AppClientRow, ClientStatus } from "./userProfile";
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const RECENT_ACTIVITY_LIMIT = 20;
 const STRESS_HISTORY_LIMIT = 20;
@@ -165,10 +163,6 @@ type AuditLogRow = {
   created_at: string;
 };
 
-function isValidClientId(clientId: string): boolean {
-  return UUID_RE.test(clientId);
-}
-
 function toNumber(value: number | string | null | undefined): number | null {
   if (value == null) return null;
   const parsed = typeof value === "number" ? value : Number(value);
@@ -217,43 +211,6 @@ function computeRoadmapCompletion(items: RoadmapItem[]): number {
   if (items.length === 0) return 0;
   const completed = items.filter((item) => item.status === "completed").length;
   return Math.round((completed / items.length) * 100);
-}
-
-async function resolveAccessibleClient(
-  authUserId: string,
-  userRole: "advisor" | "admin",
-  clientId: string,
-): Promise<
-  | { status: "not_found" }
-  | { status: "forbidden" }
-  | { status: "ok"; client: AppClientRow }
-> {
-  if (!isValidClientId(clientId)) {
-    return { status: "not_found" };
-  }
-
-  const admin = createAdminSupabaseClient();
-  const { data, error } = await admin
-    .from("clients")
-    .select("*")
-    .eq("id", clientId)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Failed to load client: ${error.message}`);
-  }
-
-  if (!data) {
-    return { status: "not_found" };
-  }
-
-  const client = data as AppClientRow;
-
-  if (userRole === "advisor" && client.advisor_user_id !== authUserId) {
-    return { status: "forbidden" };
-  }
-
-  return { status: "ok", client };
 }
 
 function mapDiscoverSummary(

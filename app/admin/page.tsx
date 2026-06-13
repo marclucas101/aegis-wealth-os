@@ -1,20 +1,16 @@
-import AdminAccessDenied from "@/components/aegis/admin/AdminAccessDenied";
 import AdminDashboardClient from "@/components/aegis/admin/AdminDashboardClient";
-import AppShell from "@/components/aegis/AppShell";
-import { requireAdminAccess } from "@/lib/supabase/adminManagement";
+import AuthenticatedAppShell from "@/components/aegis/AuthenticatedAppShell";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function AdminPage() {
-  const access = await requireAdminAccess();
-
   return (
-    <AppShell
+    <AuthenticatedAppShell
       title="Admin Console"
       subtitle="Manage user roles and advisor–client assignments"
     >
-      {access.allowed ? <AdminDashboardClient /> : <AdminAccessDenied />}
-    </AppShell>
+      <AdminDashboardClient />
+    </AuthenticatedAppShell>
   );
 }

@@ -14,6 +14,11 @@ import type {
   ShieldScoreResult,
   StressTestResult,
 } from "@/src/lib/scoring/types";
+import {
+  buildProtectionCoreInputsFromDiscover,
+  calculateProtectionCore,
+} from "@/src/lib/scoring/calculateProtectionCore";
+import type { ProtectionCoreResult } from "@/src/lib/scoring/protectionCoreTypes";
 import { sortRoadmapByPriority } from "@/src/lib/scoring";
 
 import { createAdminSupabaseClient } from "./admin";
@@ -28,6 +33,7 @@ export type DashboardSnapshot = {
   discoverScore: number;
   dataConfidenceFactor: number;
   shield: ShieldScoreResult;
+  protectionCore: ProtectionCoreResult;
   awri: AWRIResult;
   benchmark: BenchmarkResult;
   stressTests: StressTestResult[];
@@ -371,6 +377,10 @@ export async function loadDashboardSnapshot(
     shieldRow.strongest_pillar ??
     ("foundation" as ShieldPillar);
 
+  const protectionCore = calculateProtectionCore(
+    buildProtectionCoreInputsFromDiscover(discover.formData),
+  );
+
   return {
     source: "supabase",
     clientId,
@@ -379,6 +389,7 @@ export async function loadDashboardSnapshot(
     discoverScore: discover.discoverScore,
     dataConfidenceFactor: discover.dataConfidenceFactor,
     shield,
+    protectionCore,
     awri: mapAwri(shieldRow),
     benchmark: mapBenchmark(shieldRow),
     stressTests,

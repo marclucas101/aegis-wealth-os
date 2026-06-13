@@ -1,7 +1,5 @@
-import AdvisorAccessDenied from "@/components/aegis/advisor/AdvisorAccessDenied";
 import AdvisorClientWorkspace from "@/components/aegis/advisor/AdvisorClientWorkspace";
-import AppShell from "@/components/aegis/AppShell";
-import { requireAdvisorAccess } from "@/lib/supabase/advisorAuth";
+import AuthenticatedAppShell from "@/components/aegis/AuthenticatedAppShell";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -13,19 +11,14 @@ type AdvisorClientPageProps = {
 export default async function AdvisorClientPage({
   params,
 }: AdvisorClientPageProps) {
-  const access = await requireAdvisorAccess();
   const { clientId } = await params;
 
   return (
-    <AppShell
+    <AuthenticatedAppShell
       title="Client File"
       subtitle="Institutional client intelligence, servicing workflow, and advisory oversight"
     >
-      {access.allowed ? (
-        <AdvisorClientWorkspace clientId={clientId} />
-      ) : (
-        <AdvisorAccessDenied />
-      )}
-    </AppShell>
+      <AdvisorClientWorkspace clientId={clientId} />
+    </AuthenticatedAppShell>
   );
 }

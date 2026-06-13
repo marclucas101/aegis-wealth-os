@@ -1,13 +1,13 @@
-import AppShell from "@/components/aegis/AppShell";
+import AuthenticatedAppShell from "@/components/aegis/AuthenticatedAppShell";
 import SupabaseHealthCheck from "@/components/aegis/SupabaseHealthCheck";
 
 export default function SupabaseHealthPage() {
   return (
-    <AppShell
+    <AuthenticatedAppShell
       title="Supabase Health"
       subtitle="Database connectivity"
     >
       <SupabaseHealthCheck />
-    </AppShell>
+    </AuthenticatedAppShell>
   );
 }

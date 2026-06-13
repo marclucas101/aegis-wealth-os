@@ -34,6 +34,18 @@ Run `npm run deploy:config` to verify naming and URL shape without printing secr
 | `NODE_ENV` | Runtime | Set automatically by Next.js / Vercel (`development` locally, `production` on Vercel production) |
 | `VERCEL_ENV` | Runtime (Vercel) | `production`, `preview`, or `development` — used by health endpoint to reduce diagnostic leakage |
 
+### Google Calendar booking (Phase 6D — server only unless noted)
+
+| Variable | Scope | Used for |
+|----------|-------|----------|
+| `GOOGLE_CLIENT_ID` | **Server only** | Google OAuth web client ID for adviser calendar connection |
+| `GOOGLE_CLIENT_SECRET` | **Server only** | Google OAuth client secret — **never** expose to the browser |
+| `GOOGLE_CALENDAR_REDIRECT_URI` | **Server only** | OAuth callback URL registered in Google Cloud Console. Local: `http://localhost:3000/api/google-calendar/callback`. Production: `https://aegis-wealth-os.vercel.app/api/google-calendar/callback` (or your deployed domain) |
+| `GOOGLE_TOKEN_ENCRYPTION_KEY` | **Server only** | 32-byte key (64-char hex or base64) for AES-256-GCM encryption of stored OAuth tokens |
+| `GOOGLE_OAUTH_STATE_SECRET` | **Server only** (optional) | HMAC secret for OAuth `state` parameter validation; falls back to `GOOGLE_TOKEN_ENCRYPTION_KEY` if unset |
+
+**Security:** Refresh and access tokens are encrypted at rest in `adviser_calendar_connections` and are never returned to browser components or client APIs.
+
 ---
 
 ## Where to set variables

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { blockDebugRouteInProduction } from "@/lib/security/debugRouteGuard";
 import { buildSetCookieHeader } from "@/lib/supabase/set-cookie";
 
 export const runtime = "nodejs";
@@ -21,6 +22,11 @@ export const revalidate = 0;
  *                       own sb-<ref>-auth-token storage key)
  */
 export async function GET(): Promise<NextResponse> {
+  const blocked = blockDebugRouteInProduction();
+  if (blocked) {
+    return blocked;
+  }
+
   const setCookies = [
     buildSetCookieHeader("aegis-basic-cookie", "1", { maxAge: 3600 }),
     buildSetCookieHeader("aegis-big-cookie", "x".repeat(2700), {

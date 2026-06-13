@@ -1,6 +1,8 @@
 import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { blockDebugRouteInProduction } from "@/lib/security/debugRouteGuard";
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -34,6 +36,11 @@ export type AuthCookiesDebugResponse = {
 };
 
 export async function GET(): Promise<NextResponse<AuthCookiesDebugResponse>> {
+  const blocked = blockDebugRouteInProduction();
+  if (blocked) {
+    return blocked as NextResponse<AuthCookiesDebugResponse>;
+  }
+
   const cookieStore = await cookies();
   const headerStore = await headers();
   const incomingCookieNames = cookieStore.getAll().map(({ name }) => name);

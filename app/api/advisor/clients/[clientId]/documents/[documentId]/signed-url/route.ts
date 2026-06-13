@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getRequestMetadata, toPublicErrorMessage } from "@/lib/security/apiGuards";
+import { getRequestMetadata, rateLimitOrThrow, toPublicErrorMessage } from "@/lib/security/apiGuards";
 import { requireAdvisorAccess } from "@/lib/supabase/advisorAuth";
 import { createAdvisorDocumentSignedUrl } from "@/lib/supabase/advisorDocumentAccess";
 import { writeAuditLog } from "@/lib/supabase/auditLog";
@@ -57,6 +57,18 @@ export async function POST(
     }
 
     const { clientId, documentId } = await context.params;
+
+    const rateLimit = rateLimitOrThrow<AdvisorDocumentSignedUrlResponse>(
+      request,
+      {
+        userId: access.authUser.id,
+        bucket: "writeHeavy",
+      },
+    );
+    if (!rateLimit.ok) {
+      return rateLimit.response;
+    }
+
     const result = await createAdvisorDocumentSignedUrl(
       access.authUser.id,
       role,

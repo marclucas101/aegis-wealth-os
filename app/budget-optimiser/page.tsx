@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 
-import AppShell from "@/components/aegis/AppShell";
+import AuthenticatedAppShell from "@/components/aegis/AuthenticatedAppShell";
 import BudgetOptimiserClient from "@/components/aegis/budget-optimiser/BudgetOptimiserClient";
 import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
 
@@ -11,7 +11,7 @@ export default async function BudgetOptimiserPage() {
   await cookies();
 
   return (
-    <AppShell
+    <AuthenticatedAppShell
       title="Budget Allocation Optimiser"
       subtitle="Analyse monthly spending against life-stage benchmarks and identify allocation drift."
     >
@@ -20,6 +20,6 @@ export default async function BudgetOptimiserPage() {
       <div className="mt-8">
         <ClientTrustNotice variant="compact" context="general" />
       </div>
-    </AppShell>
+    </AuthenticatedAppShell>
   );
 }

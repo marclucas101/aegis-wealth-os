@@ -11,6 +11,10 @@ import {
   runAllStressTests,
   sortRoadmapByPriority,
 } from "@/src/lib/scoring";
+import {
+  buildProtectionCoreInputsFromDiscover,
+  calculateProtectionCore,
+} from "@/src/lib/scoring/calculateProtectionCore";
 import type {
   AssetAllocationQuality,
   AWRIResult,
@@ -37,6 +41,7 @@ import type {
   StressSeverity,
   StressTestResult,
 } from "@/src/lib/scoring/types";
+import type { ProtectionCoreResult } from "@/src/lib/scoring/protectionCoreTypes";
 
 const STORAGE_KEY = "aegis-discover-profile-v1";
 const ROADMAP_STATUS_KEY = "aegis-roadmap-status-v1";
@@ -1224,6 +1229,7 @@ export function computeRoadmapFromProfile(
 
 export interface DashboardResults {
   shield: ShieldScoreResult;
+  protectionCore: ProtectionCoreResult;
   awri: AWRIResult;
   benchmark: BenchmarkResult;
   stressTests: StressTestResult[];
@@ -1272,8 +1278,13 @@ export function computeDashboardFromProfile(
     )
   );
 
+  const protectionCore = calculateProtectionCore(
+    buildProtectionCoreInputsFromDiscover(refreshed.formData),
+  );
+
   return {
     shield,
+    protectionCore,
     awri,
     benchmark,
     stressTests,

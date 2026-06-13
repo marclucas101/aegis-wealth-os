@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 
-import AppShell from "@/components/aegis/AppShell";
+import AuthenticatedAppShell from "@/components/aegis/AuthenticatedAppShell";
 import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
 import DiscoverWizard from "@/components/aegis/discover/DiscoverWizard";
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ export default async function DiscoverPage() {
   await cookies();
 
   return (
-    <AppShell
+    <AuthenticatedAppShell
       title="Discover™"
       subtitle="Build your financial profile — step by step"
     >
@@ -47,6 +47,6 @@ export default async function DiscoverPage() {
       <div className="mt-8">
         <ClientTrustNotice variant="compact" context="general" />
       </div>
-    </AppShell>
+    </AuthenticatedAppShell>
   );
 }

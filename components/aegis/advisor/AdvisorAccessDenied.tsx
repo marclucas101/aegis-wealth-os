@@ -33,20 +33,17 @@ export default function AdvisorAccessDenied() {
         </div>
 
         <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-[#D1A866]/80">
-          Advisor Console
+          Adviser Workspace
         </p>
         <h2 className="mt-3 text-2xl font-light tracking-wide text-[#F3F1EA] sm:text-3xl">
-          Advisor access required
+          Adviser access required
         </h2>
         <p className="mt-4 text-sm font-light leading-relaxed text-[#F3F1EA]/45">
-          The Advisor Console is restricted to wealth architecture advisors and
-          administrators. Client portal accounts cannot access multi-client
-          monitoring or advisory oversight tools.
+          This workspace is restricted to authorised advisory personnel.
         </p>
         <p className="mt-3 text-xs font-light leading-relaxed text-[#F3F1EA]/30">
-          Advisor role assignment is currently managed manually in Supabase
-          (public.users.role). Contact your platform administrator if you
-          require advisor access.
+          If you believe you should have access, please contact your platform
+          administrator.
         </p>
 
         <div className="mt-8">

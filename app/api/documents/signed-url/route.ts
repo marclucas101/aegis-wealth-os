@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   parseJsonBodySafely,
+  rateLimitOrThrow,
   rejectClientIdInBody,
   toPublicErrorMessage,
   validateRequiredString,
@@ -23,6 +24,13 @@ export async function POST(
   request: Request,
 ): Promise<NextResponse<DocumentsSignedUrlResponse>> {
   try {
+    const rateLimit = rateLimitOrThrow<DocumentsSignedUrlResponse>(request, {
+      bucket: "writeHeavy",
+    });
+    if (!rateLimit.ok) {
+      return rateLimit.response;
+    }
+
     const session = await ensureUserClientProfile();
 
     if (!session.authenticated) {

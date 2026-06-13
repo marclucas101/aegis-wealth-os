@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 
-import AppShell from "@/components/aegis/AppShell";
+import AuthenticatedAppShell from "@/components/aegis/AuthenticatedAppShell";
 import PromotionsClient from "@/components/aegis/promotions/PromotionsClient";
 import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
 
@@ -16,7 +16,7 @@ export default async function PromotionsPage() {
   await cookies();
 
   return (
-    <AppShell
+    <AuthenticatedAppShell
       title="Curated Opportunities"
       subtitle="Selected campaigns and planning opportunities from your advisory team."
     >
@@ -25,6 +25,6 @@ export default async function PromotionsPage() {
       <div className="mt-8">
         <ClientTrustNotice variant="compact" context="general" />
       </div>
-    </AppShell>
+    </AuthenticatedAppShell>
   );
 }

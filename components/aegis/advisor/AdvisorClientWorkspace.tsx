@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { AdvisorClientCommandCenterResponse } from "@/app/api/advisor/clients/[clientId]/command-center/route";
+import type { AdvisorClientCommandCenterHeavyResponse } from "@/app/api/advisor/clients/[clientId]/command-center/heavy/route";
+import AdvisorClientAppointmentsPanel from "@/components/aegis/advisor/AdvisorClientAppointmentsPanel";
+import AdvisorClientBudgetPanel from "@/components/aegis/advisor/AdvisorClientBudgetPanel";
+import AdvisorClientFeedbackPanel from "@/components/aegis/advisor/AdvisorClientFeedbackPanel";
 import AdvisorClientAccessDenied from "@/components/aegis/advisor/AdvisorClientAccessDenied";
 import AdvisorClientActionBar from "@/components/aegis/advisor/AdvisorClientActionBar";
 import AdvisorClientActivityPanel from "@/components/aegis/advisor/AdvisorClientActivityPanel";
@@ -21,7 +25,10 @@ import AdvisorClientStressPanel from "@/components/aegis/advisor/AdvisorClientSt
 import AdvisorClientTaskSuggestionsPanel from "@/components/aegis/advisor/AdvisorClientTaskSuggestionsPanel";
 import AdvisorClientTasksPanel from "@/components/aegis/advisor/AdvisorClientTasksPanel";
 import AdvisorClientTimeline from "@/components/aegis/advisor/AdvisorClientTimeline";
-import type { AdvisorClientCommandCenterPayload } from "@/lib/supabase/advisorClientCommandCenter";
+import type {
+  AdvisorClientCommandCenterPayload,
+  AdvisorClientCommandCenterShellPayload,
+} from "@/lib/supabase/advisorClientCommandCenter";
 import type { ClientReviewStatusDetail } from "@/lib/supabase/advisorReviewPipeline";
 
 type WorkspaceMode =
@@ -35,30 +42,56 @@ interface AdvisorClientWorkspaceProps {
   clientId: string;
 }
 
-const SECTION_NAV = [
-  { id: "client-file-quality", label: "File Quality" },
-  { id: "client-suggested-followups", label: "Follow-Ups" },
-  { id: "client-overview", label: "Overview" },
-  { id: "client-risk", label: "Risk" },
-  { id: "client-roadmap", label: "Roadmap" },
-  { id: "client-documents", label: "Documents" },
-  { id: "client-reports", label: "Reports" },
-  { id: "client-notes", label: "Notes" },
-  { id: "client-tasks", label: "Tasks" },
-  { id: "client-activity", label: "Activity" },
-] as const;
+type WorkspaceTab =
+  | "overview"
+  | "financial-profile"
+  | "shield-diagnostic"
+  | "budget"
+  | "protection-reports"
+  | "document-vault"
+  | "appointments"
+  | "feedback"
+  | "notes";
 
-function scrollToSection(id: string) {
-  const el = document.getElementById(id);
-  if (el) {
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+const WORKSPACE_TABS: Array<{ id: WorkspaceTab; label: string }> = [
+  { id: "overview", label: "Overview" },
+  { id: "financial-profile", label: "Financial Profile" },
+  { id: "shield-diagnostic", label: "Shield Diagnostic" },
+  { id: "budget", label: "Budget" },
+  { id: "protection-reports", label: "Protection Reports" },
+  { id: "document-vault", label: "Document Vault" },
+  { id: "appointments", label: "Appointments" },
+  { id: "feedback", label: "Feedback" },
+  { id: "notes", label: "Notes" },
+];
+
+function shellToCommandCenter(
+  shell: AdvisorClientCommandCenterShellPayload,
+): AdvisorClientCommandCenterPayload {
+  return {
+    ...shell,
+    fileQuality: null,
+    fileQualityError: null,
+    taskSuggestions: null,
+    suggestionsError: null,
+    tasks: [],
+    tasksError: null,
+    notes: [],
+    notesError: null,
+    timing: {
+      ...shell.timing,
+      fileQualityMs: null,
+      taskSuggestionsMs: null,
+      tasksMs: null,
+      notesMs: null,
+    },
+  };
 }
 
-function extractCommandCenterData(
+function extractCommandCenterShell(
   data: Extract<AdvisorClientCommandCenterResponse, { ok: true }>,
-): AdvisorClientCommandCenterPayload {
-  return data as AdvisorClientCommandCenterPayload;
+): AdvisorClientCommandCenterShellPayload {
+  return data as AdvisorClientCommandCenterShellPayload;
 }
 
 export default function AdvisorClientWorkspace({
@@ -72,8 +105,9 @@ export default function AdvisorClientWorkspace({
   const [openTaskCountOverride, setOpenTaskCountOverride] = useState<
     number | null
   >(null);
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>("overview");
 
-  const loadCommandCenter = useCallback(async () => {
+  const loadShell = useCallback(async () => {
     const response = await fetch(
       `/api/advisor/clients/${clientId}/command-center`,
       { cache: "no-store" },
@@ -101,8 +135,28 @@ export default function AdvisorClientWorkspace({
 
     return {
       kind: "success" as const,
-      data: extractCommandCenterData(data),
+      data: shellToCommandCenter(extractCommandCenterShell(data)),
     };
+  }, [clientId]);
+
+  const loadHeavy = useCallback(async () => {
+    const response = await fetch(
+      `/api/advisor/clients/${clientId}/command-center/heavy`,
+      { cache: "no-store" },
+    );
+
+    if (!response.ok) {
+      return { kind: "error" as const };
+    }
+
+    const data =
+      (await response.json()) as AdvisorClientCommandCenterHeavyResponse;
+
+    if (!data.ok) {
+      return { kind: "error" as const };
+    }
+
+    return { kind: "success" as const, data };
   }, [clientId]);
 
   useEffect(() => {
@@ -110,7 +164,7 @@ export default function AdvisorClientWorkspace({
 
     async function loadInitial() {
       try {
-        const result = await loadCommandCenter();
+        const result = await loadShell();
         if (cancelled) return;
 
         if (result.kind === "forbidden") {
@@ -144,15 +198,91 @@ export default function AdvisorClientWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [loadCommandCenter]);
+  }, [loadShell]);
+
+  useEffect(() => {
+    if (mode !== "ready") return;
+
+    let cancelled = false;
+
+    async function loadDeferredPanels() {
+      try {
+        const result = await loadHeavy();
+        if (cancelled || result.kind !== "success") return;
+
+        setCommandCenter((current) =>
+          current
+            ? {
+                ...current,
+                fileQuality: result.data.fileQuality,
+                fileQualityError: result.data.fileQualityError,
+                taskSuggestions: result.data.taskSuggestions,
+                suggestionsError: result.data.suggestionsError,
+                tasks: result.data.tasks,
+                tasksError: result.data.tasksError,
+                notes: result.data.notes,
+                notesError: result.data.notesError,
+                timing: {
+                  ...current.timing,
+                  totalMs:
+                    current.timing.totalMs + result.data.timing.totalMs,
+                  fileQualityMs: result.data.timing.fileQualityMs,
+                  taskSuggestionsMs: result.data.timing.taskSuggestionsMs,
+                  tasksMs: result.data.timing.tasksMs,
+                  notesMs: result.data.timing.notesMs,
+                },
+              }
+            : current,
+        );
+        setOpenTaskCountOverride(null);
+      } catch {
+        // keep shell data if heavy panels fail
+      }
+    }
+
+    void loadDeferredPanels();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, loadHeavy]);
 
   const refreshCommandCenter = useCallback(async () => {
     setRefreshing(true);
 
     try {
-      const result = await loadCommandCenter();
-      if (result.kind === "success") {
-        setCommandCenter(result.data);
+      const shellResult = await loadShell();
+      if (shellResult.kind === "success") {
+        setCommandCenter(shellResult.data);
+        setOpenTaskCountOverride(null);
+      }
+
+      const heavyResult = await loadHeavy();
+      if (heavyResult.kind === "success") {
+        setCommandCenter((current) =>
+          current
+            ? {
+                ...current,
+                fileQuality: heavyResult.data.fileQuality,
+                fileQualityError: heavyResult.data.fileQualityError,
+                taskSuggestions: heavyResult.data.taskSuggestions,
+                suggestionsError: heavyResult.data.suggestionsError,
+                tasks: heavyResult.data.tasks,
+                tasksError: heavyResult.data.tasksError,
+                notes: heavyResult.data.notes,
+                notesError: heavyResult.data.notesError,
+                timing: {
+                  ...current.timing,
+                  totalMs:
+                    current.timing.totalMs + heavyResult.data.timing.totalMs,
+                  fileQualityMs: heavyResult.data.timing.fileQualityMs,
+                  taskSuggestionsMs: heavyResult.data.timing.taskSuggestionsMs,
+                  tasksMs: heavyResult.data.timing.tasksMs,
+                  notesMs: heavyResult.data.timing.notesMs,
+                },
+              }
+            : current,
+        );
         setOpenTaskCountOverride(null);
       }
     } catch {
@@ -160,7 +290,7 @@ export default function AdvisorClientWorkspace({
     } finally {
       setRefreshing(false);
     }
-  }, [loadCommandCenter]);
+  }, [loadShell, loadHeavy]);
 
   const openTaskCount = useMemo(() => {
     if (openTaskCountOverride !== null) return openTaskCountOverride;
@@ -271,50 +401,80 @@ export default function AdvisorClientWorkspace({
 
       <AdvisorClientActionBar />
 
-      <AdvisorClientFileQualityPanel
-        quality={commandCenter.fileQuality}
-        error={commandCenter.fileQualityError}
-        onRetry={() => void refreshCommandCenter()}
-      />
-
-      <AdvisorClientTaskSuggestionsPanel
-        initialPayload={commandCenter.taskSuggestions}
-        error={commandCenter.suggestionsError}
-        onRetry={() => void refreshCommandCenter()}
-      />
-
       <nav
-        aria-label="Client file sections"
+        aria-label="Client workspace tabs"
         className="sticky top-14 z-20 -mx-1 flex flex-wrap gap-1 rounded-sm border border-[#D1A866]/10 bg-[#071B2A]/90 px-2 py-2 backdrop-blur-md sm:top-16"
       >
-        {SECTION_NAV.map((section) => (
+        {WORKSPACE_TABS.map((tab) => (
           <button
-            key={section.id}
+            key={tab.id}
             type="button"
-            onClick={() => scrollToSection(section.id)}
-            className="rounded-sm px-3 py-1.5 text-[9px] font-medium uppercase tracking-[0.14em] text-[#F3F1EA]/45 transition-colors hover:bg-[#D1A866]/8 hover:text-[#D1A866]"
+            onClick={() => setActiveTab(tab.id)}
+            className={`rounded-sm px-3 py-1.5 text-[9px] font-medium uppercase tracking-[0.14em] transition-colors ${
+              activeTab === tab.id
+                ? "bg-[#D1A866]/15 text-[#D1A866]"
+                : "text-[#F3F1EA]/45 hover:bg-[#D1A866]/8 hover:text-[#D1A866]"
+            }`}
           >
-            {section.label}
+            {tab.label}
           </button>
         ))}
       </nav>
 
-      <div id="client-overview" className="scroll-mt-24 space-y-6">
-        <AdvisorClientSnapshot
-          discover={commandCenter.discover}
-          shield={commandCenter.shield}
-          roadmapCompletionPercent={commandCenter.roadmapCompletionPercent}
-          documentCount={commandCenter.documents.length}
-          openTaskCount={openTaskCount}
-          lastAnnualReview={lastAnnualReview}
-        />
+      {activeTab === "overview" && (
+        <div className="space-y-6">
+          <AdvisorClientFileQualityPanel
+            quality={commandCenter.fileQuality}
+            error={commandCenter.fileQualityError}
+            onRetry={() => void refreshCommandCenter()}
+          />
 
-        <AdvisorClientTimeline
-          client={commandCenter.client}
-          recentActivity={commandCenter.recentActivity}
-          lastAnnualReview={lastAnnualReview}
-        />
+          <AdvisorClientTaskSuggestionsPanel
+            initialPayload={commandCenter.taskSuggestions}
+            error={commandCenter.suggestionsError}
+            onRetry={() => void refreshCommandCenter()}
+          />
 
+          <AdvisorClientSnapshot
+            discover={commandCenter.discover}
+            shield={commandCenter.shield}
+            roadmapCompletionPercent={commandCenter.roadmapCompletionPercent}
+            documentCount={commandCenter.documents.length}
+            openTaskCount={openTaskCount}
+            lastAnnualReview={lastAnnualReview}
+          />
+
+          <AdvisorClientTimeline
+            client={commandCenter.client}
+            recentActivity={commandCenter.recentActivity}
+            lastAnnualReview={lastAnnualReview}
+          />
+
+          <AdvisorClientRoadmapPanel
+            roadmap={commandCenter.roadmap}
+            completionPercent={commandCenter.roadmapCompletionPercent}
+          />
+
+          <AdvisorClientTasksPanel
+            clientId={clientId}
+            initialTasks={commandCenter.tasks}
+            error={commandCenter.tasksError}
+            viewer={commandCenter.viewer}
+            onRetry={() => void refreshCommandCenter()}
+            onOpenTaskCountChange={handleOpenTaskCountChange}
+          />
+
+          <AdvisorClientActivityPanel
+            activity={
+              commandCenter.activityError ? null : commandCenter.recentActivity
+            }
+            error={commandCenter.activityError}
+            onRetry={() => void refreshCommandCenter()}
+          />
+        </div>
+      )}
+
+      {activeTab === "financial-profile" && (
         <AdvisorClientScorePanel
           client={commandCenter.client}
           discover={commandCenter.discover}
@@ -323,29 +483,29 @@ export default function AdvisorClientWorkspace({
           awri={commandCenter.awri}
           benchmark={commandCenter.benchmark}
         />
-      </div>
+      )}
 
-      <section id="client-risk" className="scroll-mt-24 space-y-6">
-        <AdvisorClientRiskSummary
-          pillarScores={pillarScores}
-          weakestPillar={commandCenter.insights?.weakestPillar ?? null}
-          topStressExposures={commandCenter.topStressExposures}
-          review={commandCenter.review}
-        />
-
-        <div className="grid gap-6 lg:grid-cols-2">
-          <AdvisorClientPillarPanel
+      {activeTab === "shield-diagnostic" && (
+        <section className="space-y-6">
+          <AdvisorClientRiskSummary
             pillarScores={pillarScores}
             weakestPillar={commandCenter.insights?.weakestPillar ?? null}
-            strongestPillar={commandCenter.insights?.strongestPillar ?? null}
-          />
-          <AdvisorClientStressPanel
             topStressExposures={commandCenter.topStressExposures}
-            stressHistory={commandCenter.stressHistory}
+            review={commandCenter.review}
           />
-        </div>
 
-        <div id="client-review" className="scroll-mt-24">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <AdvisorClientPillarPanel
+              pillarScores={pillarScores}
+              weakestPillar={commandCenter.insights?.weakestPillar ?? null}
+              strongestPillar={commandCenter.insights?.strongestPillar ?? null}
+            />
+            <AdvisorClientStressPanel
+              topStressExposures={commandCenter.topStressExposures}
+              stressHistory={commandCenter.stressHistory}
+            />
+          </div>
+
           <AdvisorClientReviewPanel
             clientId={clientId}
             review={commandCenter.review}
@@ -354,26 +514,14 @@ export default function AdvisorClientWorkspace({
             onStatusUpdated={handleReviewUpdated}
             onReviewRefreshed={handleReviewRefreshed}
           />
-        </div>
-      </section>
+        </section>
+      )}
 
-      <div id="client-roadmap" className="scroll-mt-24">
-        <AdvisorClientRoadmapPanel
-          roadmap={commandCenter.roadmap}
-          completionPercent={commandCenter.roadmapCompletionPercent}
-        />
-      </div>
+      {activeTab === "budget" && (
+        <AdvisorClientBudgetPanel clientId={clientId} />
+      )}
 
-      <div id="client-documents" className="scroll-mt-24">
-        <AdvisorClientDocumentsPanel
-          clientId={clientId}
-          documents={commandCenter.documents}
-          loadError={commandCenter.documentsError}
-          onRetry={() => void refreshCommandCenter()}
-        />
-      </div>
-
-      <div id="client-reports" className="scroll-mt-24">
+      {activeTab === "protection-reports" && (
         <AdvisorClientReportsPanel
           clientId={clientId}
           wealthBlueprintHistory={commandCenter.wealthBlueprintHistory}
@@ -381,9 +529,26 @@ export default function AdvisorClientWorkspace({
           metadataError={commandCenter.reportsError}
           onRetry={() => void refreshCommandCenter()}
         />
-      </div>
+      )}
 
-      <div id="client-notes" className="scroll-mt-24">
+      {activeTab === "document-vault" && (
+        <AdvisorClientDocumentsPanel
+          clientId={clientId}
+          documents={commandCenter.documents}
+          loadError={commandCenter.documentsError}
+          onRetry={() => void refreshCommandCenter()}
+        />
+      )}
+
+      {activeTab === "appointments" && (
+        <AdvisorClientAppointmentsPanel clientId={clientId} />
+      )}
+
+      {activeTab === "feedback" && (
+        <AdvisorClientFeedbackPanel clientId={clientId} />
+      )}
+
+      {activeTab === "notes" && (
         <AdvisorClientNotesPanel
           clientId={clientId}
           initialNotes={commandCenter.notes}
@@ -391,28 +556,7 @@ export default function AdvisorClientWorkspace({
           viewer={commandCenter.viewer}
           onRetry={() => void refreshCommandCenter()}
         />
-      </div>
-
-      <div id="client-tasks" className="scroll-mt-24">
-        <AdvisorClientTasksPanel
-          clientId={clientId}
-          initialTasks={commandCenter.tasks}
-          error={commandCenter.tasksError}
-          viewer={commandCenter.viewer}
-          onRetry={() => void refreshCommandCenter()}
-          onOpenTaskCountChange={handleOpenTaskCountChange}
-        />
-      </div>
-
-      <div id="client-activity" className="scroll-mt-24">
-        <AdvisorClientActivityPanel
-          activity={
-            commandCenter.activityError ? null : commandCenter.recentActivity
-          }
-          error={commandCenter.activityError}
-          onRetry={() => void refreshCommandCenter()}
-        />
-      </div>
+      )}
     </div>
   );
 }
