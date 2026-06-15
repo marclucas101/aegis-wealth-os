@@ -2,7 +2,14 @@ import "server-only";
 
 import { createAdminSupabaseClient } from "./admin";
 import { isValidUuid } from "./adminManagement";
-import type { AppClientRow, AppUserRow, ClientStatus, UserRole } from "./userProfile";
+import {
+  CLIENT_COLUMNS,
+  USER_COLUMNS,
+  type AppClientRow,
+  type AppUserRow,
+  type ClientStatus,
+  type UserRole,
+} from "./userProfile";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ONBOARDING_STATUSES: ClientStatus[] = ["onboarding", "prospect"];
@@ -144,7 +151,7 @@ async function findClientByEmail(
 
   const { data, error } = await admin
     .from("clients")
-    .select("*")
+    .select(CLIENT_COLUMNS)
     .ilike("email", normalized)
     .maybeSingle();
 
@@ -161,7 +168,7 @@ async function findUserByEmail(email: string): Promise<AppUserRow | null> {
 
   const { data, error } = await admin
     .from("users")
-    .select("*")
+    .select(USER_COLUMNS)
     .ilike("email", normalized)
     .maybeSingle();
 
@@ -177,7 +184,7 @@ async function findClientByUserId(userId: string): Promise<AppClientRow | null> 
 
   const { data, error } = await admin
     .from("clients")
-    .select("*")
+    .select(CLIENT_COLUMNS)
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -328,7 +335,7 @@ export async function loadOnboardingClients(input: {
 
   let query = admin
     .from("clients")
-    .select("*")
+    .select(CLIENT_COLUMNS)
     .in("status", ONBOARDING_STATUSES)
     .order("created_at", { ascending: false });
 
@@ -594,7 +601,7 @@ export async function findLinkablePlaceholderClient(
 
   const { data, error } = await admin
     .from("clients")
-    .select("*")
+    .select(CLIENT_COLUMNS)
     .ilike("email", normalized)
     .is("user_id", null)
     .in("status", ONBOARDING_STATUSES)

@@ -17,30 +17,30 @@ export async function GET(request: Request): Promise<NextResponse> {
   const oauthError = url.searchParams.get("error");
   const origin = url.origin;
 
-  const redirectBase = `${origin}/advisor/calendar`;
+  const redirectBase = `${origin}/advisor/my-profile?section=calendar`;
 
   if (oauthError) {
     return NextResponse.redirect(
-      `${redirectBase}?error=${encodeURIComponent(oauthError)}`,
+      `${redirectBase}&error=${encodeURIComponent(oauthError)}`,
     );
   }
 
   if (!code || !state) {
     return NextResponse.redirect(
-      `${redirectBase}?error=${encodeURIComponent("Missing OAuth parameters")}`,
+      `${redirectBase}&error=${encodeURIComponent("Missing OAuth parameters")}`,
     );
   }
 
   if (!isGoogleCalendarConfigured()) {
     return NextResponse.redirect(
-      `${redirectBase}?error=${encodeURIComponent("Google Calendar is not configured")}`,
+      `${redirectBase}&error=${encodeURIComponent("Google Calendar is not configured")}`,
     );
   }
 
   const payload = verifyOAuthState(state);
   if (!payload) {
     return NextResponse.redirect(
-      `${redirectBase}?error=${encodeURIComponent("Invalid OAuth state")}`,
+      `${redirectBase}&error=${encodeURIComponent("Invalid OAuth state")}`,
     );
   }
 
@@ -49,7 +49,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     if (!tokens.refresh_token) {
       return NextResponse.redirect(
-        `${redirectBase}?error=${encodeURIComponent("Google did not return a refresh token. Disconnect and reconnect with consent.")}`,
+        `${redirectBase}&error=${encodeURIComponent("Google did not return a refresh token. Disconnect and reconnect with consent.")}`,
       );
     }
 
@@ -66,12 +66,12 @@ export async function GET(request: Request): Promise<NextResponse> {
       calendarEmail: primary?.summary ?? null,
     });
 
-    return NextResponse.redirect(`${redirectBase}?connected=1`);
+    return NextResponse.redirect(`${redirectBase}&connected=1`);
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Google Calendar connection failed";
     return NextResponse.redirect(
-      `${redirectBase}?error=${encodeURIComponent(message)}`,
+      `${redirectBase}&error=${encodeURIComponent(message)}`,
     );
   }
 }

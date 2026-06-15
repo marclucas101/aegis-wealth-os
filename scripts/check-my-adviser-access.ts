@@ -96,9 +96,9 @@ function main(): void {
     "client navigation includes My Adviser (clients only)",
   );
   assert(
-    navigation.includes('href: "/advisor/setup"') &&
+    navigation.includes('href: "/advisor/my-profile"') &&
       navigation.includes("advisorOnly: true"),
-    "Adviser Setup hidden from clients",
+    "My Profile hidden from clients",
   );
   passed += 1;
 

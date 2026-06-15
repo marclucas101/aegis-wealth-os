@@ -24,8 +24,9 @@ export const ADVISORY_SECTION_TITLE = "Advisory";
  * Full navigation catalogue. Filter with {@link getNavSectionsForRole} before
  * rendering — never show the raw list to unauthenticated or client users.
  *
- * Future adviser routes (My Clients, Adviser Setup, Calendar Setup) should set
- * `advisorOnly: true` when added.
+ * Future adviser routes should set `advisorOnly: true` when added. Adviser
+ * profile, calendar, and booking setup are consolidated under "My Profile"
+ * (`/advisor/my-profile`).
  */
 export const NAV_SECTIONS: NavSection[] = [
   {
@@ -108,18 +109,6 @@ export const NAV_SECTIONS: NavSection[] = [
         advisorOnly: true,
       },
       {
-        label: "Adviser Setup",
-        href: "/advisor/setup",
-        description: "Public profile & presentation",
-        advisorOnly: true,
-      },
-      {
-        label: "Calendar Setup",
-        href: "/advisor/calendar",
-        description: "Google Calendar & booking",
-        advisorOnly: true,
-      },
-      {
         label: "Appointments",
         href: "/advisor/appointments",
         description: "Manage client bookings",
@@ -141,6 +130,12 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Protection Report",
         href: "/advisor/protection-report",
         description: "Portfolio summary generator",
+        advisorOnly: true,
+      },
+      {
+        label: "My Profile",
+        href: "/advisor/my-profile",
+        description: "Profile, calendar & booking setup",
         advisorOnly: true,
       },
       {

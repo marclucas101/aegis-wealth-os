@@ -130,13 +130,21 @@ function main(): void {
 
   const navigation = read(join(ROOT, "lib/navigation.ts"));
   assert(
-    navigation.includes('href: "/advisor/calendar"') &&
+    navigation.includes('href: "/advisor/my-profile"') &&
       navigation.includes("advisorOnly: true"),
-    "Calendar Setup hidden from clients",
+    "My Profile (calendar & booking setup) hidden from clients",
   );
   assert(
     navigation.includes('href: "/advisor/appointments"'),
     "Appointments nav present",
+  );
+  passed += 1;
+
+  const calendarRedirect = read(join(ROOT, "app/advisor/calendar/page.tsx"));
+  assert(
+    calendarRedirect.includes("redirect(") &&
+      calendarRedirect.includes("/advisor/my-profile"),
+    "legacy /advisor/calendar redirects to My Profile",
   );
   passed += 1;
 

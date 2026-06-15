@@ -1,16 +1,8 @@
-import AdviserProfileSetupClient from "@/components/aegis/advisor/setup/AdviserProfileSetupClient";
-import AuthenticatedAppShell from "@/components/aegis/AuthenticatedAppShell";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function AdviserSetupPage() {
-  return (
-    <AuthenticatedAppShell
-      title="Adviser Setup"
-      subtitle="Manage your public adviser profile for client-facing pages"
-    >
-      <AdviserProfileSetupClient />
-    </AuthenticatedAppShell>
-  );
+export default function AdviserSetupRedirectPage() {
+  redirect("/advisor/my-profile?section=profile");
 }

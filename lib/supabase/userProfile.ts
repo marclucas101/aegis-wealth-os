@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import type { User } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -85,13 +86,19 @@ export function displayNameFromAuthUser(authUser: User): string {
   return prefix || "Client";
 }
 
+/** Explicit column lists for `users` and `clients` (avoids `select *` payloads). */
+export const USER_COLUMNS =
+  "id, email, full_name, role, avatar_url, organisation, phone, created_at, updated_at";
+export const CLIENT_COLUMNS =
+  "id, user_id, advisor_user_id, status, display_name, email, phone, currency_code, onboarding_step, last_review_at, next_review_due, feedback_prompted_at, feedback_submitted_at, feedback_prompt_dismissed_at, created_at, updated_at";
+
 async function fetchUserRow(
   admin: SupabaseClient<Database>,
   userId: string,
 ): Promise<AppUserRow | null> {
   const { data, error } = await admin
     .from("users")
-    .select("*")
+    .select(USER_COLUMNS)
     .eq("id", userId)
     .maybeSingle();
 
@@ -108,7 +115,7 @@ async function fetchClientByUserId(
 ): Promise<AppClientRow | null> {
   const { data, error } = await admin
     .from("clients")
-    .select("*")
+    .select(CLIENT_COLUMNS)
     .eq("user_id", userId)
     .order("created_at", { ascending: true })
     .limit(1)
@@ -122,10 +129,77 @@ async function fetchClientByUserId(
 }
 
 /**
+ * Authoritative, idempotent, concurrency-safe provisioning of the signed-in
+ * user's own `public.clients` row. This is the single user-linked client
+ * creation path in the application.
+ *
+ * Concurrency model: the `clients_user_id_unique` index (one row per non-NULL
+ * `user_id`) is the source of truth. We issue `INSERT ... ON CONFLICT (user_id)
+ * DO NOTHING` via Supabase `upsert(..., { ignoreDuplicates: true })`, then
+ * re-read the canonical row by `user_id`.
+ *
+ * Guarantees:
+ * - Never creates a second row for the same user, even when two browser tabs or
+ *   two Vercel functions provision concurrently — the loser of the race is a
+ *   no-op `DO NOTHING`, not a duplicate insert.
+ * - Never overwrites an existing row's data (notably a non-NULL
+ *   `advisor_user_id`) because `ignoreDuplicates` skips the conflicting row
+ *   entirely rather than updating it.
+ * - A unique-violation (`23505`) from a row created between our lookup and our
+ *   upsert is treated as success: we fall through to the refetch instead of
+ *   failing the request.
+ * - Always returns the canonical row resolved by `user_id`, never an arbitrary
+ *   row.
+ */
+async function provisionClientRow(
+  admin: SupabaseClient<Database>,
+  authUser: User,
+  email: string,
+): Promise<AppClientRow> {
+  const { error: upsertError } = await admin
+    .from("clients")
+    .upsert(
+      {
+        user_id: authUser.id,
+        advisor_user_id: null,
+        display_name: displayNameFromAuthUser(authUser),
+        email,
+        status: "onboarding",
+        currency_code: "SGD",
+      } as never,
+      { onConflict: "user_id", ignoreDuplicates: true },
+    );
+
+  // A concurrent insert can still surface a unique violation; that means the
+  // row now exists, so it is not an error for us — fall through to the refetch.
+  if (upsertError && upsertError.code !== "23505") {
+    throw new Error(`Failed to provision client profile: ${upsertError.message}`);
+  }
+
+  const clientRow = await fetchClientByUserId(admin, authUser.id);
+  if (!clientRow) {
+    throw new Error(
+      "Failed to provision client profile: client row missing after upsert.",
+    );
+  }
+
+  return clientRow;
+}
+
+/**
  * Resolves the current session user and ensures matching public.users and
  * public.clients rows exist (MVP: one auth user → one client row).
+ *
+ * Wrapped in {@link cache} so that, within a single server request, the session
+ * resolution and idempotent provisioning run at most once even when multiple
+ * loaders/components depend on the client profile. This prevents duplicate
+ * `auth.getUser()` calls and duplicate provisioning insert attempts per request.
  */
-export async function ensureUserClientProfile(): Promise<EnsureUserClientProfileResult> {
+export const ensureUserClientProfile = cache(
+  _ensureUserClientProfile,
+);
+
+async function _ensureUserClientProfile(): Promise<EnsureUserClientProfileResult> {
   const supabase = await createServerSupabaseClient();
   const {
     data: { user: authUser },
@@ -190,27 +264,7 @@ export async function ensureUserClientProfile(): Promise<EnsureUserClientProfile
   }
 
   if (!clientRow) {
-    const { data, error } = await admin
-      .from("clients")
-      .insert({
-        user_id: authUser.id,
-        advisor_user_id: null,
-        display_name: displayNameFromAuthUser(authUser),
-        email,
-        status: "onboarding",
-        currency_code: "SGD",
-      } as never)
-      .select("*")
-      .single();
-
-    if (error) {
-      clientRow = await fetchClientByUserId(admin, authUser.id);
-      if (!clientRow) {
-        throw new Error(`Failed to provision client profile: ${error.message}`);
-      }
-    } else {
-      clientRow = data as AppClientRow;
-    }
+    clientRow = await provisionClientRow(admin, authUser, email);
   }
 
   if (linkedPlaceholder && clientRow) {
