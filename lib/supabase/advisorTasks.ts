@@ -15,6 +15,7 @@ export const ADVISOR_TASK_TYPES = [
   "document",
   "roadmap",
   "risk",
+  "client_birthday",
 ] as const;
 
 export const ADVISOR_TASK_PRIORITIES = [
@@ -50,6 +51,9 @@ export type AdvisorTaskRecord = {
   completedAt: string | null;
   relatedEntityType: string | null;
   relatedEntityId: string | null;
+  sourceKey: string | null;
+  dismissedAt: string | null;
+  metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 };
@@ -83,6 +87,9 @@ type AdvisorTaskRow = {
   completed_at: string | null;
   related_entity_type: string | null;
   related_entity_id: string | null;
+  source_key: string | null;
+  dismissed_at: string | null;
+  metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   clients?: { display_name: string } | { display_name: string }[] | null;
@@ -102,7 +109,7 @@ const DEFAULT_TASK_TYPE: AdvisorTaskType = "general";
 const DEFAULT_PRIORITY: AdvisorTaskPriority = "medium";
 const DEFAULT_STATUS: AdvisorTaskStatus = "open";
 const RECENTLY_COMPLETED_DAYS = 30;
-const UPCOMING_WINDOW_DAYS = 14;
+const UPCOMING_WINDOW_DAYS = 30;
 
 function isValidUuid(value: string): boolean {
   return UUID_RE.test(value);
@@ -174,6 +181,9 @@ function mapTaskRow(row: AdvisorTaskRow): AdvisorTaskRecord {
     completedAt: row.completed_at,
     relatedEntityType: row.related_entity_type,
     relatedEntityId: row.related_entity_id,
+    sourceKey: row.source_key,
+    dismissedAt: row.dismissed_at,
+    metadata: row.metadata ?? {},
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -668,6 +678,12 @@ export async function updateAdvisorTask(
       patch.completed_at = new Date().toISOString();
     } else if (existing.status === "completed") {
       patch.completed_at = null;
+    }
+
+    if (input.status === "cancelled") {
+      patch.dismissed_at = new Date().toISOString();
+    } else if (existing.status === "cancelled") {
+      patch.dismissed_at = null;
     }
   }
 

@@ -50,6 +50,7 @@ export type AppClientRow = {
   feedback_prompted_at: string | null;
   feedback_submitted_at: string | null;
   feedback_prompt_dismissed_at: string | null;
+  date_of_birth: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -90,7 +91,7 @@ export function displayNameFromAuthUser(authUser: User): string {
 export const USER_COLUMNS =
   "id, email, full_name, role, avatar_url, organisation, phone, created_at, updated_at";
 export const CLIENT_COLUMNS =
-  "id, user_id, advisor_user_id, status, display_name, email, phone, currency_code, onboarding_step, last_review_at, next_review_due, feedback_prompted_at, feedback_submitted_at, feedback_prompt_dismissed_at, created_at, updated_at";
+  "id, user_id, advisor_user_id, status, display_name, email, phone, currency_code, onboarding_step, last_review_at, next_review_due, feedback_prompted_at, feedback_submitted_at, feedback_prompt_dismissed_at, date_of_birth, created_at, updated_at";
 
 async function fetchUserRow(
   admin: SupabaseClient<Database>,

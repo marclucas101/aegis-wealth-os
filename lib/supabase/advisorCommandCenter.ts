@@ -12,6 +12,7 @@ import {
   buildAdvisorReviewPipelineFromContexts,
   loadAdvisorClientReviewContexts,
 } from "./advisorReviewPipeline";
+import { ensureBirthdayRemindersForAdviser, generateBirthdayReminders } from "./birthdayReminderTasks";
 import type { AdvisorTaskDashboard } from "./advisorTasks";
 import { loadAdvisorTaskDashboard } from "./advisorTasks";
 import type {
@@ -185,6 +186,16 @@ export async function loadAdvisorCommandCenterHeavy(
   const totalStarted = performance.now();
 
   const clients = await loadAdvisorAccessibleClients(authUserId, userRole);
+
+  try {
+    if (userRole === "advisor") {
+      await ensureBirthdayRemindersForAdviser(authUserId);
+    } else {
+      await generateBirthdayReminders();
+    }
+  } catch (err) {
+    console.error("[advisorCommandCenter:birthdayReminders]", err);
+  }
 
   const [tasksResult, qualityResult, reviewResult] = await Promise.all([
     loadSection("tasks", () =>

@@ -16,8 +16,10 @@ import type {
   ShieldRating,
 } from "@/src/lib/scoring/types";
 
+import { syncClientDateOfBirthFromDiscover } from "./birthdayReminderTasks";
 import { createAdminSupabaseClient } from "./admin";
 import type { AppClientRow } from "./userProfile";
+import { parseDateOfBirth } from "@/src/lib/advisor/birthdayCalculation";
 
 const SCORE_VERSION = "v1";
 
@@ -441,6 +443,11 @@ export async function persistDiscoverProfile(
     throw new Error(
       `Failed to insert client profile summary: ${clientProfileError.message}`,
     );
+  }
+
+  const discoverDateOfBirth = parseDateOfBirth(stored.formData.personal.dateOfBirth);
+  if (discoverDateOfBirth) {
+    await syncClientDateOfBirthFromDiscover(clientId, discoverDateOfBirth);
   }
 
   // 12. Promote client to active

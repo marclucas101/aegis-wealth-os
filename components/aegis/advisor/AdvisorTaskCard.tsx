@@ -10,6 +10,7 @@ import {
   PRIORITY_LABELS,
   TASK_TYPE_LABELS,
 } from "@/components/aegis/advisor/AdvisorTaskComposer";
+import { formatBirthdayCountdown } from "@/src/lib/advisor/birthdayCalculation";
 
 interface AdvisorTaskCardProps {
   task: AdvisorTaskRecord;
@@ -66,6 +67,17 @@ function statusTone(status: AdvisorTaskStatus): string {
   }
 }
 
+function birthdayCountdownLabel(task: AdvisorTaskRecord): string | null {
+  if (task.taskType !== "client_birthday") return null;
+
+  const metadataDays = task.metadata?.days_until;
+  if (typeof metadataDays === "number") {
+    return formatBirthdayCountdown(metadataDays);
+  }
+
+  return null;
+}
+
 export default function AdvisorTaskCard({
   task,
   canMutate,
@@ -75,6 +87,7 @@ export default function AdvisorTaskCard({
   showClient = false,
 }: AdvisorTaskCardProps) {
   const isTerminal = task.status === "completed" || task.status === "cancelled";
+  const birthdayCountdown = birthdayCountdownLabel(task);
 
   return (
     <article className="rounded-sm border border-[#D1A866]/12 bg-[#071B2A]/40 p-4 transition-colors hover:border-[#D1A866]/25">
@@ -94,6 +107,11 @@ export default function AdvisorTaskCard({
             >
               {STATUS_LABELS[task.status]}
             </span>
+            {task.taskType === "client_birthday" ? (
+              <span className="rounded-sm border border-pink-300/20 bg-pink-300/8 px-2 py-1 text-[9px] uppercase tracking-[0.12em] text-pink-100/75">
+                Birthday
+              </span>
+            ) : null}
           </div>
 
           <p className="mt-3 text-sm font-light text-[#F3F1EA]">{task.title}</p>
@@ -106,7 +124,12 @@ export default function AdvisorTaskCard({
 
           <div className="mt-3 flex flex-wrap gap-4 text-[10px] uppercase tracking-[0.1em] text-[#F3F1EA]/35">
             <span>Due {formatDate(task.dueDate)}</span>
-            {showClient && task.clientId && task.clientDisplayName ? (
+            {birthdayCountdown ? (
+              <span className="text-pink-100/65">{birthdayCountdown}</span>
+            ) : null}
+            {(showClient || task.taskType === "client_birthday") &&
+            task.clientId &&
+            task.clientDisplayName ? (
               <Link
                 href={`/advisor/clients/${task.clientId}`}
                 className="transition-colors hover:text-[#D1A866]"

@@ -9,6 +9,7 @@ export const ADVISOR_TASK_TYPES = [
   "document",
   "roadmap",
   "risk",
+  "client_birthday",
 ] as const;
 
 export const ADVISOR_TASK_PRIORITIES = [
@@ -44,6 +45,9 @@ export type AdvisorTaskRecord = {
   completedAt: string | null;
   relatedEntityType: string | null;
   relatedEntityId: string | null;
+  sourceKey?: string | null;
+  dismissedAt?: string | null;
+  metadata?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 };
@@ -75,6 +79,7 @@ const TASK_TYPE_LABELS: Record<AdvisorTaskType, string> = {
   document: "Document",
   roadmap: "Roadmap",
   risk: "Risk",
+  client_birthday: "Birthday",
 };
 
 const PRIORITY_LABELS: Record<AdvisorTaskPriority, string> = {

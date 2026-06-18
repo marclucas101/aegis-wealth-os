@@ -19,6 +19,7 @@ type AuthKind =
   | "optional"
   | "oauth-callback"
   | "debug-gated"
+  | "cron-gated"
   | "unknown";
 
 type RouteFinding = {
@@ -105,6 +106,11 @@ export const AUDITED_AUTH_PATTERNS: ReadonlyArray<{
     pattern: "blockDebugRouteInProduction",
     kind: "debug-gated",
     note: "Returns 404 in production",
+  },
+  {
+    pattern: "validateCronSecret",
+    kind: "cron-gated",
+    note: "Internal cron secret gate",
   },
 ];
 

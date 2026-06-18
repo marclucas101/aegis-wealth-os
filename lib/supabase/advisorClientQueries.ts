@@ -79,6 +79,7 @@ export type AdvisorClientRecord = {
   nextReviewDue: string | null;
   advisorUserId: string | null;
   advisorFullName: string | null;
+  dateOfBirth: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -185,6 +186,7 @@ function mapClientRecord(
     nextReviewDue: client.next_review_due,
     advisorUserId: client.advisor_user_id,
     advisorFullName,
+    dateOfBirth: client.date_of_birth,
     createdAt: client.created_at,
     updatedAt: client.updated_at,
   };

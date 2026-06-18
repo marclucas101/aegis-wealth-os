@@ -14,6 +14,7 @@ import AdvisorClientCommandHeader from "@/components/aegis/advisor/AdvisorClient
 import AdvisorClientDocumentsPanel from "@/components/aegis/advisor/AdvisorClientDocumentsPanel";
 import AdvisorClientFileQualityPanel from "@/components/aegis/advisor/AdvisorClientFileQualityPanel";
 import AdvisorClientNotesPanel from "@/components/aegis/advisor/AdvisorClientNotesPanel";
+import AdvisorClientPersonalPanel from "@/components/aegis/advisor/AdvisorClientPersonalPanel";
 import AdvisorClientPillarPanel from "@/components/aegis/advisor/AdvisorClientPillarPanel";
 import AdvisorClientReportsPanel from "@/components/aegis/advisor/AdvisorClientReportsPanel";
 import AdvisorClientReviewPanel from "@/components/aegis/advisor/AdvisorClientReviewPanel";
@@ -475,14 +476,20 @@ export default function AdvisorClientWorkspace({
       )}
 
       {activeTab === "financial-profile" && (
-        <AdvisorClientScorePanel
-          client={commandCenter.client}
-          discover={commandCenter.discover}
-          profile={commandCenter.profile}
-          shield={commandCenter.shield}
-          awri={commandCenter.awri}
-          benchmark={commandCenter.benchmark}
-        />
+        <div className="space-y-6">
+          <AdvisorClientPersonalPanel
+            clientId={clientId}
+            initialDateOfBirth={commandCenter.client.dateOfBirth}
+          />
+          <AdvisorClientScorePanel
+            client={commandCenter.client}
+            discover={commandCenter.discover}
+            profile={commandCenter.profile}
+            shield={commandCenter.shield}
+            awri={commandCenter.awri}
+            benchmark={commandCenter.benchmark}
+          />
+        </div>
       )}
 
       {activeTab === "shield-diagnostic" && (

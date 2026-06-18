@@ -38,7 +38,7 @@ const SECTIONS: TaskSection[] = [
   {
     key: "upcoming",
     label: "Upcoming",
-    description: "Tasks due within the next 14 days",
+    description: "Tasks due within the next 30 days",
   },
   {
     key: "highPriority",

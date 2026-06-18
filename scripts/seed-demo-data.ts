@@ -1508,6 +1508,11 @@ async function main(): Promise<void> {
       persona.roadmapStatuses ?? {},
     );
 
+    await admin
+      .from("clients")
+      .update({ date_of_birth: stored.formData.personal.dateOfBirth } as never)
+      .eq("id", clientId);
+
     if (persona.clientStatus === "review_due") {
       await admin
         .from("clients")
