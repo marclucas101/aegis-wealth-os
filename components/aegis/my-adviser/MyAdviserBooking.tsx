@@ -360,12 +360,39 @@ export default function MyAdviserBooking({
                 className="flex flex-col gap-2 border-b border-[#D1A866]/10 pb-3 last:border-0 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
-                  <p className="text-sm text-[#F3F1EA]/80">
-                    {appointment.appointmentLabel}
-                  </p>
-                  <p className="text-sm text-[#F3F1EA]/50">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm text-[#F3F1EA]/80">
+                      {appointment.appointmentLabel}
+                    </p>
+                    {appointment.scheduledByAdviser ? (
+                      <span className="rounded-sm border border-[#D1A866]/25 px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-[#D1A866]/80">
+                        Scheduled by your adviser
+                      </span>
+                    ) : null}
+                  </div>
+                  {appointment.scheduledByAdviser && appointment.adviserName ? (
+                    <p className="mt-1 text-xs text-[#F3F1EA]/40">
+                      {appointment.adviserName}
+                    </p>
+                  ) : null}
+                  <p className="mt-1 text-sm text-[#F3F1EA]/50">
                     {formatAppointment(appointment.startsAt, appointment.timezone)}
                   </p>
+                  {appointment.meetingUrl ? (
+                    <a
+                      href={appointment.meetingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 inline-block text-xs text-[#D1A866] hover:underline"
+                    >
+                      Join meeting
+                    </a>
+                  ) : null}
+                  {appointment.clientNotes ? (
+                    <p className="mt-2 text-sm text-[#F3F1EA]/55">
+                      {appointment.clientNotes}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex gap-2">
                   {appointment.googleEventUrl && (

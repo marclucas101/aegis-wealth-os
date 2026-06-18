@@ -80,6 +80,9 @@ Recommended Vercel mapping:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Prod anon key | Matching project anon key | Dev anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Prod service role | Matching service role | Dev service role |
 | `BASE_URL` | `https://your-domain.com` | Preview URL when running smoke tests | `http://localhost:3000` |
+| `RESEND_API_KEY` | Resend API key (production email) | Optional | Omit (dev logs emails) |
+| `EMAIL_FROM` | Verified sender, e.g. `AEGIS <appointments@yourdomain.com>` | Optional | Omit (dev logs emails) |
+| `CRON_SECRET` | Strong random secret for Vercel Cron | Optional | Local dev only |
 
 ### Supabase project settings
 

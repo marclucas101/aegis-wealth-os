@@ -24,6 +24,7 @@
     "qa:provisioning": "npx tsx scripts/run-provisioning-validation.ts",
     "qa:phase6f": "npx tsx scripts/run-phase6f-audit.ts",
     "qa:birthday-reminders": "npx tsx scripts/run-birthday-reminder-validation.ts",
+    "qa:adviser-appointments": "npx tsx scripts/run-adviser-appointment-validation.ts",
     "demo:seed": "npx tsx scripts/seed-demo-data.ts",
     "demo:clear": "npx tsx scripts/clear-demo-data.ts",
     "final:check": "npx tsx scripts/final-readiness-check.ts"

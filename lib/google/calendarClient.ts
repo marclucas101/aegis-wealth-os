@@ -183,6 +183,55 @@ export type CreateCalendarEventInput = {
   meetingLocationText?: string | null;
 };
 
+export async function updateGoogleCalendarEvent(
+  input: CreateCalendarEventInput & { eventId: string },
+): Promise<GoogleEventResponse> {
+  const eventBody: Record<string, unknown> = {
+    summary: input.summary,
+    description: input.description ?? "",
+    start: {
+      dateTime: input.startsAt,
+      timeZone: input.timezone,
+    },
+    end: {
+      dateTime: input.endsAt,
+      timeZone: input.timezone,
+    },
+    attendees: [{ email: input.attendeeEmail }],
+    reminders: { useDefault: true },
+  };
+
+  if (input.locationType === "physical" && input.meetingLocationText) {
+    eventBody.location = input.meetingLocationText;
+  } else if (input.locationType === "phone") {
+    eventBody.location = "Phone consultation";
+  }
+
+  const params = new URLSearchParams({
+    sendUpdates: "all",
+    conferenceDataVersion: input.locationType === "google_meet" ? "1" : "0",
+  });
+
+  const response = await fetchWithTimeout(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(input.calendarId)}/events/${encodeURIComponent(input.eventId)}?${params.toString()}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${input.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(eventBody),
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to update Google Calendar event");
+  }
+
+  return (await response.json()) as GoogleEventResponse;
+}
+
 export async function createGoogleCalendarEvent(
   input: CreateCalendarEventInput,
 ): Promise<GoogleEventResponse> {

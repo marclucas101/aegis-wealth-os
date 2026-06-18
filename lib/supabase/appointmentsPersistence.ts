@@ -42,12 +42,26 @@ type AppointmentRow = {
   location_type: CalendarLocationType;
   meeting_url: string | null;
   cancelled_at: string | null;
+  source?: import("@/lib/aegis/calendar").AppointmentSource;
+  created_by_user_id?: string | null;
+  external_reference?: string | null;
+  external_url?: string | null;
+  private_adviser_note?: string | null;
+  phone_instructions?: string | null;
+  custom_meeting_link?: string | null;
+  location_text?: string | null;
+  notification_status?: import("@/lib/aegis/calendar").NotificationStatus | null;
+  notification_error?: string | null;
+  calendar_sync_status?: import("@/lib/aegis/calendar").CalendarSyncStatus | null;
+  calendar_sync_error?: string | null;
 };
 
 function mapPublicAppointment(
   row: AppointmentRow,
   appointmentLabel: string,
+  adviserName?: string | null,
 ): PublicAppointment {
+  const source = row.source ?? "client_booking";
   return {
     id: row.id,
     appointmentType: row.appointment_type,
@@ -61,6 +75,12 @@ function mapPublicAppointment(
     googleEventUrl: row.google_event_url,
     clientNotes: row.client_notes,
     cancelledAt: row.cancelled_at,
+    source,
+    scheduledByAdviser:
+      source === "adviser_created" || source === "external_import",
+    adviserName: adviserName ?? null,
+    notificationStatus: row.notification_status ?? null,
+    calendarSyncStatus: row.calendar_sync_status ?? null,
   };
 }
 
@@ -359,6 +379,9 @@ export async function bookAppointmentForAssignedAdviser(
       location_type: settings.locationType,
       meeting_url: meetingUrl,
       idempotency_key: input.idempotencyKey,
+      source: "client_booking",
+      created_by_user_id: assignment.clientUserId,
+      calendar_sync_status: "synced",
     } as never)
     .select("*")
     .single();
@@ -419,15 +442,30 @@ export async function listClientUpcomingAppointments(): Promise<
 
   const adviserUserId = session.client.advisor_user_id;
   let settings = null;
+  let adviserName: string | null = null;
+
   if (adviserUserId) {
     settings = await loadAdviserCalendarSettings(adviserUserId);
+    const admin = createAdminSupabaseClient();
+    const { data: adviserUser } = await admin
+      .from("users")
+      .select("full_name")
+      .eq("id", adviserUserId)
+      .maybeSingle();
+    adviserName =
+      (adviserUser as { full_name?: string | null } | null)?.full_name?.trim() ??
+      null;
   }
 
   const appointments = ((data ?? []) as AppointmentRow[]).map((row) => {
     const type = settings
       ? resolveAppointmentType(settings.appointmentTypes, row.appointment_type)
       : null;
-    return mapPublicAppointment(row, type?.label ?? row.appointment_type);
+    return mapPublicAppointment(
+      row,
+      type?.label ?? row.appointment_type,
+      adviserName,
+    );
   });
 
   return { ok: true, appointments };
@@ -493,6 +531,13 @@ export async function listAdviserAppointments(
       clientUserId: row.client_user_id,
       clientName: client?.display_name ?? null,
       clientEmail: client?.email ?? null,
+      privateAdviserNote: row.private_adviser_note ?? null,
+      externalReference: row.external_reference ?? null,
+      externalUrl: row.external_url ?? null,
+      phoneInstructions: row.phone_instructions ?? null,
+      locationText: row.location_text ?? null,
+      notificationError: row.notification_error ?? null,
+      calendarSyncError: row.calendar_sync_error ?? null,
     };
   });
 }

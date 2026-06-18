@@ -7,6 +7,23 @@ export type AppointmentStatus =
   | "completed"
   | "failed";
 
+export type AppointmentSource =
+  | "client_booking"
+  | "adviser_created"
+  | "external_import";
+
+export type NotificationStatus =
+  | "pending"
+  | "sent"
+  | "failed"
+  | "retrying";
+
+export type CalendarSyncStatus =
+  | "not_synced"
+  | "synced"
+  | "failed"
+  | "skipped";
+
 export type AppointmentTypeOption = {
   id: string;
   label: string;
@@ -69,6 +86,11 @@ export type PublicAppointment = {
   googleEventUrl: string | null;
   clientNotes: string | null;
   cancelledAt: string | null;
+  source: AppointmentSource;
+  scheduledByAdviser: boolean;
+  adviserName?: string | null;
+  notificationStatus?: NotificationStatus | null;
+  calendarSyncStatus?: CalendarSyncStatus | null;
 };
 
 export type AdviserAppointmentRow = PublicAppointment & {
@@ -76,6 +98,13 @@ export type AdviserAppointmentRow = PublicAppointment & {
   clientUserId: string;
   clientName: string | null;
   clientEmail: string | null;
+  privateAdviserNote?: string | null;
+  externalReference?: string | null;
+  externalUrl?: string | null;
+  phoneInstructions?: string | null;
+  locationText?: string | null;
+  notificationError?: string | null;
+  calendarSyncError?: string | null;
 };
 
 export const DEFAULT_APPOINTMENT_TYPES: AppointmentTypeOption[] = [

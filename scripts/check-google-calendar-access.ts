@@ -153,6 +153,31 @@ function main(): void {
   assert(envDocs.includes("GOOGLE_TOKEN_ENCRYPTION_KEY"), "encryption key documented");
   passed += 1;
 
+  const createPath = read(
+    join(ROOT, "lib/supabase/adviserAppointmentCreation.ts"),
+  );
+  assert(
+    createPath.includes("createAdviserAppointment"),
+    "adviser appointment creation module exists",
+  );
+  assert(
+    createPath.includes("resolveAccessibleClient"),
+    "adviser creation validates client assignment",
+  );
+  passed += 1;
+
+  const emailProvider = read(join(ROOT, "lib/email/emailProvider.ts"));
+  assert(
+    emailProvider.includes("sendTransactionalEmail"),
+    "email provider abstraction exists",
+  );
+  assert(
+    !emailProvider.includes("RESEND_API_KEY") ||
+      emailProvider.includes("process.env"),
+    "email keys loaded server-side only",
+  );
+  passed += 1;
+
   console.log(`Calendar booking validations passed (${passed} assertion groups).`);
 }
 
