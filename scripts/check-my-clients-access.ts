@@ -73,13 +73,28 @@ function main(): void {
   const feedbackApi = read(
     join(ROOT, "app/api/advisor/clients/[clientId]/feedback/route.ts"),
   );
+  const dashboardApi = read(
+    join(ROOT, "app/api/advisor/clients/[clientId]/dashboard/route.ts"),
+  );
+  const shieldApi = read(
+    join(ROOT, "app/api/advisor/clients/[clientId]/shield-diagnostic/route.ts"),
+  );
+  const stressApi = read(
+    join(ROOT, "app/api/advisor/clients/[clientId]/stress-tests/route.ts"),
+  );
 
   for (const [label, source] of [
     ["budget API", budgetApi],
     ["appointments API", appointmentsApi],
     ["feedback API", feedbackApi],
+    ["dashboard API", dashboardApi],
+    ["shield diagnostic API", shieldApi],
+    ["stress tests API", stressApi],
   ] as const) {
-    assert(source.includes("resolveAccessibleClient"), `${label} checks access`);
+    const checksAccess =
+      source.includes("resolveAccessibleClient") ||
+      source.includes("loadAdvisorClient");
+    assert(checksAccess, `${label} checks access`);
     assert(source.includes("forbidden"), `${label} returns forbidden`);
   }
   passed += 1;
@@ -114,6 +129,14 @@ function main(): void {
   assert(
     workspace.includes("AdvisorClientFeedbackPanel"),
     "feedback tab panel wired",
+  );
+  assert(
+    workspace.includes("AdvisorClientDashboardPanel"),
+    "dashboard tab panel wired",
+  );
+  assert(
+    workspace.includes("AdvisorClientStressTestsPanel"),
+    "stress test tab panel wired",
   );
   passed += 1;
 

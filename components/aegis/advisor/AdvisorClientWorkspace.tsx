@@ -6,6 +6,7 @@ import type { AdvisorClientCommandCenterResponse } from "@/app/api/advisor/clien
 import type { AdvisorClientCommandCenterHeavyResponse } from "@/app/api/advisor/clients/[clientId]/command-center/heavy/route";
 import AdvisorClientAppointmentsPanel from "@/components/aegis/advisor/AdvisorClientAppointmentsPanel";
 import AdvisorClientBudgetPanel from "@/components/aegis/advisor/AdvisorClientBudgetPanel";
+import AdvisorClientDashboardPanel from "@/components/aegis/advisor/AdvisorClientDashboardPanel";
 import AdvisorClientFeedbackPanel from "@/components/aegis/advisor/AdvisorClientFeedbackPanel";
 import AdvisorClientAccessDenied from "@/components/aegis/advisor/AdvisorClientAccessDenied";
 import AdvisorClientActionBar from "@/components/aegis/advisor/AdvisorClientActionBar";
@@ -15,14 +16,13 @@ import AdvisorClientDocumentsPanel from "@/components/aegis/advisor/AdvisorClien
 import AdvisorClientFileQualityPanel from "@/components/aegis/advisor/AdvisorClientFileQualityPanel";
 import AdvisorClientNotesPanel from "@/components/aegis/advisor/AdvisorClientNotesPanel";
 import AdvisorClientPersonalPanel from "@/components/aegis/advisor/AdvisorClientPersonalPanel";
-import AdvisorClientPillarPanel from "@/components/aegis/advisor/AdvisorClientPillarPanel";
 import AdvisorClientReportsPanel from "@/components/aegis/advisor/AdvisorClientReportsPanel";
 import AdvisorClientReviewPanel from "@/components/aegis/advisor/AdvisorClientReviewPanel";
-import AdvisorClientRiskSummary from "@/components/aegis/advisor/AdvisorClientRiskSummary";
 import AdvisorClientRoadmapPanel from "@/components/aegis/advisor/AdvisorClientRoadmapPanel";
 import AdvisorClientScorePanel from "@/components/aegis/advisor/AdvisorClientScorePanel";
+import AdvisorClientShieldDiagnosticPanel from "@/components/aegis/advisor/AdvisorClientShieldDiagnosticPanel";
 import AdvisorClientSnapshot from "@/components/aegis/advisor/AdvisorClientSnapshot";
-import AdvisorClientStressPanel from "@/components/aegis/advisor/AdvisorClientStressPanel";
+import AdvisorClientStressTestsPanel from "@/components/aegis/advisor/AdvisorClientStressTestsPanel";
 import AdvisorClientTaskSuggestionsPanel from "@/components/aegis/advisor/AdvisorClientTaskSuggestionsPanel";
 import AdvisorClientTasksPanel from "@/components/aegis/advisor/AdvisorClientTasksPanel";
 import AdvisorClientTimeline from "@/components/aegis/advisor/AdvisorClientTimeline";
@@ -45,8 +45,10 @@ interface AdvisorClientWorkspaceProps {
 
 type WorkspaceTab =
   | "overview"
-  | "financial-profile"
+  | "dashboard"
   | "shield-diagnostic"
+  | "stress-test"
+  | "financial-profile"
   | "budget"
   | "protection-reports"
   | "document-vault"
@@ -56,8 +58,10 @@ type WorkspaceTab =
 
 const WORKSPACE_TABS: Array<{ id: WorkspaceTab; label: string }> = [
   { id: "overview", label: "Overview" },
-  { id: "financial-profile", label: "Financial Profile" },
+  { id: "dashboard", label: "Dashboard" },
   { id: "shield-diagnostic", label: "Shield Diagnostic" },
+  { id: "stress-test", label: "Stress Test" },
+  { id: "financial-profile", label: "Financial Profile" },
   { id: "budget", label: "Budget" },
   { id: "protection-reports", label: "Protection Reports" },
   { id: "document-vault", label: "Document Vault" },
@@ -380,7 +384,6 @@ export default function AdvisorClientWorkspace({
     return null;
   }
 
-  const pillarScores = commandCenter.shield?.pillarScores ?? null;
   const lastAnnualReview = commandCenter.annualReviewHistory[0] ?? null;
   const lastActivity = commandCenter.recentActivity[0] ?? null;
 
@@ -475,6 +478,28 @@ export default function AdvisorClientWorkspace({
         </div>
       )}
 
+      {activeTab === "dashboard" && (
+        <AdvisorClientDashboardPanel clientId={clientId} />
+      )}
+
+      {activeTab === "shield-diagnostic" && (
+        <section className="space-y-6">
+          <AdvisorClientShieldDiagnosticPanel clientId={clientId} />
+          <AdvisorClientReviewPanel
+            clientId={clientId}
+            review={commandCenter.review}
+            error={commandCenter.reviewError}
+            onRetry={() => void refreshCommandCenter()}
+            onStatusUpdated={handleReviewUpdated}
+            onReviewRefreshed={handleReviewRefreshed}
+          />
+        </section>
+      )}
+
+      {activeTab === "stress-test" && (
+        <AdvisorClientStressTestsPanel clientId={clientId} />
+      )}
+
       {activeTab === "financial-profile" && (
         <div className="space-y-6">
           <AdvisorClientPersonalPanel
@@ -490,38 +515,6 @@ export default function AdvisorClientWorkspace({
             benchmark={commandCenter.benchmark}
           />
         </div>
-      )}
-
-      {activeTab === "shield-diagnostic" && (
-        <section className="space-y-6">
-          <AdvisorClientRiskSummary
-            pillarScores={pillarScores}
-            weakestPillar={commandCenter.insights?.weakestPillar ?? null}
-            topStressExposures={commandCenter.topStressExposures}
-            review={commandCenter.review}
-          />
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            <AdvisorClientPillarPanel
-              pillarScores={pillarScores}
-              weakestPillar={commandCenter.insights?.weakestPillar ?? null}
-              strongestPillar={commandCenter.insights?.strongestPillar ?? null}
-            />
-            <AdvisorClientStressPanel
-              topStressExposures={commandCenter.topStressExposures}
-              stressHistory={commandCenter.stressHistory}
-            />
-          </div>
-
-          <AdvisorClientReviewPanel
-            clientId={clientId}
-            review={commandCenter.review}
-            error={commandCenter.reviewError}
-            onRetry={() => void refreshCommandCenter()}
-            onStatusUpdated={handleReviewUpdated}
-            onReviewRefreshed={handleReviewRefreshed}
-          />
-        </section>
       )}
 
       {activeTab === "budget" && (
