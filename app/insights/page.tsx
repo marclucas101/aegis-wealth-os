@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 
 import AuthenticatedAppShell from "@/components/aegis/AuthenticatedAppShell";
-import InsightsPlaceholderClient from "@/components/aegis/client/InsightsPlaceholderClient";
+import InsightsFeedClient from "@/components/aegis/client/InsightsFeedClient";
 import { requireActiveClientPortalPage } from "@/lib/compliance/activeClientPageGate";
 import { CLIENT_TERMINOLOGY } from "@/lib/compliance/terminology";
 
@@ -16,7 +16,7 @@ export default async function InsightsPage() {
       title={CLIENT_TERMINOLOGY.insightsAndUpdates}
       subtitle="Educational updates from your adviser"
     >
-      <InsightsPlaceholderClient />
+      <InsightsFeedClient />
     </AuthenticatedAppShell>
   );
 }

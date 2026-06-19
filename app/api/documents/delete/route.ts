@@ -9,6 +9,7 @@ import {
   toPublicErrorMessage,
   validateRequiredString,
 } from "@/lib/security/apiGuards";
+import { emitDocumentEventNotification } from "@/lib/communications/documentEventNotifications";
 import { assertClientDocumentAccess } from "@/lib/compliance/documentAccess";
 import { writeAuditLog } from "@/lib/supabase/auditLog";
 import { deleteClientDocument } from "@/lib/supabase/documentPersistence";
@@ -106,6 +107,14 @@ export async function POST(
       },
       ipAddress: metadata.ip_address,
       userAgent: metadata.user_agent,
+    });
+
+    await emitDocumentEventNotification({
+      clientId: session.client.id,
+      documentId: result.id,
+      eventType: "removed",
+      isClientVisible: true,
+      actorUserId: session.authUser.id,
     });
 
     return NextResponse.json({ ok: true, id: result.id });

@@ -98,7 +98,17 @@ export type PlatformFeatureKey =
   | "meeting_presentation_mode"
   | "meeting_exact_amount_presentations"
   | "meeting_client_acknowledgements"
-  | "meeting_summary_publication";
+  | "meeting_summary_publication"
+  | "adviser_insight_authoring"
+  | "admin_content_approval"
+  | "market_updates"
+  | "product_related_content"
+  | "client_in_app_notifications"
+  | "client_email_notifications"
+  | "document_event_notifications"
+  | "communication_preferences"
+  | "binder_export"
+  | "binder_client_publication";
 
 export const PLATFORM_FEATURE_KEYS: readonly PlatformFeatureKey[] = [
   "raw_client_financial_views",
@@ -112,6 +122,16 @@ export const PLATFORM_FEATURE_KEYS: readonly PlatformFeatureKey[] = [
   "meeting_exact_amount_presentations",
   "meeting_client_acknowledgements",
   "meeting_summary_publication",
+  "adviser_insight_authoring",
+  "admin_content_approval",
+  "market_updates",
+  "product_related_content",
+  "client_in_app_notifications",
+  "client_email_notifications",
+  "document_event_notifications",
+  "communication_preferences",
+  "binder_export",
+  "binder_client_publication",
 ] as const;
 
 /** Entitlement-gated client portal features. */

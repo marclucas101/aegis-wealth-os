@@ -68,6 +68,56 @@ export const FEATURE_DEFAULTS: Record<
     client_visible: false,
     adviser_visible: true,
   },
+  adviser_insight_authoring: {
+    enabled: true,
+    client_visible: false,
+    adviser_visible: true,
+  },
+  admin_content_approval: {
+    enabled: true,
+    client_visible: false,
+    adviser_visible: true,
+  },
+  market_updates: {
+    enabled: true,
+    client_visible: true,
+    adviser_visible: true,
+  },
+  product_related_content: {
+    enabled: false,
+    client_visible: false,
+    adviser_visible: true,
+  },
+  client_in_app_notifications: {
+    enabled: true,
+    client_visible: true,
+    adviser_visible: false,
+  },
+  client_email_notifications: {
+    enabled: true,
+    client_visible: true,
+    adviser_visible: false,
+  },
+  document_event_notifications: {
+    enabled: true,
+    client_visible: true,
+    adviser_visible: true,
+  },
+  communication_preferences: {
+    enabled: true,
+    client_visible: true,
+    adviser_visible: false,
+  },
+  binder_export: {
+    enabled: true,
+    client_visible: false,
+    adviser_visible: true,
+  },
+  binder_client_publication: {
+    enabled: false,
+    client_visible: false,
+    adviser_visible: true,
+  },
 };
 
 let cachedControls: Map<PlatformFeatureKey, FeatureControlRow> | null = null;

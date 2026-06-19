@@ -9,6 +9,7 @@ import {
   validateEnum,
 } from "@/lib/security/apiGuards";
 import { assertClientDocumentAccess } from "@/lib/compliance/documentAccess";
+import { emitDocumentEventNotification } from "@/lib/communications/documentEventNotifications";
 import { recordProspectEvent } from "@/lib/compliance/prospectAnalytics";
 import { writeAuditLog } from "@/lib/supabase/auditLog";
 import {
@@ -129,6 +130,14 @@ export async function POST(
       metadata: { category },
       ipAddress: metadata.ip_address,
       userAgent: metadata.user_agent,
+    });
+
+    await emitDocumentEventNotification({
+      clientId: session.client.id,
+      documentId: document.id,
+      eventType: "uploaded",
+      isClientVisible: true,
+      actorUserId: session.authUser.id,
     });
 
     return NextResponse.json({ ok: true, document });

@@ -223,6 +223,12 @@ export const NAV_SECTIONS: NavSection[] = [
         advisorOnly: true,
       },
       {
+        label: "Insights Authoring",
+        href: "/advisor/insights",
+        description: "Governed client communications",
+        advisorOnly: true,
+      },
+      {
         label: "Client Feedback",
         href: "/advisor/feedback",
         description: "Experience & testimonials",

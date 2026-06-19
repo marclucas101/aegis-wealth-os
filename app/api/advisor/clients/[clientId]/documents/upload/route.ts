@@ -8,7 +8,10 @@ import {
   toPublicErrorMessage,
   validateEnum,
 } from "@/lib/security/apiGuards";
+import { emitDocumentEventNotification } from "@/lib/communications/documentEventNotifications";
+import { isActiveClientStage } from "@/lib/compliance/relationshipStage";
 import { requireAdvisorAccess } from "@/lib/supabase/advisorAuth";
+import { resolveAccessibleClient } from "@/lib/supabase/advisorClientAccess";
 import { uploadAdvisorClientDocument } from "@/lib/supabase/advisorDocumentPersistence";
 import { writeAuditLog } from "@/lib/supabase/auditLog";
 import {
@@ -128,6 +131,21 @@ export async function POST(
     }
 
     const { clientId } = await context.params;
+    const clientAccess = await resolveAccessibleClient(access.authUser.id, role, clientId);
+    if (clientAccess.status !== "ok") {
+      return NextResponse.json(
+        {
+          ok: false,
+          reason: clientAccess.status === "forbidden" ? "forbidden" : "not_found",
+          error:
+            clientAccess.status === "forbidden"
+              ? "You do not have access to this client"
+              : "Client not found",
+        },
+        { status: clientAccess.status === "forbidden" ? 403 : 404 },
+      );
+    }
+
     const result = await uploadAdvisorClientDocument(
       access.authUser.id,
       role,
@@ -166,6 +184,16 @@ export async function POST(
       },
       ipAddress: metadata.ip_address,
       userAgent: metadata.user_agent,
+    });
+
+    const isClientVisible = isActiveClientStage(clientAccess.client.relationship_stage);
+
+    await emitDocumentEventNotification({
+      clientId,
+      documentId: result.document.id,
+      eventType: "uploaded",
+      isClientVisible,
+      actorUserId: access.authUser.id,
     });
 
     return NextResponse.json({ ok: true, document: result.document });

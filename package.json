@@ -30,6 +30,7 @@
     "qa:phase9b-prospect": "npx tsx scripts/run-phase9b-prospect-validation.ts",
     "qa:phase9c-meeting-studio": "npx tsx scripts/run-phase9c-meeting-studio-validation.ts",
     "qa:phase9d-client-portal": "npx tsx scripts/run-phase9d-client-portal-validation.ts",
+    "qa:phase9e-communications": "npx tsx scripts/run-phase9e-communications-validation.ts",
     "demo:seed": "npx tsx scripts/seed-demo-data.ts",
     "demo:clear": "npx tsx scripts/clear-demo-data.ts",
     "final:check": "npx tsx scripts/final-readiness-check.ts"
