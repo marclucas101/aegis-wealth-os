@@ -17,6 +17,7 @@ import {
   isSlotStillAvailable,
   resolveAppointmentType,
 } from "@/src/lib/calendar/availability";
+import { maybeAdvanceRelationshipStageForAppointment } from "@/lib/compliance/appointmentStageTransition";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import {
   getAdviserGoogleAccessToken,
@@ -406,10 +407,23 @@ export async function bookAppointmentForAssignedAdviser(
     };
   }
 
+  const insertedRow = inserted as AppointmentRow;
+
+  try {
+    await maybeAdvanceRelationshipStageForAppointment({
+      clientId: assignment.clientId,
+      actorUserId: assignment.clientUserId,
+      trigger: "client_booking",
+      appointmentId: insertedRow.id,
+    });
+  } catch (stageError) {
+    console.error("[appointments/book] stage transition failed", stageError);
+  }
+
   return {
     ok: true,
     appointment: mapPublicAppointment(
-      inserted as AppointmentRow,
+      insertedRow,
       type.label,
     ),
   };

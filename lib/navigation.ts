@@ -20,6 +20,51 @@ export interface NavSection {
 
 export const ADVISORY_SECTION_TITLE = "Advisory";
 
+/** Focused prospect navigation — filtered server-side via entitlements. */
+export const PROSPECT_NAV_SECTIONS: NavSection[] = [
+  {
+    title: "Your journey",
+    items: [
+      {
+        label: "Home",
+        href: "/prospect",
+        description: "Your prospect overview",
+        clientOnly: true,
+      },
+      {
+        label: "Complete My Information",
+        href: "/discover",
+        description: "Progressive financial profile",
+        clientOnly: true,
+      },
+      {
+        label: "My Snapshot",
+        href: "/dashboard",
+        description: "Financial readiness snapshot",
+        clientOnly: true,
+      },
+      {
+        label: "Prepare for My Meeting",
+        href: "/meeting-preparation",
+        description: "Meeting checklist and guidance",
+        clientOnly: true,
+      },
+      {
+        label: "My Adviser",
+        href: "/my-adviser",
+        description: "Your assigned adviser",
+        clientOnly: true,
+      },
+      {
+        label: "Documents",
+        href: "/document-vault",
+        description: "Upload and view documents",
+        clientOnly: true,
+      },
+    ],
+  },
+];
+
 /**
  * Full navigation catalogue. Filter with {@link getNavSectionsForRole} before
  * rendering — never show the raw list to unauthenticated or client users.

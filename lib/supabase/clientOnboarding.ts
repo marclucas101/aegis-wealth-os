@@ -1,5 +1,7 @@
 import "server-only";
 
+import { buildInviteSignupUrl } from "@/lib/compliance/postAuthRouting";
+
 import { createAdminSupabaseClient } from "./admin";
 import { isValidUuid } from "./adminManagement";
 import {
@@ -107,16 +109,19 @@ export function isValidEmail(email: string): boolean {
   return EMAIL_RE.test(normalizeEmail(email));
 }
 
-export function buildSignupUrl(origin: string): string {
-  const base = origin.replace(/\/$/, "");
-  return `${base}/signup`;
+export function buildSignupUrl(
+  origin: string,
+  destination: string | null = "/prospect",
+): string {
+  return buildInviteSignupUrl(origin, destination);
 }
 
 export function buildInviteInstructions(
   email: string,
   origin: string,
+  destination: string | null = "/prospect",
 ): { signupUrl: string; instructions: string } {
-  const signupUrl = buildSignupUrl(origin);
+  const signupUrl = buildSignupUrl(origin, destination);
   const instructions = [
     `AEGIS Wealth OS — Client signup instructions`,
     ``,
@@ -530,7 +535,7 @@ export async function inviteClientByEmail(
   }
 
   const admin = createAdminSupabaseClient();
-  const redirectTo = buildSignupUrl(input.redirectOrigin);
+  const redirectTo = `${input.redirectOrigin.replace(/\/$/, "")}/auth/callback?next=${encodeURIComponent("/prospect")}`;
 
   const { data: inviteData, error: inviteError } =
     await admin.auth.admin.inviteUserByEmail(email, {

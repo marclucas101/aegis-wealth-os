@@ -151,6 +151,27 @@ function checkApiGuards(prefix: string, guardName: string): Finding {
   };
 }
 
+function checkAdvisorApiGuards(): Finding {
+  const apiDir = join(API_ROOT, "advisor");
+  const routes = walkFiles(apiDir, "route.ts");
+  const missing = routes.filter((file) => {
+    const source = read(file);
+    return (
+      !source.includes("requireAdvisorAccess") &&
+      !source.includes("requireAdvisorMeetingAuth")
+    );
+  });
+
+  return {
+    id: "api-advisor-guards",
+    pass: missing.length === 0,
+    detail:
+      missing.length === 0
+        ? `All ${routes.length} /api/advisor route(s) use adviser auth guards`
+        : `Missing adviser auth guard: ${missing.map(rel).join(", ")}`,
+  };
+}
+
 function checkNavigationRoleFiltering(): Finding {
   const navPath = join(ROOT, "lib", "navigation.ts");
   const sidebarPath = join(ROOT, "components", "aegis", "SidebarNav.tsx");
@@ -303,7 +324,7 @@ function main(): void {
     ),
     checkAdvisorPagesUseLayout(),
     checkAdminPagesUseLayout(),
-    checkApiGuards("advisor", "requireAdvisorAccess"),
+    checkAdvisorApiGuards(),
     checkApiGuards("admin", "requireAdminAccess"),
     checkNavigationRoleFiltering(),
     checkAuthHelpers(),

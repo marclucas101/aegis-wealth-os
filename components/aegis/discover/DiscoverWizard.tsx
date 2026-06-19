@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { calculateDiscoverScore } from "@/src/lib/scoring";
 import type { DiscoverCompleteness } from "@/src/lib/scoring/types";
 import {
+  clearDiscoverProfile,
   computeCompleteness,
+  loadDiscoverDraftResumeStep,
   loadDiscoverProfile,
   loadRoadmapStatuses,
   saveDiscoverProfile,
@@ -13,6 +15,11 @@ import {
 import DiscoverProgress, { type DiscoverStep } from "./DiscoverProgress";
 import DiscoverStepCard from "./DiscoverStepCard";
 import DiscoverSummary, { type SectionSummary } from "./DiscoverSummary";
+import ProspectSectionProgress from "@/components/aegis/prospect/ProspectSectionProgress";
+import {
+  DISCOVER_WIZARD_STEPS,
+  PROSPECT_PROFILE_SECTIONS,
+} from "@/lib/aegis/prospectProfileSections";
 import {
   FieldGrid,
   FieldStack,
@@ -23,101 +30,89 @@ import {
 
 export type { DiscoverFormData };
 
-const DEFAULT_FORM_DATA: DiscoverFormData = {
+const EMPTY_FORM_DATA: DiscoverFormData = {
   personal: {
-    firstName: "Marcus",
-    lastName: "Tan",
-    dateOfBirth: "1982-06-15",
-    nationality: "singaporean",
-    maritalStatus: "married",
-    occupation: "Managing Director",
-    residency: "singapore_pr",
+    firstName: "",
+    lastName: "",
+    dateOfBirth: "",
+    nationality: "",
+    maritalStatus: "",
+    occupation: "",
+    residency: "",
   },
   family: {
-    hasPartner: true,
-    partnerName: "Sarah Tan",
-    numberOfChildren: "2",
-    dependantDetails: "Two school-age children",
-    caregivingResponsibilities: "Aging parents — moderate support",
+    hasPartner: false,
+    partnerName: "",
+    numberOfChildren: "",
+    dependantDetails: "",
+    caregivingResponsibilities: "",
   },
   income: {
-    primaryIncome: "260000",
-    secondaryIncome: "52000",
-    incomeType: "employment",
-    employer: "Tan Holdings Pte Ltd",
-    bonusIncome: "48000",
+    primaryIncome: "",
+    secondaryIncome: "",
+    incomeType: "",
+    employer: "",
+    bonusIncome: "",
   },
   expenses: {
-    monthlyEssential: "12000",
-    monthlyDiscretionary: "4500",
-    monthlyHousing: "3800",
-    monthlyInsurance: "1500",
-    monthlyOther: "2200",
+    monthlyEssential: "",
+    monthlyDiscretionary: "",
+    monthlyHousing: "",
+    monthlyInsurance: "",
+    monthlyOther: "",
   },
   assets: {
-    cashAssets: "180000",
-    cpfBalance: "420000",
-    propertyValue: "1850000",
-    investmentProperty: "0",
-    otherAssets: "95000",
+    cashAssets: "",
+    cpfBalance: "",
+    propertyValue: "",
+    investmentProperty: "",
+    otherAssets: "",
   },
   liabilities: {
-    mortgageBalance: "680000",
-    personalLoans: "45000",
-    creditCardDebt: "8000",
-    otherLiabilities: "12000",
-    totalDebt: "745000",
+    mortgageBalance: "",
+    personalLoans: "",
+    creditCardDebt: "",
+    otherLiabilities: "",
+    totalDebt: "",
   },
   policies: {
-    lifeInsurance: "900000",
-    healthInsurance: "isp_with_rider",
-    ciCoverage: "600000",
-    disabilityCoverage: "12000",
-    hasPolicyReview: true,
+    lifeInsurance: "",
+    healthInsurance: "",
+    ciCoverage: "",
+    disabilityCoverage: "",
+    hasPolicyReview: false,
   },
   investments: {
-    investmentAccounts: "3",
-    totalInvestments: "850000",
-    assetAllocation: "balanced",
-    riskProfile: "moderate",
-    monthlyContribution: "4500",
+    investmentAccounts: "",
+    totalInvestments: "",
+    assetAllocation: "",
+    riskProfile: "",
+    monthlyContribution: "",
   },
   retirement: {
-    targetRetirementAge: "62",
-    desiredRetirementIncome: "18000",
-    currentRetirementSavings: "1200000",
-    retirementPriority: "maintain_lifestyle",
-    cpfLifePlan: "standard",
+    targetRetirementAge: "",
+    desiredRetirementIncome: "",
+    currentRetirementSavings: "",
+    retirementPriority: "",
+    cpfLifePlan: "",
   },
   estate: {
-    hasWill: true,
-    hasCpfNomination: true,
+    hasWill: false,
+    hasCpfNomination: false,
     hasTrust: false,
-    beneficiaryDocumented: true,
+    beneficiaryDocumented: false,
     estatePlanReviewed: false,
   },
   business: {
-    isBusinessOwner: true,
-    businessName: "Tan Holdings Pte Ltd",
-    successionPlan: "informal",
-    familyGovernance: "basic",
-    familyMeetings: "annual",
+    isBusinessOwner: false,
+    businessName: "",
+    successionPlan: "",
+    familyGovernance: "",
+    familyMeetings: "",
   },
 };
 
-const STEPS: DiscoverStep[] = [
-  { id: "personal", title: "Personal Profile", shortLabel: "Personal" },
-  { id: "family", title: "Family Profile", shortLabel: "Family" },
-  { id: "income", title: "Income", shortLabel: "Income" },
-  { id: "expenses", title: "Expenses", shortLabel: "Expenses" },
-  { id: "assets", title: "Assets", shortLabel: "Assets" },
-  { id: "liabilities", title: "Liabilities", shortLabel: "Debt" },
-  { id: "policies", title: "Policies", shortLabel: "Policies" },
-  { id: "investments", title: "Investments", shortLabel: "Invest" },
-  { id: "retirement", title: "Retirement Goals", shortLabel: "Retire" },
-  { id: "estate", title: "Estate Planning", shortLabel: "Estate" },
-  { id: "business", title: "Business & Governance", shortLabel: "Business" },
-];
+const STEPS: DiscoverStep[] = DISCOVER_WIZARD_STEPS;
 
 const SECTION_META: Array<{
   key: keyof DiscoverCompleteness;
@@ -137,19 +132,35 @@ const SECTION_META: Array<{
 ];
 
 export default function DiscoverWizard() {
-  const [formData, setFormData] = useState<DiscoverFormData>(DEFAULT_FORM_DATA);
+  const [formData, setFormData] = useState<DiscoverFormData>(EMPTY_FORM_DATA);
   const [currentStep, setCurrentStep] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [saveWarning, setSaveWarning] = useState<string | null>(null);
   const [isSavingRemote, setIsSavingRemote] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const remoteSaveAttempted = useRef(false);
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function hydrateProfile() {
+      let resolvedUserId: string | null = null;
       try {
+        const meResponse = await fetch("/api/me", { cache: "no-store" });
+        const meData = (await meResponse.json()) as {
+          authenticated?: boolean;
+          userId?: string;
+        };
+        resolvedUserId =
+          meData.authenticated && meData.userId ? meData.userId : null;
+        if (!cancelled && resolvedUserId) {
+          setUserId(resolvedUserId);
+        }
+
         const response = await fetch("/api/discover/current");
         if (response.ok) {
           const data = (await response.json()) as {
@@ -158,6 +169,10 @@ export default function DiscoverWizard() {
           };
           if (!cancelled && data.ok && data.profile?.formData) {
             setFormData(data.profile.formData);
+            const resumeStep = loadDiscoverDraftResumeStep(resolvedUserId);
+            if (resumeStep != null && resumeStep >= 0 && resumeStep < STEPS.length) {
+              setCurrentStep(resumeStep);
+            }
             setHydrated(true);
             return;
           }
@@ -166,7 +181,7 @@ export default function DiscoverWizard() {
         // Fall back to localStorage below.
       }
 
-      const local = loadDiscoverProfile();
+      const local = loadDiscoverProfile(resolvedUserId);
       if (!cancelled && local?.formData) {
         setFormData(local.formData);
       }
@@ -192,69 +207,92 @@ export default function DiscoverWizard() {
     [completeness]
   );
 
+  const saveRemoteProfile = useCallback(async () => {
+    setIsSavingRemote(true);
+    setSaveWarning(null);
+
+    try {
+      const response = await fetch("/api/discover/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          formData,
+          completeness,
+          discoverScore: scoreResult.discoverScore,
+          dataConfidenceFactor: scoreResult.dataConfidenceFactor,
+          roadmapStatuses: loadRoadmapStatuses(userId),
+        }),
+      });
+
+      const data = (await response.json()) as { ok?: boolean; error?: string };
+
+      if (!response.ok || !data.ok) {
+        setSaveWarning(
+          data.error ??
+            "Cloud save unavailable — your profile is saved locally on this device.",
+        );
+        return false;
+      }
+
+      return true;
+    } catch {
+      setSaveWarning(
+        "Cloud save unavailable — your profile is saved locally on this device.",
+      );
+      return false;
+    } finally {
+      setIsSavingRemote(false);
+    }
+  }, [formData, completeness, scoreResult, userId]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+
+    saveDiscoverProfile(
+      {
+        formData,
+        completeness,
+        discoverScore: scoreResult.discoverScore,
+        dataConfidenceFactor: scoreResult.dataConfidenceFactor,
+      },
+      { userId, currentStep },
+    );
+
+    if (autoSaveTimer.current) {
+      clearTimeout(autoSaveTimer.current);
+    }
+
+    autoSaveTimer.current = setTimeout(() => {
+      void saveRemoteProfile();
+    }, 2000);
+
+    return () => {
+      if (autoSaveTimer.current) {
+        clearTimeout(autoSaveTimer.current);
+      }
+    };
+  }, [hydrated, formData, completeness, scoreResult, saveRemoteProfile, userId, currentStep]);
+
   useEffect(() => {
     if (!showSummary || !hydrated) return;
 
-    saveDiscoverProfile({
-      formData,
-      completeness,
-      discoverScore: scoreResult.discoverScore,
-      dataConfidenceFactor: scoreResult.dataConfidenceFactor,
-    });
-  }, [showSummary, hydrated, formData, completeness, scoreResult]);
+    saveDiscoverProfile(
+      {
+        formData,
+        completeness,
+        discoverScore: scoreResult.discoverScore,
+        dataConfidenceFactor: scoreResult.dataConfidenceFactor,
+      },
+      { userId, currentStep },
+    );
+  }, [showSummary, hydrated, formData, completeness, scoreResult, userId, currentStep]);
 
   useEffect(() => {
     if (!showSummary || !hydrated || remoteSaveAttempted.current) return;
 
     remoteSaveAttempted.current = true;
-    let cancelled = false;
-
-    async function saveRemote() {
-      setIsSavingRemote(true);
-      setSaveWarning(null);
-
-      try {
-        const response = await fetch("/api/discover/save", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            formData,
-            completeness,
-            discoverScore: scoreResult.discoverScore,
-            dataConfidenceFactor: scoreResult.dataConfidenceFactor,
-            roadmapStatuses: loadRoadmapStatuses(),
-          }),
-        });
-
-        const data = (await response.json()) as { ok?: boolean; error?: string };
-
-        if (cancelled) return;
-
-        if (!response.ok || !data.ok) {
-          setSaveWarning(
-            data.error ??
-              "Cloud save unavailable — your profile is saved locally on this device.",
-          );
-        }
-      } catch {
-        if (!cancelled) {
-          setSaveWarning(
-            "Cloud save unavailable — your profile is saved locally on this device.",
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setIsSavingRemote(false);
-        }
-      }
-    }
-
-    void saveRemote();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [showSummary, hydrated, formData, completeness, scoreResult]);
+    void saveRemoteProfile();
+  }, [showSummary, hydrated, saveRemoteProfile]);
 
   const sectionCompleteness = useMemo(
     () => SECTION_META.map((section) => completeness[section.key]),
@@ -269,6 +307,57 @@ export default function DiscoverWizard() {
         completeness: completeness[section.key],
       })),
     [completeness]
+  );
+
+  const handleSubmitForReview = async () => {
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const saved = await saveRemoteProfile();
+      if (!saved) {
+        setSubmitError("Please ensure your profile is saved before submitting.");
+        return;
+      }
+
+      const response = await fetch("/api/discover/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          formData,
+          completeness,
+          discoverScore: scoreResult.discoverScore,
+          dataConfidenceFactor: scoreResult.dataConfidenceFactor,
+          privacyAcknowledged: true,
+        }),
+      });
+
+      const data = (await response.json()) as {
+        ok?: boolean;
+        error?: string;
+        missingSections?: string[];
+      };
+
+      if (!response.ok || !data.ok) {
+        setSubmitError(
+          data.missingSections?.length
+            ? `Please complete: ${data.missingSections.join(", ")}`
+            : data.error ?? "Submission failed. Please try again.",
+        );
+        return;
+      }
+
+      clearDiscoverProfile(userId);
+      window.location.href = "/discover/submitted";
+    } catch {
+      setSubmitError("Submission failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const currentSection = PROSPECT_PROFILE_SECTIONS.find((section) =>
+    section.stepIndices.includes(currentStep),
   );
 
   const updatePersonal = <K extends keyof DiscoverFormData["personal"]>(
@@ -390,7 +479,22 @@ export default function DiscoverWizard() {
     setCurrentStep((step) => Math.max(0, step - 1));
   };
 
+  const recordSectionCompleted = (stepIndex: number) => {
+    const section = PROSPECT_PROFILE_SECTIONS.find((item) =>
+      item.stepIndices.includes(stepIndex),
+    );
+    void fetch("/api/prospect/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event: "prospect_section_completed",
+        sectionId: section?.id ?? `step_${stepIndex}`,
+      }),
+    });
+  };
+
   const handleContinue = () => {
+    recordSectionCompleted(currentStep);
     if (currentStep >= STEPS.length - 1) {
       setShowSummary(true);
       return;
@@ -975,14 +1079,28 @@ export default function DiscoverWizard() {
           remoteSaveAttempted.current = false;
           setShowSummary(false);
         }}
+        onSubmit={handleSubmitForReview}
         saveWarning={saveWarning}
         isSavingRemote={isSavingRemote}
+        isSubmitting={isSubmitting}
+        submitError={submitError}
       />
     );
   }
 
   return (
     <div>
+      <ProspectSectionProgress
+        currentStep={currentStep}
+        completeness={completeness}
+      />
+
+      {currentSection ? (
+        <p className="mb-4 text-sm font-light text-[#F3F1EA]/45">
+          {currentSection.description}
+        </p>
+      ) : null}
+
       <DiscoverProgress
         steps={STEPS}
         currentStep={currentStep}
@@ -1001,11 +1119,18 @@ export default function DiscoverWizard() {
 
       <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-center text-xs font-light text-[#F3F1EA]/40 sm:text-left">
-          Profile quality · {Math.round(scoreResult.discoverScore)}/100 · More
-          complete answers improve score accuracy
+          Section progress · saves automatically as you go
         </p>
 
         <div className="flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => void saveRemoteProfile()}
+            disabled={isSavingRemote}
+            className="rounded-sm border border-[#D1A866]/15 px-6 py-2.5 text-[11px] font-medium uppercase tracking-[0.15em] text-[#F3F1EA]/50"
+          >
+            {isSavingRemote ? "Saving…" : "Save progress"}
+          </button>
           <button
             type="button"
             onClick={handleBack}

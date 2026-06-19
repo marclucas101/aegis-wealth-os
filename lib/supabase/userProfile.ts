@@ -23,6 +23,15 @@ export type ClientStatus =
   | "review_due"
   | "archived";
 
+export type RelationshipStage =
+  | "prospect"
+  | "fact_find_complete"
+  | "adviser_review"
+  | "meeting_scheduled"
+  | "recommendation_prepared"
+  | "active_client"
+  | "inactive_client";
+
 export type AppUserRow = {
   id: string;
   email: string;
@@ -40,6 +49,7 @@ export type AppClientRow = {
   user_id: string | null;
   advisor_user_id: string | null;
   status: ClientStatus;
+  relationship_stage: RelationshipStage;
   display_name: string;
   email: string | null;
   phone: string | null;
@@ -90,8 +100,25 @@ export function displayNameFromAuthUser(authUser: User): string {
 /** Explicit column lists for `users` and `clients` (avoids `select *` payloads). */
 export const USER_COLUMNS =
   "id, email, full_name, role, avatar_url, organisation, phone, created_at, updated_at";
-export const CLIENT_COLUMNS =
+export const CLIENT_COLUMNS_BASE =
   "id, user_id, advisor_user_id, status, display_name, email, phone, currency_code, onboarding_step, last_review_at, next_review_due, feedback_prompted_at, feedback_submitted_at, feedback_prompt_dismissed_at, date_of_birth, created_at, updated_at";
+
+export const CLIENT_COLUMNS = `${CLIENT_COLUMNS_BASE}, relationship_stage`;
+
+function normalizeClientRow(row: Record<string, unknown>): AppClientRow {
+  const status = row.status as ClientStatus;
+  const relationshipStage =
+    (row.relationship_stage as RelationshipStage | null | undefined) ??
+    (status === "onboarding"
+      ? "fact_find_complete"
+      : status === "active" || status === "review_due"
+        ? "active_client"
+        : status === "archived"
+          ? "inactive_client"
+          : "prospect");
+
+  return { ...row, relationship_stage: relationshipStage } as AppClientRow;
+}
 
 async function fetchUserRow(
   admin: SupabaseClient<Database>,
@@ -114,7 +141,9 @@ async function fetchClientByUserId(
   admin: SupabaseClient<Database>,
   userId: string,
 ): Promise<AppClientRow | null> {
-  const { data, error } = await admin
+  let data: Record<string, unknown> | null = null;
+
+  const extended = await admin
     .from("clients")
     .select(CLIENT_COLUMNS)
     .eq("user_id", userId)
@@ -122,11 +151,30 @@ async function fetchClientByUserId(
     .limit(1)
     .maybeSingle();
 
-  if (error) {
-    throw new Error(`Failed to load client profile: ${error.message}`);
+  if (extended.error?.code === "42703") {
+    const base = await admin
+      .from("clients")
+      .select(CLIENT_COLUMNS_BASE)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (base.error) {
+      throw new Error(`Failed to load client profile: ${base.error.message}`);
+    }
+    data = base.data as Record<string, unknown> | null;
+  } else if (extended.error) {
+    throw new Error(`Failed to load client profile: ${extended.error.message}`);
+  } else {
+    data = extended.data as Record<string, unknown> | null;
   }
 
-  return data as AppClientRow | null;
+  if (!data) {
+    return null;
+  }
+
+  return normalizeClientRow(data);
 }
 
 /**

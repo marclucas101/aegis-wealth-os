@@ -11,6 +11,7 @@ import ClientPortalHeader from "@/components/aegis/client/ClientPortalHeader";
 import CallMyAdviserPanel from "@/components/aegis/adviser/CallMyAdviserPanel";
 import AdviserFeedbackPrompt from "@/components/aegis/feedback/AdviserFeedbackPrompt";
 import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
+import FinancialReadinessSnapshotView from "@/components/aegis/client/FinancialReadinessSnapshotView";
 import PillarBreakdown from "@/components/aegis/PillarBreakdown";
 import PriorityGaps from "@/components/aegis/PriorityGaps";
 import ShieldScoreCard, { formatScore } from "@/components/aegis/ShieldScoreCard";
@@ -26,6 +27,8 @@ import {
   type DashboardResults,
   type DiscoverStoredProfile,
 } from "@/lib/aegis/localProfile";
+import type { ClientSafeEnvelope } from "@/lib/compliance/clientSafeDtos";
+import type { ClientSafeFinancialReadinessSnapshot } from "@/lib/compliance/clientSafeDtos";
 import type { DashboardSnapshot } from "@/lib/supabase/dashboardQueries";
 import {
   mockClientProfile,
@@ -46,7 +49,7 @@ const ShieldArchitectureModule = dynamic(
   },
 );
 
-type DashboardMode = "loading" | "empty" | "cloud" | "local" | "demo";
+type DashboardMode = "loading" | "empty" | "cloud" | "local" | "demo" | "client_safe";
 type ProfileSource = "cloud" | "local" | "demo";
 
 function ProfileSourceBadge({ source }: { source: ProfileSource }) {
@@ -151,6 +154,9 @@ export default function DashboardClient() {
   const [cloudSnapshot, setCloudSnapshot] = useState<DashboardSnapshot | null>(
     null,
   );
+  const [safeEnvelope, setSafeEnvelope] = useState<
+    ClientSafeEnvelope<ClientSafeFinancialReadinessSnapshot> | null
+  >(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -172,8 +178,17 @@ export default function DashboardClient() {
         }
 
         const data = (await response.json()) as
+          | ({ ok: true; envelope: ClientSafeEnvelope<ClientSafeFinancialReadinessSnapshot> })
           | ({ ok: true } & DashboardSnapshot)
           | { ok: false; reason?: string };
+
+        if (data.ok && "envelope" in data) {
+          setSafeEnvelope(data.envelope);
+          setCloudSnapshot(null);
+          setProfile(null);
+          setMode("client_safe");
+          return;
+        }
 
         if (data.ok) {
           setCloudSnapshot(data);
@@ -236,6 +251,10 @@ export default function DashboardClient() {
         </p>
       </div>
     );
+  }
+
+  if (mode === "client_safe" && safeEnvelope) {
+    return <FinancialReadinessSnapshotView envelope={safeEnvelope} />;
   }
 
   if (mode === "empty") {

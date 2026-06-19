@@ -59,6 +59,20 @@
 | `advisorNotifications.ts` | Advisor user ID |
 | `clientFileQuality.ts` | `resolveAccessibleClient` |
 | `auditLog.ts` | Trusted server caller |
+| `complianceFeatureControls.ts` | Admin API only; fail-closed defaults in `lib/compliance/featureFlags.ts` |
+| `compliancePublication.ts` | Called only from adviser/admin APIs after `resolveAccessibleClient` |
+
+### Phase 9A compliance modules (no direct service-role import)
+
+| Module | Service role | Notes |
+|--------|--------------|-------|
+| `lib/compliance/featureFlags.ts` | Via `complianceFeatureControls.ts` | Server-only; DB errors fall back to fail-closed code defaults |
+| `lib/compliance/publicationWorkflow.ts` | Via `compliancePublication.ts` | Orchestration + audit; no browser-facing imports |
+| `lib/compliance/clientAccessGate.ts` | None | Session-derived client identity only |
+| `lib/compliance/clientSafeDtos.ts` | None | Allowlist construction; no DB |
+| `lib/compliance/entitlements.ts` | None | Reads feature flags via server module |
+
+**Verification (Phase 9A acceptance):** All `lib/compliance/**` modules are `import "server-only"` or pure types. Service-role DB access is confined to `lib/supabase/complianceFeatureControls.ts` and `lib/supabase/compliancePublication.ts` under the approved `lib/supabase/**` prefix.
 
 ### API routes (direct import)
 

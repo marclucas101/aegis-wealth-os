@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
 
+import { resolveRestrictedClientModuleAccess } from "@/lib/compliance/clientAccessGate";
+import { wrapClientSafeResponse } from "@/lib/compliance/clientSafeDtos";
+import { resolveFallbackState } from "@/lib/compliance/fallbackStates";
+import { resolveRelationshipStage } from "@/lib/compliance/relationshipStage";
 import { toPublicErrorMessage } from "@/lib/security/apiGuards";
-import {
-  loadRoadmapSnapshot,
-  type RoadmapSnapshot,
-} from "@/lib/supabase/moduleQueries";
+import { loadCurrentDiscoverProfile } from "@/lib/supabase/discoverPersistence";
 import { ensureUserClientProfile } from "@/lib/supabase/userProfile";
 
 export const dynamic = "force-dynamic";
 
-export type RoadmapCurrentResponse =
-  | ({ ok: true } & RoadmapSnapshot)
-  | { ok: false; reason: "no_profile" | "unauthenticated"; error?: string };
-
-export async function GET(): Promise<NextResponse<RoadmapCurrentResponse>> {
+export async function GET(): Promise<NextResponse> {
   try {
     const session = await ensureUserClientProfile();
 
@@ -24,6 +21,34 @@ export async function GET(): Promise<NextResponse<RoadmapCurrentResponse>> {
       );
     }
 
+    const access = await resolveRestrictedClientModuleAccess({
+      user: session.user,
+      client: session.client,
+      feature: "roadmap",
+    });
+
+    if (!access.allowed) {
+      const stage = resolveRelationshipStage(session.client);
+      const discover = await loadCurrentDiscoverProfile(session.client.id);
+      const fallback = resolveFallbackState({
+        stage,
+        hasDiscoverData: Boolean(discover?.formData),
+        hasAssignedAdviser: Boolean(session.client.advisor_user_id),
+        hasPublishedSummary: false,
+      });
+
+      return NextResponse.json({
+        ok: true,
+        envelope: wrapClientSafeResponse("roadmap_summary", null, {
+          accessMode: "fallback",
+          fallbackReason: fallback.reason,
+          fallbackMessage:
+            access.reason ?? "Roadmap requires an adviser-reviewed summary",
+        }),
+      });
+    }
+
+    const { loadRoadmapSnapshot } = await import("@/lib/supabase/moduleQueries");
     const snapshot = await loadRoadmapSnapshot(session.client);
 
     if (!snapshot) {
@@ -33,9 +58,7 @@ export async function GET(): Promise<NextResponse<RoadmapCurrentResponse>> {
     return NextResponse.json({ ok: true, ...snapshot });
   } catch (err) {
     const message = toPublicErrorMessage(err, "Failed to load roadmap snapshot");
-
     console.error("[api/roadmap/current]", err);
-
     return NextResponse.json(
       { ok: false, reason: "no_profile", error: message },
       { status: 500 },

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { canClientViewDocument } from "@/lib/compliance/documentVisibility";
 import { createAdminSupabaseClient } from "./admin";
 import type { AppClientRow } from "./userProfile";
 
@@ -271,6 +272,10 @@ async function fetchOwnedDocument(
 export async function listClientDocuments(
   client: AppClientRow,
   category?: DocumentCategory | null,
+  options?: {
+    prospectMode?: boolean;
+    clientUserId?: string;
+  },
 ): Promise<VaultDocumentRecord[]> {
   const admin = createAdminSupabaseClient();
 
@@ -290,6 +295,16 @@ export async function listClientDocuments(
   const rows = (data ?? []) as DocumentRow[];
 
   return rows
+    .filter((row) => {
+      if (options?.prospectMode && options.clientUserId) {
+        return canClientViewDocument({
+          client,
+          clientUserId: options.clientUserId,
+          document: row,
+        });
+      }
+      return true;
+    })
     .filter((row) => !category || resolveUiCategory(row) === category)
     .map(mapRowToRecord);
 }
@@ -388,16 +403,9 @@ export async function deleteClientDocument(
   return { id: document.id };
 }
 
-export async function createDocumentSignedUrl(
-  client: AppClientRow,
-  documentId: string,
+async function issueSignedUrlForDocument(
+  document: DocumentRow,
 ): Promise<{ signedUrl: string; expiresIn: number }> {
-  const document = await fetchOwnedDocument(client.id, documentId);
-
-  if (!document) {
-    throw new Error("Document not found");
-  }
-
   const admin = createAdminSupabaseClient();
 
   const { data, error } = await admin.storage
@@ -414,4 +422,41 @@ export async function createDocumentSignedUrl(
     signedUrl: data.signedUrl,
     expiresIn: SIGNED_URL_EXPIRY_SECONDS,
   };
+}
+
+export async function createStaffDocumentSignedUrl(
+  client: AppClientRow,
+  documentId: string,
+): Promise<{ signedUrl: string; expiresIn: number }> {
+  const document = await fetchOwnedDocument(client.id, documentId);
+
+  if (!document) {
+    throw new Error("Document not found");
+  }
+
+  return issueSignedUrlForDocument(document);
+}
+
+export async function createDocumentSignedUrl(
+  client: AppClientRow,
+  documentId: string,
+  clientUserId: string,
+): Promise<{ signedUrl: string; expiresIn: number }> {
+  const document = await fetchOwnedDocument(client.id, documentId);
+
+  if (!document) {
+    throw new Error("Document not found");
+  }
+
+  if (
+    !canClientViewDocument({
+      client,
+      clientUserId,
+      document,
+    })
+  ) {
+    throw new Error("Document not found");
+  }
+
+  return issueSignedUrlForDocument(document);
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { auditAdviserInternalAnalysisView } from "@/lib/compliance/clientAccessGate";
 import { toPublicErrorMessage } from "@/lib/security/apiGuards";
 import { loadAdvisorClientDashboardView } from "@/lib/supabase/advisorClientFinancialViews";
 import { requireAdvisorAccess } from "@/lib/supabase/advisorAuth";
@@ -86,6 +87,13 @@ export async function GET(
     if (result.status === "no_profile") {
       return NextResponse.json({ ok: false, reason: "no_profile" });
     }
+
+    await auditAdviserInternalAnalysisView({
+      clientId,
+      adviserUserId: access.authUser.id,
+      action: "adviser_viewed_internal_analysis",
+      module: "dashboard",
+    });
 
     return NextResponse.json({ ok: true, readOnly: true, ...result.snapshot });
   } catch (err) {

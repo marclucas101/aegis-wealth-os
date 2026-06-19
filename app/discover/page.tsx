@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import AuthenticatedAppShell from "@/components/aegis/AuthenticatedAppShell";
 import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
 import DiscoverWizard from "@/components/aegis/discover/DiscoverWizard";
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -11,26 +12,26 @@ export default async function DiscoverPage() {
 
   return (
     <AuthenticatedAppShell
-      title="Discover™"
-      subtitle="Build your financial profile — step by step"
+      title="Complete My Information"
+      subtitle="Progressive financial profile for your adviser review"
     >
       <header className="mb-8 rounded-sm border border-[#D1A866]/15 bg-[#10283A]/40 px-5 py-6 sm:mb-10 sm:px-8">
         <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-[#D1A866]/80">
-          Step 1 · Your profile
+          Your financial profile
         </p>
         <h2 className="mt-2 text-xl font-light tracking-wide text-[#F3F1EA] sm:text-2xl">
-          Tell us about your finances
+          Organise your information step by step
         </h2>
         <p className="mt-3 max-w-2xl text-sm font-light leading-relaxed text-[#F3F1EA]/50">
-          Eleven short sections cover income, protection, investments, and
-          family — in everyday language. Your answers stay private and power
-          your Shield score, roadmap, and reports.
+          Five guided sections cover your household, finances, arrangements, and
+          priorities. Your answers are reviewed by your assigned adviser — the
+          platform does not provide unsupervised recommendations.
         </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           {[
-            "About 15–20 minutes if you have figures handy",
-            "Save progress as you go — return anytime",
-            "Unlocks Shield Diagnostic when complete",
+            "Save automatically as you go",
+            "Return anytime to continue",
+            "Submit when ready for adviser review",
           ].map((item) => (
             <p
               key={item}

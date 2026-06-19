@@ -1,7 +1,7 @@
 import "server-only";
 
 import {
-  createDocumentSignedUrl,
+  createStaffDocumentSignedUrl,
   isValidDocumentCategory,
   type DocumentCategory,
 } from "./documentPersistence";
@@ -160,7 +160,7 @@ export async function createAdvisorDocumentSignedUrl(
     return { ok: false, reason: "not_found" };
   }
 
-  const signed = await createDocumentSignedUrl(access.client, documentId);
+  const signed = await createStaffDocumentSignedUrl(access.client, documentId);
 
   return {
     ok: true,

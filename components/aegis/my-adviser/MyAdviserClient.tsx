@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import type { MyAdviserResponse } from "@/app/api/my-adviser/route";
@@ -56,9 +57,8 @@ function NoAdviserAssigned() {
         No adviser assigned yet
       </h2>
       <p className="mx-auto mt-4 max-w-md text-sm font-light leading-relaxed text-[#F3F1EA]/45">
-        Your advisory relationship has not been linked in AEGIS yet. Please
-        contact your platform support team or wait for your adviser to complete
-        onboarding.
+        Your advisory relationship has not been linked in Aurelis yet. Your
+        platform administrator or adviser will complete this step.
       </p>
     </div>
   );
@@ -130,6 +130,18 @@ export default function MyAdviserClient() {
 
   return (
     <div className="space-y-8">
+      <section className="rounded-sm border border-[#D1A866]/10 bg-[#071B2A]/40 px-5 py-4">
+        <p className="text-xs font-light leading-relaxed text-[#F3F1EA]/50">
+          <strong className="font-medium text-[#F3F1EA]/70">Aurelis</strong> is
+          the technology platform that organises your information.{" "}
+          <strong className="font-medium text-[#F3F1EA]/70">
+            {adviser.displayName ?? "Your assigned adviser"}
+          </strong>{" "}
+          and their licensed or appointed firm provide regulated financial advice
+          — not the platform itself.
+        </p>
+      </section>
+
       <section className="rounded-sm border border-[#D1A866]/15 bg-[#10283A]/60 p-6 sm:p-8">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
           <AdviserPhoto
@@ -216,6 +228,23 @@ export default function MyAdviserClient() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="rounded-sm border border-[#D1A866]/12 bg-[#10283A]/35 px-6 py-5">
+        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#D1A866]/70">
+          Preparation checklist
+        </p>
+        <ul className="mt-3 space-y-2 text-sm font-light text-[#F3F1EA]/60">
+          <li>Complete your financial profile</li>
+          <li>Upload any requested supporting documents</li>
+          <li>Book your advisory review appointment</li>
+        </ul>
+        <Link
+          href="/meeting-preparation"
+          className="mt-4 inline-block text-sm text-[#D1A866] underline"
+        >
+          Prepare for your meeting
+        </Link>
       </section>
 
       <MyAdviserBooking

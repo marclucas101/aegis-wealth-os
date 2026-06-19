@@ -8,6 +8,8 @@ import {
   toPublicErrorMessage,
   validateEnum,
 } from "@/lib/security/apiGuards";
+import { assertClientDocumentAccess } from "@/lib/compliance/documentAccess";
+import { recordProspectEvent } from "@/lib/compliance/prospectAnalytics";
 import { writeAuditLog } from "@/lib/supabase/auditLog";
 import {
   DOCUMENT_CATEGORIES,
@@ -35,6 +37,11 @@ export async function POST(
         { ok: false, error: "Authentication required" },
         { status: 401 },
       );
+    }
+
+    const docAccess = await assertClientDocumentAccess(session.user, session.client);
+    if (!docAccess.ok) {
+      return NextResponse.json({ ok: false, error: docAccess.error }, { status: 403 });
     }
 
     const rateLimit = rateLimitOrThrow<DocumentsUploadResponse>(request, {
@@ -111,6 +118,15 @@ export async function POST(
         category,
         file_size: document.file_size,
       },
+      ipAddress: metadata.ip_address,
+      userAgent: metadata.user_agent,
+    });
+
+    await recordProspectEvent({
+      clientId: session.client.id,
+      userId: session.authUser.id,
+      event: "prospect_document_uploaded",
+      metadata: { category },
       ipAddress: metadata.ip_address,
       userAgent: metadata.user_agent,
     });

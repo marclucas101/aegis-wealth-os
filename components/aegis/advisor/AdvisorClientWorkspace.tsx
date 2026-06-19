@@ -14,6 +14,7 @@ import AdvisorClientActivityPanel from "@/components/aegis/advisor/AdvisorClient
 import AdvisorClientCommandHeader from "@/components/aegis/advisor/AdvisorClientCommandHeader";
 import AdvisorClientDocumentsPanel from "@/components/aegis/advisor/AdvisorClientDocumentsPanel";
 import AdvisorClientFileQualityPanel from "@/components/aegis/advisor/AdvisorClientFileQualityPanel";
+import AdvisorClientMeetingStudioPanel from "@/components/aegis/advisor/meeting-studio/MeetingStudioHistoryPanel";
 import AdvisorClientNotesPanel from "@/components/aegis/advisor/AdvisorClientNotesPanel";
 import AdvisorClientPersonalPanel from "@/components/aegis/advisor/AdvisorClientPersonalPanel";
 import AdvisorClientReportsPanel from "@/components/aegis/advisor/AdvisorClientReportsPanel";
@@ -403,7 +404,7 @@ export default function AdvisorClientWorkspace({
         lastActivity={lastActivity}
       />
 
-      <AdvisorClientActionBar />
+      <AdvisorClientActionBar clientId={clientId} />
 
       <nav
         aria-label="Client workspace tabs"
@@ -427,6 +428,8 @@ export default function AdvisorClientWorkspace({
 
       {activeTab === "overview" && (
         <div className="space-y-6">
+          <AdvisorClientMeetingStudioPanel clientId={clientId} />
+
           <AdvisorClientFileQualityPanel
             quality={commandCenter.fileQuality}
             error={commandCenter.fileQualityError}

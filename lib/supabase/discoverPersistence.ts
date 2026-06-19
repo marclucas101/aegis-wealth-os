@@ -450,17 +450,8 @@ export async function persistDiscoverProfile(
     await syncClientDateOfBirthFromDiscover(clientId, discoverDateOfBirth);
   }
 
-  // 12. Promote client to active
-  const { error: clientStatusError } = await admin
-    .from("clients")
-    .update({ status: "active" } as never)
-    .eq("id", clientId);
-
-  if (clientStatusError) {
-    throw new Error(
-      `Failed to update client status: ${clientStatusError.message}`,
-    );
-  }
+  // Phase 9B: relationship stage advances only via explicit prospect submission.
+  // Do not promote legacy status to active on profile save.
 
   return {
     discoverProfileId,

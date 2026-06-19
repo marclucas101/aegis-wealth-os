@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import ClientEmptyState from "@/components/aegis/client/ClientEmptyState";
 import ClientPortalHeader from "@/components/aegis/client/ClientPortalHeader";
+import ClientSafeFallbackPanel, {
+  isClientSafeEnvelopeResponse,
+} from "@/components/aegis/client/ClientSafeFallbackPanel";
 import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
+import type { ClientSafeEnvelope } from "@/lib/compliance/clientSafeDtos";
 import {
   computeShieldDiagnosticResult,
   getWeakestPillars,
@@ -16,7 +20,7 @@ import ShieldDiagnosticSummary from "./ShieldDiagnosticSummary";
 import ShieldPillarCards from "./ShieldPillarCards";
 import ShieldReadinessPanel from "./ShieldReadinessPanel";
 
-type ShieldMode = "loading" | "empty" | "cloud" | "local";
+type ShieldMode = "loading" | "empty" | "cloud" | "local" | "fallback";
 type ProfileSource = "cloud" | "local";
 
 function ProfileSourceBadge({ source }: { source: ProfileSource }) {
@@ -46,6 +50,8 @@ export default function ShieldDiagnosticClient() {
   const [profile, setProfile] = useState<DiscoverStoredProfile | null>(null);
   const [cloudSnapshot, setCloudSnapshot] =
     useState<ShieldDiagnosticSnapshot | null>(null);
+  const [fallbackEnvelope, setFallbackEnvelope] =
+    useState<ClientSafeEnvelope<unknown> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,12 +71,22 @@ export default function ShieldDiagnosticClient() {
           return;
         }
 
-        const data = (await response.json()) as
+        const data = await response.json();
+
+        if (isClientSafeEnvelopeResponse(data)) {
+          setFallbackEnvelope(data.envelope);
+          setCloudSnapshot(null);
+          setProfile(null);
+          setMode("fallback");
+          return;
+        }
+
+        const typed = data as
           | ({ ok: true } & ShieldDiagnosticSnapshot)
           | { ok: false; reason?: string };
 
-        if (data.ok) {
-          setCloudSnapshot(data);
+        if (typed.ok && "shield" in typed) {
+          setCloudSnapshot(typed);
           setProfile(null);
           setMode("cloud");
           return;
@@ -112,6 +128,23 @@ export default function ShieldDiagnosticClient() {
         <p className="text-[10px] uppercase tracking-[0.2em] text-[#F3F1EA]/30">
           Preparing your diagnostic…
         </p>
+      </div>
+    );
+  }
+
+  if (mode === "fallback" && fallbackEnvelope) {
+    return (
+      <div className="flex flex-col gap-6">
+        <ClientPortalHeader
+          eyebrow="Shield Diagnostic"
+          title="Adviser-reviewed summary required"
+          subtitle="Detailed pillar analysis is available after your adviser review."
+        />
+        <ClientSafeFallbackPanel
+          title="Shield Diagnostic"
+          envelope={fallbackEnvelope}
+        />
+        <ClientTrustNotice variant="compact" context="planning" />
       </div>
     );
   }

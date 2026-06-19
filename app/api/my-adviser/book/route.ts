@@ -12,6 +12,7 @@ import {
   cancelAppointment,
 } from "@/lib/supabase/appointmentsPersistence";
 import { writeAuditLog } from "@/lib/supabase/auditLog";
+import { safeRecordProspectEvent } from "@/lib/compliance/prospectAnalytics";
 import { ensureUserClientProfile } from "@/lib/supabase/userProfile";
 
 export const dynamic = "force-dynamic";
@@ -128,6 +129,18 @@ export async function POST(request: Request): Promise<NextResponse> {
       metadata: {
         appointment_type: result.appointment.appointmentType,
         starts_at: result.appointment.startsAt,
+      },
+      ipAddress: ip_address,
+      userAgent: user_agent,
+    });
+
+    await safeRecordProspectEvent({
+      clientId: session.client.id,
+      userId: session.authUser.id,
+      event: "prospect_appointment_booked",
+      metadata: {
+        appointmentId: result.appointment.id,
+        appointmentType: result.appointment.appointmentType,
       },
       ipAddress: ip_address,
       userAgent: user_agent,

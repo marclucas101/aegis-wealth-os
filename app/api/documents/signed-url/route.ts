@@ -7,6 +7,7 @@ import {
   toPublicErrorMessage,
   validateRequiredString,
 } from "@/lib/security/apiGuards";
+import { assertClientDocumentAccess } from "@/lib/compliance/documentAccess";
 import { createDocumentSignedUrl } from "@/lib/supabase/documentPersistence";
 import { ensureUserClientProfile } from "@/lib/supabase/userProfile";
 
@@ -38,6 +39,11 @@ export async function POST(
         { ok: false, error: "Authentication required" },
         { status: 401 },
       );
+    }
+
+    const docAccess = await assertClientDocumentAccess(session.user, session.client);
+    if (!docAccess.ok) {
+      return NextResponse.json({ ok: false, error: docAccess.error }, { status: 403 });
     }
 
     const parsed = await parseJsonBodySafely(request);
@@ -78,6 +84,7 @@ export async function POST(
     const result = await createDocumentSignedUrl(
       session.client,
       documentIdResult.value,
+      session.authUser.id,
     );
 
     return NextResponse.json({

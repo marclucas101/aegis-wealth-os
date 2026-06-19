@@ -14,12 +14,6 @@ export const dynamic = "force-dynamic";
 
 const POST_AUTH_REDIRECT_STATUS = 303;
 
-/**
- * Tiny non-sensitive marker cookie set alongside the Supabase auth cookies.
- * If this survives in the browser but sb-* does not, something is clearing
- * sb-* specifically; if neither survives, the browser is rejecting/wiping
- * all cookies for this site (profile settings or an extension).
- */
 const PROBE_COOKIE_NAME = "aegis-cookie-probe";
 
 function withStage(headers: Headers, stage: string): Headers {
@@ -45,6 +39,14 @@ function redirectResponse(
   return new Response(null, { status, headers });
 }
 
+function buildContinueUrl(request: NextRequest, next: string): URL {
+  const continueUrl = new URL("/auth/continue", request.url);
+  if (next.startsWith("/")) {
+    continueUrl.searchParams.set("next", next);
+  }
+  return continueUrl;
+}
+
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
   const { email, password, error: validationError } = readAuthCredentials(formData);
@@ -57,7 +59,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const redirectPath = next.startsWith("/") ? next : "/dashboard";
   const responseHeaders = new Headers();
   const supabase = createRouteHandlerSupabaseClient(request, responseHeaders);
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
   );
 
   return redirectResponse(
-    new URL(redirectPath, request.url),
+    buildContinueUrl(request, next),
     responseHeaders,
   );
 }

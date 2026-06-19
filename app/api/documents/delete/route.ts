@@ -9,6 +9,7 @@ import {
   toPublicErrorMessage,
   validateRequiredString,
 } from "@/lib/security/apiGuards";
+import { assertClientDocumentAccess } from "@/lib/compliance/documentAccess";
 import { writeAuditLog } from "@/lib/supabase/auditLog";
 import { deleteClientDocument } from "@/lib/supabase/documentPersistence";
 import { ensureUserClientProfile } from "@/lib/supabase/userProfile";
@@ -30,6 +31,11 @@ export async function POST(
         { ok: false, error: "Authentication required" },
         { status: 401 },
       );
+    }
+
+    const docAccess = await assertClientDocumentAccess(session.user, session.client);
+    if (!docAccess.ok) {
+      return NextResponse.json({ ok: false, error: docAccess.error }, { status: 403 });
     }
 
     const rateLimit = rateLimitOrThrow<DocumentsDeleteResponse>(request, {

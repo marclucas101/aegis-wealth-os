@@ -10,7 +10,11 @@ import BlueprintRoadmapSummary from "@/components/aegis/blueprint/BlueprintRoadm
 import BlueprintScoreOverview from "@/components/aegis/blueprint/BlueprintScoreOverview";
 import BlueprintStressSummary from "@/components/aegis/blueprint/BlueprintStressSummary";
 import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
+import ClientSafeFallbackPanel, {
+  isClientSafeEnvelopeResponse,
+} from "@/components/aegis/client/ClientSafeFallbackPanel";
 import ReportDisclaimerBlock from "@/components/aegis/legal/ReportDisclaimerBlock";
+import type { ClientSafeEnvelope } from "@/lib/compliance/clientSafeDtos";
 import {
   computeBlueprintFromProfile,
   loadDiscoverProfile,
@@ -19,7 +23,7 @@ import {
 } from "@/lib/aegis/localProfile";
 import type { WealthBlueprintSnapshot } from "@/lib/supabase/moduleQueries";
 
-type BlueprintMode = "loading" | "empty" | "cloud" | "local";
+type BlueprintMode = "loading" | "empty" | "cloud" | "local" | "fallback";
 type ProfileSource = "cloud" | "local";
 type SnapshotSaveState = "idle" | "saving" | "saved" | "error";
 
@@ -76,6 +80,8 @@ export default function WealthBlueprintClient() {
   const [profile, setProfile] = useState<DiscoverStoredProfile | null>(null);
   const [cloudSnapshot, setCloudSnapshot] =
     useState<WealthBlueprintSnapshot | null>(null);
+  const [fallbackEnvelope, setFallbackEnvelope] =
+    useState<ClientSafeEnvelope<unknown> | null>(null);
   const [saveState, setSaveState] = useState<SnapshotSaveState>("idle");
   const [latestSavedAt, setLatestSavedAt] = useState<string | null>(null);
 
@@ -97,12 +103,22 @@ export default function WealthBlueprintClient() {
           return;
         }
 
-        const data = (await response.json()) as
+        const data = await response.json();
+
+        if (isClientSafeEnvelopeResponse(data)) {
+          setFallbackEnvelope(data.envelope);
+          setCloudSnapshot(null);
+          setProfile(null);
+          setMode("fallback");
+          return;
+        }
+
+        const typed = data as
           | ({ ok: true } & WealthBlueprintSnapshot)
           | { ok: false; reason?: string };
 
-        if (data.ok) {
-          setCloudSnapshot(data);
+        if (typed.ok && "shield" in typed) {
+          setCloudSnapshot(typed);
           setProfile(null);
           setMode("cloud");
           return;
@@ -205,6 +221,18 @@ export default function WealthBlueprintClient() {
         <p className="text-[10px] uppercase tracking-[0.2em] text-[#F3F1EA]/30">
           Preparing report preview…
         </p>
+      </div>
+    );
+  }
+
+  if (mode === "fallback" && fallbackEnvelope) {
+    return (
+      <div className="flex flex-col gap-6">
+        <ClientSafeFallbackPanel
+          title="Wealth Blueprint"
+          envelope={fallbackEnvelope}
+        />
+        <ClientTrustNotice variant="compact" context="planning" />
       </div>
     );
   }

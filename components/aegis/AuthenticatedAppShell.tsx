@@ -1,8 +1,14 @@
 import type { ReactNode } from "react";
 
 import AppShell from "@/components/aegis/AppShell";
+import {
+  getClientEntitlements,
+  getNavSectionsForEntitlements,
+  getUserExperienceContext,
+} from "@/lib/compliance/entitlements";
 import { getNavSectionsForRole } from "@/lib/navigation";
 import { getCurrentUserRole } from "@/lib/supabase/authGuards";
+import { ensureUserClientProfile } from "@/lib/supabase/userProfile";
 
 interface AuthenticatedAppShellProps {
   children: ReactNode;
@@ -12,8 +18,8 @@ interface AuthenticatedAppShellProps {
 }
 
 /**
- * Server wrapper that resolves the authoritative user role and passes
- * role-filtered navigation into the client AppShell.
+ * Server wrapper that resolves authoritative entitlements and passes
+ * entitlement-filtered navigation into the client AppShell.
  */
 export default async function AuthenticatedAppShell({
   children,
@@ -22,7 +28,18 @@ export default async function AuthenticatedAppShell({
   fullBleed,
 }: AuthenticatedAppShellProps) {
   const userRole = await getCurrentUserRole();
-  const navSections = getNavSectionsForRole(userRole);
+  const session = await ensureUserClientProfile();
+
+  let navSections = getNavSectionsForRole(userRole);
+
+  if (session.authenticated && session.user.role === "client") {
+    const ctx = await getUserExperienceContext({
+      user: session.user,
+      client: session.client,
+    });
+    const entitlements = await getClientEntitlements(ctx);
+    navSections = getNavSectionsForEntitlements(userRole, entitlements);
+  }
 
   return (
     <AppShell

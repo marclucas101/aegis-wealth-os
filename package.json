@@ -26,6 +26,9 @@
     "qa:birthday-reminders": "npx tsx scripts/run-birthday-reminder-validation.ts",
     "qa:adviser-appointments": "npx tsx scripts/run-adviser-appointment-validation.ts",
     "qa:adviser-client-views": "npx tsx scripts/run-adviser-client-financial-views-validation.ts",
+    "qa:phase9a-access": "npx tsx scripts/run-phase9a-access-validation.ts",
+    "qa:phase9b-prospect": "npx tsx scripts/run-phase9b-prospect-validation.ts",
+    "qa:phase9c-meeting-studio": "npx tsx scripts/run-phase9c-meeting-studio-validation.ts",
     "demo:seed": "npx tsx scripts/seed-demo-data.ts",
     "demo:clear": "npx tsx scripts/clear-demo-data.ts",
     "final:check": "npx tsx scripts/final-readiness-check.ts"

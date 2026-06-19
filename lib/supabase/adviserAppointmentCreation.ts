@@ -26,6 +26,7 @@ import {
 } from "@/src/lib/calendar/availability";
 
 import { resolveAccessibleClient } from "./advisorClientAccess";
+import { maybeAdvanceRelationshipStageForAppointment } from "@/lib/compliance/appointmentStageTransition";
 import { createAdminSupabaseClient } from "./admin";
 import {
   getAdviserGoogleAccessToken,
@@ -667,6 +668,17 @@ export async function createAdviserAppointment(
         } as never)
         .eq("id", row.id);
     }
+  }
+
+  try {
+    await maybeAdvanceRelationshipStageForAppointment({
+      clientId: client.id,
+      actorUserId: input.createdByUserId,
+      trigger: "adviser_created_appointment",
+      appointmentId: row.id,
+    });
+  } catch (stageError) {
+    console.error("[adviserAppointmentCreation] stage transition failed", stageError);
   }
 
   return {

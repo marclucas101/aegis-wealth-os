@@ -44,7 +44,10 @@ export async function POST(request: NextRequest) {
       return redirectResponse(signupUrl, new Headers());
     }
 
-    return redirectResponse(new URL("/dashboard", request.url), responseHeaders);
+    return redirectResponse(
+      new URL("/auth/continue", request.url),
+      responseHeaders,
+    );
   }
 
   const signupUrl = new URL("/signup", request.url);

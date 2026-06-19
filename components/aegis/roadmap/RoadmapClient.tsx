@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ClientPortalHeader from "@/components/aegis/client/ClientPortalHeader";
+import ClientSafeFallbackPanel, {
+  isClientSafeEnvelopeResponse,
+} from "@/components/aegis/client/ClientSafeFallbackPanel";
 import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
+import type { ClientSafeEnvelope } from "@/lib/compliance/clientSafeDtos";
 import RoadmapActionCard from "@/components/aegis/roadmap/RoadmapActionCard";
 import RoadmapEmptyState from "@/components/aegis/roadmap/RoadmapEmptyState";
 import RoadmapProgressPanel from "@/components/aegis/roadmap/RoadmapProgressPanel";
@@ -20,7 +24,7 @@ import {
 import type { RoadmapSnapshot } from "@/lib/supabase/moduleQueries";
 import { calculateProjectedShield } from "@/src/lib/scoring";
 
-type RoadmapMode = "loading" | "empty" | "cloud" | "local";
+type RoadmapMode = "loading" | "empty" | "cloud" | "local" | "fallback";
 type ProfileSource = "cloud" | "local";
 
 function ProfileSourceBadge({ source }: { source: ProfileSource }) {
@@ -70,6 +74,8 @@ export default function RoadmapClient() {
   const [cloudSnapshot, setCloudSnapshot] = useState<RoadmapSnapshot | null>(
     null,
   );
+  const [fallbackEnvelope, setFallbackEnvelope] =
+    useState<ClientSafeEnvelope<unknown> | null>(null);
   const [statuses, setStatuses] = useState<Record<string, RoadmapItemStatus>>(
     {},
   );
@@ -94,16 +100,26 @@ export default function RoadmapClient() {
           return;
         }
 
-        const data = (await response.json()) as
+        const data = await response.json();
+
+        if (isClientSafeEnvelopeResponse(data)) {
+          setFallbackEnvelope(data.envelope);
+          setCloudSnapshot(null);
+          setProfile(null);
+          setMode("fallback");
+          return;
+        }
+
+        const typed = data as
           | ({ ok: true } & RoadmapSnapshot)
           | { ok: false; reason?: string };
 
-        if (data.ok) {
-          setCloudSnapshot(data);
+        if (typed.ok && "roadmap" in typed) {
+          setCloudSnapshot(typed);
           setProfile(null);
           setStatuses(
             Object.fromEntries(
-              data.roadmap.map((item) => [item.id, item.status]),
+              typed.roadmap.map((item) => [item.id, item.status]),
             ),
           );
           setMode("cloud");
@@ -192,6 +208,20 @@ export default function RoadmapClient() {
         <p className="text-[10px] uppercase tracking-[0.2em] text-[#F3F1EA]/30">
           Loading roadmap…
         </p>
+      </div>
+    );
+  }
+
+  if (mode === "fallback" && fallbackEnvelope) {
+    return (
+      <div className="flex flex-col gap-6">
+        <ClientPortalHeader
+          eyebrow="Wealth Roadmap"
+          title="Adviser-reviewed roadmap required"
+          subtitle="Priority actions are shared after your adviser review."
+        />
+        <ClientSafeFallbackPanel title="Roadmap" envelope={fallbackEnvelope} />
+        <ClientTrustNotice variant="compact" context="planning" />
       </div>
     );
   }

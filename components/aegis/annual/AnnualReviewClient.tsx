@@ -10,6 +10,10 @@ import AnnualReviewScoreCard from "@/components/aegis/annual/AnnualReviewScoreCa
 import AnnualReviewStressSummary from "@/components/aegis/annual/AnnualReviewStressSummary";
 import AnnualReviewTimeline from "@/components/aegis/annual/AnnualReviewTimeline";
 import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
+import ClientSafeFallbackPanel, {
+  isClientSafeEnvelopeResponse,
+} from "@/components/aegis/client/ClientSafeFallbackPanel";
+import type { ClientSafeEnvelope } from "@/lib/compliance/clientSafeDtos";
 import ReportDisclaimerBlock from "@/components/aegis/legal/ReportDisclaimerBlock";
 import {
   applyRoadmapStatuses,
@@ -26,7 +30,7 @@ import type { AnnualReviewSnapshot } from "@/lib/supabase/moduleQueries";
 import { calculateProjectedShield } from "@/src/lib/scoring";
 import type { RoadmapItem, ShieldRating, ShieldScoreResult } from "@/src/lib/scoring/types";
 
-type AnnualReviewMode = "loading" | "empty" | "cloud" | "local";
+type AnnualReviewMode = "loading" | "empty" | "cloud" | "local" | "fallback";
 type ProfileSource = "cloud" | "local";
 type SnapshotSaveState = "idle" | "saving" | "saved" | "error";
 
@@ -305,6 +309,8 @@ export default function AnnualReviewClient() {
   const [profile, setProfile] = useState<DiscoverStoredProfile | null>(null);
   const [cloudSnapshot, setCloudSnapshot] =
     useState<AnnualReviewSnapshot | null>(null);
+  const [fallbackEnvelope, setFallbackEnvelope] =
+    useState<ClientSafeEnvelope<unknown> | null>(null);
   const [statuses] = useState<Record<string, RoadmapItemStatus>>(() =>
     loadRoadmapStatuses(),
   );
@@ -329,12 +335,22 @@ export default function AnnualReviewClient() {
           return;
         }
 
-        const data = (await response.json()) as
+        const data = await response.json();
+
+        if (isClientSafeEnvelopeResponse(data)) {
+          setFallbackEnvelope(data.envelope);
+          setCloudSnapshot(null);
+          setProfile(null);
+          setMode("fallback");
+          return;
+        }
+
+        const typed = data as
           | ({ ok: true } & AnnualReviewSnapshot)
           | { ok: false; reason?: string };
 
-        if (data.ok) {
-          setCloudSnapshot(data);
+        if (typed.ok && "shield" in typed) {
+          setCloudSnapshot(typed);
           setProfile(null);
           setMode("cloud");
           return;
@@ -437,6 +453,18 @@ export default function AnnualReviewClient() {
         <p className="text-[10px] uppercase tracking-[0.2em] text-[#F3F1EA]/30">
           Preparing annual review…
         </p>
+      </div>
+    );
+  }
+
+  if (mode === "fallback" && fallbackEnvelope) {
+    return (
+      <div className="flex flex-col gap-6">
+        <ClientSafeFallbackPanel
+          title="Annual Review"
+          envelope={fallbackEnvelope}
+        />
+        <ClientTrustNotice variant="compact" context="planning" />
       </div>
     );
   }

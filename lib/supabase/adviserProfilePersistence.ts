@@ -94,7 +94,7 @@ async function createPhotoSignedUrl(
   return data.signedUrl;
 }
 
-async function loadAdviserUserAndProfile(
+export async function loadAdviserUserAndProfile(
   adviserUserId: string,
 ): Promise<{
   user: AdviserUserRow | null;
@@ -131,7 +131,7 @@ async function loadAdviserUserAndProfile(
   };
 }
 
-async function mapToPublicProfile(
+export async function mapToPublicProfile(
   adviserUserId: string,
   user: AdviserUserRow,
   profile: AdviserProfileRow | null,

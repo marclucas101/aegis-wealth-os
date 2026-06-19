@@ -10,8 +10,8 @@ export default async function DashboardPage() {
 
   return (
     <AuthenticatedAppShell
-      title="Shield Dashboard"
-      subtitle="Your financial shield, clearly explained"
+      title="My Snapshot"
+      subtitle="Your adviser-reviewed financial readiness overview"
     >
       <DashboardClient />
     </AuthenticatedAppShell>

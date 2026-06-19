@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ClientPortalHeader from "@/components/aegis/client/ClientPortalHeader";
+import ClientSafeFallbackPanel, {
+  isClientSafeEnvelopeResponse,
+} from "@/components/aegis/client/ClientSafeFallbackPanel";
 import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
+import type { ClientSafeEnvelope } from "@/lib/compliance/clientSafeDtos";
 import StressEmptyState from "@/components/aegis/stress/StressEmptyState";
 import StressHistoryPanel, {
   type StressTestHistoryEntry,
@@ -38,7 +42,7 @@ const CLOUD_ALLOWED_SEVERITIES: StressSeverity[] = [
   "severe",
 ];
 
-type StressMode = "loading" | "empty" | "cloud" | "local";
+type StressMode = "loading" | "empty" | "cloud" | "local" | "fallback";
 type ProfileSource = "cloud" | "local";
 type RunState = "idle" | "running" | "error";
 
@@ -95,6 +99,8 @@ export default function StressTestingClient() {
   const [profile, setProfile] = useState<DiscoverStoredProfile | null>(null);
   const [cloudSnapshot, setCloudSnapshot] =
     useState<StressTestingSnapshot | null>(null);
+  const [fallbackEnvelope, setFallbackEnvelope] =
+    useState<ClientSafeEnvelope<unknown> | null>(null);
   const [severity, setSeverity] = useState<StressSeverity>("moderate");
   const [selectedScenario, setSelectedScenario] =
     useState<StressScenario>("income_loss");
@@ -137,12 +143,22 @@ export default function StressTestingClient() {
           return;
         }
 
-        const data = (await response.json()) as
+        const data = await response.json();
+
+        if (isClientSafeEnvelopeResponse(data)) {
+          setFallbackEnvelope(data.envelope);
+          setCloudSnapshot(null);
+          setProfile(null);
+          setMode("fallback");
+          return;
+        }
+
+        const typed = data as
           | ({ ok: true } & StressTestingSnapshot)
           | { ok: false; reason?: string };
 
-        if (data.ok) {
-          setCloudSnapshot(data);
+        if (typed.ok && "shield" in typed) {
+          setCloudSnapshot(typed);
           setProfile(null);
           setMode("cloud");
           return;
@@ -305,6 +321,23 @@ export default function StressTestingClient() {
           Loading stress simulations…
         </p>
       </div>
+    );
+  }
+
+  if (mode === "fallback" && fallbackEnvelope) {
+    return (
+      <>
+        <ClientPortalHeader
+          eyebrow="Stress Testing"
+          title="Adviser-reviewed scenarios required"
+          subtitle="Stress simulations are shared after adviser review."
+        />
+        <ClientSafeFallbackPanel
+          title="Stress Testing"
+          envelope={fallbackEnvelope}
+        />
+        <ClientTrustNotice variant="compact" context="planning" />
+      </>
     );
   }
 

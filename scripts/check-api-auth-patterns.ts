@@ -45,6 +45,28 @@ type RouteRecord = {
 
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 
+/** Service-layer functions that write audit logs (scanner recognition). */
+export const SERVICE_AUDIT_PATTERNS = [
+  "prepareClientSafeOutput",
+  "publishOutput",
+  "reviewPublishedOutput",
+  "withdrawOutput",
+  "updateRelationshipStage",
+  "setFeatureControl",
+  "createMeetingSession",
+  "saveMeetingPreparation",
+  "startMeetingSession",
+  "completeMeetingSession",
+  "confirmMeetingFact",
+  "recordAcknowledgement",
+  "prepareMeetingSummary",
+  "recordSectionShown",
+] as const;
+
+function hasServiceLayerAudit(source: string): boolean {
+  return SERVICE_AUDIT_PATTERNS.some((pattern) => source.includes(pattern));
+}
+
 /**
  * Audited route-level guards and loaders.
  * Each entry is verified to establish auth via server session + DB assignment.
@@ -57,6 +79,11 @@ export const AUDITED_AUTH_PATTERNS: ReadonlyArray<{
 }> = [
   { pattern: "requireAdminAccess", kind: "admin", note: "Central admin gate" },
   { pattern: "requireAdvisorAccess", kind: "advisor", note: "Central adviser gate" },
+  {
+    pattern: "requireAdvisorMeetingAuth",
+    kind: "advisor",
+    note: "Meeting Studio routes — wraps requireAdvisorAccess",
+  },
   {
     pattern: "ensureUserClientProfile",
     kind: "client",
@@ -207,7 +234,8 @@ export function analyzeRouteSource(
     methods,
     authKind,
     hasRateLimit: source.includes("rateLimitOrThrow"),
-    hasAuditLog: source.includes("writeAuditLog"),
+    hasAuditLog:
+      source.includes("writeAuditLog") || hasServiceLayerAudit(source),
     hasToPublicError: source.includes("toPublicErrorMessage"),
     hasRejectUnexpected: source.includes("rejectUnexpectedFields"),
     hasRejectClientId:

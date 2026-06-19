@@ -3,12 +3,15 @@ import { type NextRequest, NextResponse } from "next/server";
 import { applySessionCookies, updateSession } from "@/lib/supabase/middleware";
 
 const PROTECTED_PREFIXES = [
+  "/prospect",
+  "/meeting-preparation",
   "/dashboard",
   "/profile",
   "/discover",
   "/shield-diagnostic",
   "/stress-testing",
   "/roadmap",
+  "/budget-optimiser",
   "/wealth-blueprint",
   "/annual-review",
   "/document-vault",
@@ -71,12 +74,17 @@ export async function middleware(request: NextRequest) {
   }
 
   if (session.user && isAuthPage(pathname)) {
-    const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = "/dashboard";
-    dashboardUrl.search = "";
+    const continueUrl = request.nextUrl.clone();
+    continueUrl.pathname = "/auth/continue";
+    const requestedNext = request.nextUrl.searchParams.get("next");
+    if (requestedNext?.startsWith("/")) {
+      continueUrl.searchParams.set("next", requestedNext);
+    } else {
+      continueUrl.search = "";
+    }
     return applySessionCookies(
       session,
-      NextResponse.redirect(dashboardUrl, { status: 303 }),
+      NextResponse.redirect(continueUrl, { status: 303 }),
     );
   }
 

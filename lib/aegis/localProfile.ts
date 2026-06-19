@@ -43,8 +43,15 @@ import type {
 } from "@/src/lib/scoring/types";
 import type { ProtectionCoreResult } from "@/src/lib/scoring/protectionCoreTypes";
 
-const STORAGE_KEY = "aegis-discover-profile-v1";
-const ROADMAP_STATUS_KEY = "aegis-roadmap-status-v1";
+import {
+  assertDiscoverDraftBelongsToUser,
+  clearDiscoverDraftStorage,
+  discoverDraftStorageKey,
+  discoverRoadmapStorageKey,
+  isSensitiveLocalDraftEnabled,
+  readDiscoverDraftMeta,
+  writeDiscoverDraftMeta,
+} from "@/lib/aegis/discoverLocalDraft";
 
 export interface DiscoverFormData {
   personal: {
@@ -656,8 +663,27 @@ export function buildClientFinancialProfile(
   };
 }
 
-export function saveDiscoverProfile(input: SaveDiscoverProfileInput): void {
+export function saveDiscoverProfile(
+  input: SaveDiscoverProfileInput,
+  options?: { userId?: string | null; currentStep?: number },
+): void {
   if (typeof window === "undefined") return;
+
+  const userId = options?.userId ?? null;
+  if (userId) {
+    assertDiscoverDraftBelongsToUser(userId);
+  }
+
+  if (!isSensitiveLocalDraftEnabled()) {
+    if (userId) {
+      writeDiscoverDraftMeta({
+        userId,
+        savedAt: new Date().toISOString(),
+        currentStep: options?.currentStep,
+      });
+    }
+    return;
+  }
 
   const profile: DiscoverStoredProfile = {
     version: 1,
@@ -665,13 +691,32 @@ export function saveDiscoverProfile(input: SaveDiscoverProfileInput): void {
     ...input,
   };
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+  window.localStorage.setItem(
+    discoverDraftStorageKey(userId),
+    JSON.stringify(profile),
+  );
+
+  if (userId) {
+    writeDiscoverDraftMeta({
+      userId,
+      savedAt: new Date().toISOString(),
+      currentStep: options?.currentStep,
+    });
+  }
 }
 
-export function loadDiscoverProfile(): DiscoverStoredProfile | null {
+export function loadDiscoverProfile(userId?: string | null): DiscoverStoredProfile | null {
   if (typeof window === "undefined") return null;
 
-  const raw = window.localStorage.getItem(STORAGE_KEY);
+  if (!isSensitiveLocalDraftEnabled()) {
+    return null;
+  }
+
+  if (userId && !assertDiscoverDraftBelongsToUser(userId)) {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(discoverDraftStorageKey(userId));
   if (!raw) return null;
 
   try {
@@ -683,9 +728,20 @@ export function loadDiscoverProfile(): DiscoverStoredProfile | null {
   }
 }
 
-export function clearDiscoverProfile(): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.removeItem(STORAGE_KEY);
+export function clearDiscoverProfile(userId?: string | null): void {
+  clearDiscoverDraftStorage(userId);
+}
+
+export function loadDiscoverDraftResumeStep(userId?: string | null): number | null {
+  const meta = readDiscoverDraftMeta();
+  if (!meta) {
+    return null;
+  }
+  if (userId && meta.userId !== userId) {
+    clearDiscoverDraftStorage(userId);
+    return null;
+  }
+  return typeof meta.currentStep === "number" ? meta.currentStep : null;
 }
 
 export function mapDiscoverProfileToPillarScores(
@@ -1153,10 +1209,11 @@ function buildRoadmapFromPillars(
 
 export type RoadmapItemStatus = RoadmapItem["status"];
 
-export function loadRoadmapStatuses(): Record<string, RoadmapItemStatus> {
+export function loadRoadmapStatuses(userId?: string | null): Record<string, RoadmapItemStatus> {
   if (typeof window === "undefined") return {};
+  if (!isSensitiveLocalDraftEnabled()) return {};
 
-  const raw = window.localStorage.getItem(ROADMAP_STATUS_KEY);
+  const raw = window.localStorage.getItem(discoverRoadmapStorageKey(userId));
   if (!raw) return {};
 
   try {
@@ -1167,12 +1224,20 @@ export function loadRoadmapStatuses(): Record<string, RoadmapItemStatus> {
   }
 }
 
-export function saveRoadmapStatus(id: string, status: RoadmapItemStatus): void {
+export function saveRoadmapStatus(
+  id: string,
+  status: RoadmapItemStatus,
+  userId?: string | null,
+): void {
   if (typeof window === "undefined") return;
+  if (!isSensitiveLocalDraftEnabled()) return;
 
-  const current = loadRoadmapStatuses();
+  const current = loadRoadmapStatuses(userId);
   current[id] = status;
-  window.localStorage.setItem(ROADMAP_STATUS_KEY, JSON.stringify(current));
+  window.localStorage.setItem(
+    discoverRoadmapStorageKey(userId),
+    JSON.stringify(current),
+  );
 }
 
 export function applyRoadmapStatuses(
