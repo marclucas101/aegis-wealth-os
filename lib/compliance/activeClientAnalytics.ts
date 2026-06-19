@@ -2,6 +2,8 @@ import "server-only";
 
 import { writeAuditLog } from "@/lib/supabase/auditLog";
 
+import { assertActiveClientAuditMetadataSafe } from "./activeClientAuditMetadata";
+
 export type ActiveClientAnalyticsEvent =
   | "financial_overview_viewed"
   | "published_plan_viewed"
@@ -34,6 +36,8 @@ export async function recordActiveClientEvent(input: {
     eventType: input.event,
     ...(input.metadata ?? {}),
   };
+
+  assertActiveClientAuditMetadataSafe(safeMetadata);
 
   await writeAuditLog({
     clientId: input.clientId,

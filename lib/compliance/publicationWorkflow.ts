@@ -64,7 +64,8 @@ export async function loadCurrentPublishedOutput(
   audience: OutputAudience = "client_published",
 ): Promise<PublishedOutputRow | null> {
   const rows = await dbLoadPublishedOutputsForClient(clientId, outputType, audience);
-  return rows.find(isCurrentPublishedOutput) ?? null;
+  const { selectSingleCurrentPublishedOutput } = await import("./publicationSelection");
+  return selectSingleCurrentPublishedOutput(rows);
 }
 
 export async function listPublishedOutputsForClient(

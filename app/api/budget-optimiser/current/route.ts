@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { assertClientFeatureApiAccess } from "@/lib/compliance/activeClientPageGate";
+import { CLIENT_API_CACHE_HEADERS } from "@/lib/compliance/activeClientAccess";
 import { toPublicErrorMessage } from "@/lib/security/apiGuards";
 import { loadCurrentClientBudget } from "@/lib/supabase/budgetPersistence";
 import { ensureUserClientProfile } from "@/lib/supabase/userProfile";
@@ -35,20 +37,34 @@ export async function GET(): Promise<NextResponse<CurrentBudgetResponse>> {
     if (!session.authenticated) {
       return NextResponse.json(
         { ok: false, error: "Authentication required", budget: null },
-        { status: 401 },
+        { status: 401, headers: CLIENT_API_CACHE_HEADERS },
+      );
+    }
+
+    const featureAccess = await assertClientFeatureApiAccess("budget", session);
+    if (!featureAccess.allowed) {
+      return NextResponse.json(
+        { ok: false, error: featureAccess.reason, budget: null },
+        { status: featureAccess.status, headers: CLIENT_API_CACHE_HEADERS },
       );
     }
 
     const current = await loadCurrentClientBudget(session.client.id);
 
     if (!current) {
-      return NextResponse.json({ ok: false, budget: null });
+      return NextResponse.json(
+        { ok: false, budget: null },
+        { headers: CLIENT_API_CACHE_HEADERS },
+      );
     }
 
-    return NextResponse.json({
-      ok: true,
-      budget: toAccountRecord(current),
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        budget: toAccountRecord(current),
+      },
+      { headers: CLIENT_API_CACHE_HEADERS },
+    );
   } catch (err) {
     const message = toPublicErrorMessage(err, "Failed to load budget profile");
 

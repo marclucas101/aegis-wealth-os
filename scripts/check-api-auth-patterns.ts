@@ -61,6 +61,8 @@ export const SERVICE_AUDIT_PATTERNS = [
   "recordAcknowledgement",
   "prepareMeetingSummary",
   "recordSectionShown",
+  "submitClientReviewInformation",
+  "recordActiveClientEvent",
 ] as const;
 
 function hasServiceLayerAudit(source: string): boolean {
@@ -133,6 +135,16 @@ export const AUDITED_AUTH_PATTERNS: ReadonlyArray<{
     pattern: "blockDebugRouteInProduction",
     kind: "debug-gated",
     note: "Returns 404 in production",
+  },
+  {
+    pattern: "assertActiveClientPortalAccess",
+    kind: "client",
+    note: "Phase 9D active-client portal API gate",
+  },
+  {
+    pattern: "assertClientFeatureApiAccess",
+    kind: "client",
+    note: "Phase 9D client feature entitlement gate",
   },
   {
     pattern: "validateCronSecret",

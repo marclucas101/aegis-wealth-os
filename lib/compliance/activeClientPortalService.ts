@@ -19,11 +19,11 @@ import {
 import { loadActiveClientPortalShell } from "@/lib/compliance/activeClientPortalData";
 import { assertMeetingSummaryPublicationEnabled } from "@/lib/compliance/meetingStudioAccess";
 import {
-  isCurrentPublishedOutput,
   listPublishedOutputsForClient,
   loadCurrentPublishedOutput,
   parsePublishedSafePayload,
 } from "@/lib/compliance/publicationWorkflow";
+import { filterPublicationsForOutputTypes } from "@/lib/compliance/publicationSelection";
 import { resolveRelationshipStage } from "@/lib/compliance/relationshipStage";
 import { assessOutputStaleness } from "@/lib/compliance/staleOutputPolicy";
 import { CLIENT_TERMINOLOGY } from "@/lib/compliance/terminology";
@@ -111,11 +111,7 @@ export async function loadMyPlanPublications(
   clientId: string,
 ): Promise<ClientSafePublishedSummary[]> {
   const rows = await listPublishedOutputsForClient(clientId);
-  const currentRows = rows.filter(
-    (row) =>
-      MY_PLAN_OUTPUT_TYPES.includes(row.output_type) &&
-      isCurrentPublishedOutput(row),
-  );
+  const currentRows = filterPublicationsForOutputTypes(rows, MY_PLAN_OUTPUT_TYPES);
 
   return currentRows.map((row) => {
     let payload: ClientSafePlanSummary | ClientSafeFinancialReadinessSnapshot | Record<string, unknown>;

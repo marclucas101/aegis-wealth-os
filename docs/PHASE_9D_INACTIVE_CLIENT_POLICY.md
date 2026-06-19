@@ -30,8 +30,20 @@ Implementation: `buildFeatureMap` in `lib/compliance/entitlements.ts`.
 ## Permitted access
 
 1. Contact assigned adviser (or firm support if unassigned)
-2. View documents per retention policy (`listClientDocuments` visibility rules)
-3. View **historical** published summaries only where explicitly retained (future Phase 9E governance)
+2. View and download documents per retention policy (`listClientDocuments` visibility rules)
+3. Upload documents where retention policy permits (same document APIs; no analytical tools)
+4. View **historical** published summaries only where explicitly retained (Phase 9E governance)
+
+## Document actions (inactive)
+
+| Action | Permitted |
+|--------|-----------|
+| List visible documents | Yes |
+| Download (signed URL, re-checked) | Yes |
+| Upload | Yes (subject to retention policy) |
+| Delete own uploads | Per existing document policy |
+
+Inactive clients do **not** receive converted-portal navigation or `/api/client/*` access.
 
 ## Reactivation
 

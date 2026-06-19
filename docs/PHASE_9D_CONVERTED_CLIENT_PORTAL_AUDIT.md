@@ -61,6 +61,17 @@ Entitlements source: `getNavSectionsForEntitlements` in `lib/compliance/entitlem
 
 ---
 
+## Hardening (acceptance review)
+
+- Server page gates: `requireActiveClientPortalPage`, `requireClientFeaturePage`
+- Budget APIs gated by `assertClientFeatureApiAccess("budget")`
+- Publication selection: `selectSingleCurrentPublishedOutput` (no arbitrary duplicate row)
+- Goal validation: `validateClientGoalInput` with length/date/amount bounds
+- Roadmap status: clients cannot update `task_owner=adviser` or `client_visible=false` items
+- Stale policy: missing/invalid dates fail safe (review recommended)
+- Analytics: runtime sensitive-key scanner on audit metadata
+- DTO negative tests: financial overview, plan summary, meeting summary
+
 ## Deferred
 
 - Full Insights authoring (Phase 9E)

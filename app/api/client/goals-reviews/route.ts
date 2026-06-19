@@ -6,6 +6,7 @@ import {
   assertActiveClientPortalAccess,
   CLIENT_API_CACHE_HEADERS,
 } from "@/lib/compliance/activeClientAccess";
+import { validateClientGoalInput } from "@/lib/compliance/clientGoalValidation";
 import { loadGoalsReviewsPortalData } from "@/lib/compliance/activeClientPortalService";
 import {
   submitClientReviewInformation,
@@ -19,8 +20,8 @@ import {
   rejectUnexpectedFields,
   toPublicErrorMessage,
   validateEnum,
-  validateRequiredString,
 } from "@/lib/security/apiGuards";
+import { writeAuditLog } from "@/lib/supabase/auditLog";
 import { ensureUserClientProfile } from "@/lib/supabase/userProfile";
 
 export const dynamic = "force-dynamic";
@@ -141,22 +142,20 @@ export async function POST(request: Request): Promise<NextResponse> {
     const action = typeof body.action === "string" ? body.action : "";
 
     if (action === "save_goal") {
-      const titleResult = validateRequiredString(body.title, "title");
-      if (!titleResult.ok) {
-        return NextResponse.json({ ok: false, error: titleResult.error }, { status: 400 });
+      const validated = validateClientGoalInput(body);
+      if (!validated.ok) {
+        return NextResponse.json({ ok: false, error: validated.error }, { status: 400 });
       }
 
-      const goal = await upsertClientGoal(session.client, {
-        id: typeof body.id === "string" ? body.id : undefined,
-        title: titleResult.value,
-        targetAmount:
-          typeof body.targetAmount === "number" ? body.targetAmount : null,
-        targetDate:
-          typeof body.targetDate === "string" ? body.targetDate : null,
-        priority:
-          body.priority === "low" || body.priority === "high"
-            ? body.priority
-            : "medium",
+      const goal = await upsertClientGoal(session.client, validated.value);
+
+      await writeAuditLog({
+        clientId: session.client.id,
+        userId: session.authUser.id,
+        action: validated.value.id ? "goal_updated" : "goal_created",
+        entityType: "client_goals",
+        entityId: goal.id,
+        metadata: { priority: goal.priority },
       });
 
       await recordActiveClientEvent({
@@ -189,6 +188,19 @@ export async function POST(request: Request): Promise<NextResponse> {
         actorUserId: session.authUser.id,
         submissionType: typeResult.value,
         payload,
+      });
+
+      await writeAuditLog({
+        clientId: session.client.id,
+        userId: session.authUser.id,
+        action: "review_submitted",
+        entityType: "client_review_submissions",
+        entityId: result.submissionId,
+        metadata: {
+          submissionType: typeResult.value,
+          alreadySubmitted: result.alreadySubmitted,
+          taskCreated: result.taskCreated,
+        },
       });
 
       await recordActiveClientEvent({

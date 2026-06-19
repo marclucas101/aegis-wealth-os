@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { assertClientFeatureApiAccess } from "@/lib/compliance/activeClientPageGate";
 import {
   getRequestMetadata,
   parseJsonBodySafely,
@@ -46,6 +47,14 @@ export async function POST(
       return NextResponse.json(
         { ok: false, error: "Authentication required" },
         { status: 401 },
+      );
+    }
+
+    const featureAccess = await assertClientFeatureApiAccess("budget", session);
+    if (!featureAccess.allowed) {
+      return NextResponse.json(
+        { ok: false, error: featureAccess.reason },
+        { status: featureAccess.status },
       );
     }
 

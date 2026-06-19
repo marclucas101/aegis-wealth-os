@@ -52,14 +52,24 @@ export function assessOutputStaleness(input: {
   const referenceDate = input.dataAsAt ?? input.publishedAt;
   if (!referenceDate) {
     return {
-      isStale: false,
-      reviewRecommended: false,
-      staleMessage: null,
+      isStale: true,
+      reviewRecommended: true,
+      staleMessage: "Review recommended — publication date is unavailable.",
       thresholdDays,
     };
   }
 
-  const ageMs = Date.now() - new Date(referenceDate).getTime();
+  const parsed = new Date(referenceDate);
+  if (Number.isNaN(parsed.getTime())) {
+    return {
+      isStale: true,
+      reviewRecommended: true,
+      staleMessage: "Review recommended — publication date could not be verified.",
+      thresholdDays,
+    };
+  }
+
+  const ageMs = Date.now() - parsed.getTime();
   const ageDays = ageMs / (1000 * 60 * 60 * 24);
   const isStale = ageDays > thresholdDays;
 

@@ -79,7 +79,7 @@ export async function persistRoadmapItemStatus(
 
   const { data: existing, error: fetchError } = await admin
     .from("roadmap_items")
-    .select("id, started_at, completed_at")
+    .select("id, started_at, completed_at, task_owner, client_visible")
     .eq("client_id", client.id)
     .eq("item_key", itemKey)
     .eq("is_active", true)
@@ -93,15 +93,24 @@ export async function persistRoadmapItemStatus(
     throw new Error("Roadmap item not found");
   }
 
+  const row = existing as RoadmapItemTimestampRow & {
+    task_owner?: string | null;
+    client_visible?: boolean | null;
+  };
+
+  if (row.task_owner === "adviser" || row.client_visible === false) {
+    throw new Error("Roadmap item not found");
+  }
+
   const updatePayload = buildStatusUpdate(
     status,
-    existing as RoadmapItemTimestampRow,
+    row,
   );
 
   const { data: updated, error: updateError } = await admin
     .from("roadmap_items")
     .update(updatePayload as never)
-    .eq("id", (existing as RoadmapItemTimestampRow).id)
+    .eq("id", row.id)
     .select("item_key, status, updated_at")
     .single();
 
@@ -109,11 +118,11 @@ export async function persistRoadmapItemStatus(
     throw new Error(`Failed to update roadmap status: ${updateError.message}`);
   }
 
-  const row = updated as RoadmapItemUpdateRow;
+  const updatedRow = updated as RoadmapItemUpdateRow;
 
   return {
-    item_key: row.item_key,
-    status: row.status,
-    updated_at: row.updated_at,
+    item_key: updatedRow.item_key,
+    status: updatedRow.status,
+    updated_at: updatedRow.updated_at,
   };
 }

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { assertClientFeatureApiAccess } from "@/lib/compliance/activeClientPageGate";
+import { CLIENT_API_CACHE_HEADERS } from "@/lib/compliance/activeClientAccess";
 import { toPublicErrorMessage } from "@/lib/security/apiGuards";
 import { listClientBudgetSnapshots } from "@/lib/supabase/budgetPersistence";
 import { ensureUserClientProfile } from "@/lib/supabase/userProfile";
@@ -35,16 +37,27 @@ export async function GET(): Promise<NextResponse<BudgetHistoryResponse>> {
     if (!session.authenticated) {
       return NextResponse.json(
         { ok: false, error: "Authentication required" },
-        { status: 401 },
+        { status: 401, headers: CLIENT_API_CACHE_HEADERS },
+      );
+    }
+
+    const featureAccess = await assertClientFeatureApiAccess("budget", session);
+    if (!featureAccess.allowed) {
+      return NextResponse.json(
+        { ok: false, error: featureAccess.reason },
+        { status: featureAccess.status, headers: CLIENT_API_CACHE_HEADERS },
       );
     }
 
     const snapshots = await listClientBudgetSnapshots(session.client.id, 10);
 
-    return NextResponse.json({
-      ok: true,
-      snapshots: snapshots.map(toAccountRecord),
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        snapshots: snapshots.map(toAccountRecord),
+      },
+      { headers: CLIENT_API_CACHE_HEADERS },
+    );
   } catch (err) {
     const message = toPublicErrorMessage(
       err,

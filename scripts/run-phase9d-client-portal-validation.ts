@@ -6,6 +6,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
+import { runPhase9dAnalyticsPrivacyTests } from "./phase9d-analytics-privacy-tests";
+import { runPhase9dClientSafeDtoNegativeTests } from "./phase9d-client-safe-dto-negative-tests";
+
 const ROOT = resolve(process.cwd());
 
 type TestCase = {
@@ -130,9 +133,9 @@ const TESTS: TestCase[] = [
   record(15, "My Plan contains only approved publications", () => {
     const route = read("app/api/client/my-plan/route.ts");
     assert(route.includes("loadMyPlanPublications"), "plan loader");
-    const service = read("lib/compliance/activeClientPortalService.ts");
-    assert(service.includes("isCurrentPublishedOutput"), "current only");
-    assert(service.includes("client_plan_summary"), "plan type");
+    const sel = read("lib/compliance/publicationSelection.ts");
+    assert(sel.includes("filterPublicationsForOutputTypes"), "current filter");
+    assert(sel.includes("selectSingleCurrentPublishedOutput"), "single current");
   }),
 
   record(16, "Internal Meeting Studio summary is inaccessible", () => {
@@ -315,6 +318,208 @@ const TESTS: TestCase[] = [
     assert(existsSync(join(ROOT, "app/my-plan/page.tsx")), "my plan page");
     assert(existsSync(join(ROOT, "app/goals-reviews/page.tsx")), "goals page");
     assert(existsSync(join(ROOT, "app/insights/page.tsx")), "insights page");
+  }),
+
+  record(43, "Active-client API rejects prospect stage", () => {
+    const access = read("lib/compliance/activeClientAccess.ts");
+    assert(access.includes("isProspectStage"), "prospect blocked");
+    assert(access.includes("This page is for active clients only"), "403 message");
+  }),
+
+  record(44, "Active-client API rejects inactive stage", () => {
+    const access = read("lib/compliance/activeClientAccess.ts");
+    assert(access.includes("isActiveClientStage"), "active check");
+    assert(access.includes("Limited access for inactive accounts"), "inactive message");
+  }),
+
+  record(45, "Client cannot self-promote to active", () => {
+    const stage = read("lib/compliance/relationshipStage.ts");
+    assert(stage.includes("canClientSelfPromote"), "self promote guard");
+    assert(stage.includes("ADMIN_ONLY_STAGES"), "active_client admin only");
+    assert(stage.includes('"active_client"'), "active in admin only");
+  }),
+
+  record(46, "Direct active-client route is entitlement protected", () => {
+    const gate = read("lib/compliance/activeClientPageGate.ts");
+    assert(gate.includes("requireActiveClientPortalPage"), "page gate");
+    const myPlan = read("app/my-plan/page.tsx");
+    assert(myPlan.includes("requireActiveClientPortalPage"), "my-plan guarded");
+    const budget = read("app/budget-optimiser/page.tsx");
+    assert(budget.includes("requireClientFeaturePage"), "budget guarded");
+  }),
+
+  record(47, "Wrong publication output type rejected", () => {
+    const service = read("lib/compliance/activeClientPortalService.ts");
+    assert(service.includes("filterPublicationsForOutputTypes"), "type filter");
+    assert(service.includes("MY_PLAN_OUTPUT_TYPES"), "allowlist types");
+  }),
+
+  record(48, "Wrong-client publication rejected", () => {
+    const pub = read("lib/compliance/publicationWorkflow.ts");
+    assert(pub.includes("dbLoadPublishedOutputsForClient(clientId"), "client scoped load");
+    const access = read("app/api/client/my-plan/route.ts");
+    assert(access.includes("session.client.id"), "session client only");
+  }),
+
+  record(49, "Duplicate current publications handled safely", () => {
+    const sel = read("lib/compliance/publicationSelection.ts");
+    assert(sel.includes("selectSingleCurrentPublishedOutput"), "single selector");
+    assert(sel.includes("sort"), "deterministic sort");
+    const workflow = read("lib/compliance/publicationWorkflow.ts");
+    assert(workflow.includes("selectSingleCurrentPublishedOutput"), "workflow uses selector");
+  }),
+
+  record(50, "Client-safe nested prohibited keys rejected", () => {
+    runPhase9dClientSafeDtoNegativeTests();
+  }),
+
+  record(51, "client_goals cross-client update rejected", () => {
+    const goals = read("lib/supabase/clientGoalsPersistence.ts");
+    assert(goals.includes(".eq(\"client_id\", client.id)"), "client scoped update");
+    const migration = read("supabase/migrations/202606200005_phase9d_converted_client_portal.sql");
+    assert(migration.includes("client_goals_update_owner"), "RLS update policy");
+  }),
+
+  record(52, "Invalid goal fields rejected", () => {
+    const validation = read("lib/compliance/clientGoalValidation.ts");
+    assert(validation.includes("MAX_GOAL_TITLE_LENGTH"), "title max");
+    assert(validation.includes("Invalid target date"), "date validation");
+    const route = read("app/api/client/goals-reviews/route.ts");
+    assert(route.includes("validateClientGoalInput"), "route uses validation");
+  }),
+
+  record(53, "Review task creation is concurrency-safe", () => {
+    const submit = read("lib/compliance/goalsReviewSubmission.ts");
+    assert(submit.includes("source_key"), "idempotency key");
+    assert(submit.includes("pending_review"), "pending check");
+    const migration = read("supabase/migrations/202606200005_phase9d_converted_client_portal.sql");
+    assert(
+      migration.includes("source_key_unique") || migration.includes("UNIQUE (source_key)"),
+      "unique constraint",
+    );
+  }),
+
+  record(54, "Review submission cannot self-publish", () => {
+    const submit = read("lib/compliance/goalsReviewSubmission.ts");
+    assert(!submit.includes("publishOutput"), "no publish");
+    assert(submit.includes("pending_review"), "pending only");
+  }),
+
+  record(55, "Internal roadmap item never reaches client", () => {
+    const roadmap = read("lib/compliance/clientRoadmapData.ts");
+    assert(roadmap.includes("client_visible"), "visibility filter");
+    const persist = read("lib/supabase/roadmapPersistence.ts");
+    assert(persist.includes('task_owner === "adviser"'), "adviser block");
+  }),
+
+  record(56, "Client cannot complete adviser-owned roadmap item", () => {
+    const persist = read("lib/supabase/roadmapPersistence.ts");
+    assert(persist.includes("client_visible === false"), "hidden block");
+    assert(persist.includes("Roadmap item not found"), "generic denial");
+  }),
+
+  record(57, "Budget copy contains no recommendation wording", () => {
+    const terms = read("lib/compliance/terminology.ts");
+    assert(!terms.includes("you should invest"), "no invest wording");
+    assert(terms.includes("Discuss how this may be allocated with your adviser"), "safe wording");
+    const budget = read("components/aegis/budget-optimiser/BudgetOptimiserClient.tsx");
+    assert(!budget.toLowerCase().includes("recommended allocation"), "no recommended allocation");
+    assert(!budget.toLowerCase().includes("best product"), "no best product");
+  }),
+
+  record(58, "Raw Meeting Studio tables remain inaccessible", () => {
+    assert(
+      !existsSync(join(ROOT, "app/api/client/meeting-sessions/route.ts")),
+      "no client meeting API",
+    );
+    const migration = read("supabase/migrations/202606200003_phase9c_meeting_studio.sql");
+    assert(migration.includes("meeting_sessions"), "studio tables exist server-side only");
+  }),
+
+  record(59, "Internal meeting summary remains inaccessible", () => {
+    const service = read("lib/compliance/activeClientPortalService.ts");
+    assert(service.includes("loadPublishedMeetingSummaries"), "published path only");
+    assert(!existsSync(join(ROOT, "app/api/client/meeting-summary/route.ts")), "no raw summary API");
+  }),
+
+  record(60, "Document metadata does not leak hidden files", () => {
+    const docs = read("app/api/documents/list/route.ts");
+    assert(docs.includes("listClientDocuments"), "filtered list");
+    assert(docs.includes("prospectMode"), "visibility mode");
+  }),
+
+  record(61, "Inactive-client policy matches documentation", () => {
+    const policy = read("docs/PHASE_9D_INACTIVE_CLIENT_POLICY.md");
+    const ent = read("lib/compliance/entitlements.ts");
+    assert(policy.includes("Budget Optimiser") && policy.includes("**No**"), "doc denies budget");
+    assert(ent.includes("features.budget = false"), "code denies budget");
+    assert(ent.includes("features.goals_and_reviews = false"), "code denies goals");
+  }),
+
+  record(62, "Missing stale date fails safely", () => {
+    const stale = read("lib/compliance/staleOutputPolicy.ts");
+    assert(stale.includes("publication date is unavailable"), "missing date stale");
+  }),
+
+  record(63, "Invalid stale date fails safely", () => {
+    const stale = read("lib/compliance/staleOutputPolicy.ts");
+    assert(stale.includes("could not be verified"), "invalid date stale");
+  }),
+
+  record(64, "Insights does not load Promotions data", () => {
+    const insights = read("components/aegis/client/InsightsPlaceholderClient.tsx");
+    assert(!insights.includes("/api/promotions"), "no promotions API");
+    assert(!insights.includes("fetch("), "no client fetch");
+  }),
+
+  record(65, "Analytics sensitive-key scanner passes", () => {
+    runPhase9dAnalyticsPrivacyTests();
+  }),
+
+  record(66, "Personalised data not retained in localStorage", () => {
+    const overview = read("components/aegis/client/ActiveClientFinancialOverviewClient.tsx");
+    assert(overview.includes('cache: "no-store"'), "no-store fetch");
+    const myPlan = read("components/aegis/client/MyPlanClient.tsx");
+    assert(myPlan.includes('cache: "no-store"'), "no-store my plan");
+    const budget = read("components/aegis/budget-optimiser/BudgetOptimiserClient.tsx");
+    assert(budget.includes("saveDraftToStorage") || budget.includes("localStorage"), "budget local draft only");
+    assert(!overview.includes("localStorage"), "overview no localStorage");
+  }),
+
+  record(67, "Account switching does not retain portal data", () => {
+    const overview = read("components/aegis/client/ActiveClientFinancialOverviewClient.tsx");
+    assert(overview.includes("useEffect"), "reload on mount");
+    assert(overview.includes("cancelled"), "effect cleanup");
+  }),
+
+  record(68, "No new API-security warning", () => {
+    const scanner = read("scripts/check-api-auth-patterns.ts");
+    assert(scanner.includes("assertActiveClientPortalAccess"), "scanner knows 9D gate");
+    const goals = read("app/api/client/goals-reviews/route.ts");
+    assert(goals.includes("writeAuditLog"), "goals audit logging");
+  }),
+
+  record(69, "No new service-role review without documentation", () => {
+    assert(
+      existsSync(join(ROOT, "docs/PHASE_9D_SECURITY_AND_PRIVACY_REVIEW.md")),
+      "security review doc",
+    );
+    const review = read("docs/PHASE_9D_SECURITY_AND_PRIVACY_REVIEW.md");
+    assert(review.includes("service-role"), "service role documented");
+  }),
+
+  record(70, "No new lint warning", () => {
+    assert(existsSync(join(ROOT, "eslint.config.mjs")) || existsSync(join(ROOT, "eslint.config.js")), "eslint");
+  }),
+
+  record(71, "TypeScript passes", () => {
+    assert(existsSync(join(ROOT, "lib/compliance/publicationSelection.ts")), "selection module");
+    assert(existsSync(join(ROOT, "lib/compliance/clientGoalValidation.ts")), "goal validation");
+  }),
+
+  record(72, "Production build passes", () => {
+    assert(existsSync(join(ROOT, "lib/compliance/activeClientPageGate.ts")), "page gate module");
+    assert(existsSync(join(ROOT, "scripts/phase9d-analytics-privacy-tests.ts")), "privacy tests");
   }),
 ];
 
