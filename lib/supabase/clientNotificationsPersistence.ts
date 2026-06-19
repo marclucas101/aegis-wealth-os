@@ -16,6 +16,21 @@ export async function dbCreateClientNotification(input: {
 }): Promise<ClientNotificationRow> {
   const admin = createAdminSupabaseClient();
 
+  if (input.referenceId && input.referenceType) {
+    const { data: existing } = await admin
+      .from("client_notifications")
+      .select("*")
+      .eq("client_id", input.clientId)
+      .eq("notification_type", input.notificationType)
+      .eq("reference_type", input.referenceType)
+      .eq("reference_id", input.referenceId)
+      .maybeSingle();
+
+    if (existing) {
+      return existing as ClientNotificationRow;
+    }
+  }
+
   const { data, error } = await admin
     .from("client_notifications")
     .insert({

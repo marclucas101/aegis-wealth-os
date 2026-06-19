@@ -6,6 +6,7 @@ import { writeAuditLog } from "@/lib/supabase/auditLog";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import {
   dbCreateDeliveryRecord,
+  dbFindDeliveryRecord,
   dbUpdateDeliveryStatus,
 } from "@/lib/supabase/communicationDeliveryPersistence";
 import { dbLoadCommunicationPreferences } from "@/lib/supabase/communicationPreferencesPersistence";
@@ -87,11 +88,23 @@ export async function queueInsightEmailDelivery(input: {
     return;
   }
 
-  const delivery = await dbCreateDeliveryRecord({
+  const existing = await dbFindDeliveryRecord({
     communicationId: input.content.id,
     clientId: input.clientId,
     channel: "email",
   });
+
+  if (existing?.delivery_status === "sent") {
+    return;
+  }
+
+  const delivery =
+    existing ??
+    (await dbCreateDeliveryRecord({
+      communicationId: input.content.id,
+      clientId: input.clientId,
+      channel: "email",
+    }));
 
   await attemptEmailDelivery({
     deliveryId: delivery.id,

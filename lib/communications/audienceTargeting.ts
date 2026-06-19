@@ -4,6 +4,7 @@ import { isActiveClientStage, isProspectStage } from "@/lib/compliance/relations
 import type { RelationshipStage } from "@/lib/compliance/types";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
+import { isClientVisibleStatus } from "./contentLifecycle";
 import type { AudienceScope, GovernedContentRow } from "./types";
 
 export type AudienceContext = {
@@ -13,16 +14,7 @@ export type AudienceContext = {
 };
 
 export function isPublishedAndCurrent(row: GovernedContentRow): boolean {
-  if (row.approval_status !== "published") {
-    return false;
-  }
-  if (row.withdrawn_at) {
-    return false;
-  }
-  if (row.expires_at && new Date(row.expires_at) <= new Date()) {
-    return false;
-  }
-  return true;
+  return isClientVisibleStatus(row);
 }
 
 export function contentMatchesAudience(
@@ -67,7 +59,10 @@ export function contentMatchesAudience(
       );
 
     case "selected_clients":
-      return row.target_client_ids.includes(ctx.clientId);
+      return (
+        row.target_client_ids.includes(ctx.clientId) &&
+        (row.adviser_user_id === null || row.adviser_user_id === ctx.adviserUserId)
+      );
 
     case "public_education":
       return true;

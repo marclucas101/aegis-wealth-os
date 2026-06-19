@@ -49,3 +49,13 @@ Previously only on Promotion `cta_url`. Phase 9E validates https-only via `lib/c
 - Dedicated compliance role (admin acts as approver in 9E)
 - Broad marketing email automation
 - Full PDF binder rendering (9E records metadata and approved section IDs)
+
+## Phase 9E acceptance hardening (2026-06-20)
+
+**Branch:** `phase-9e-communications-governance`  
+**QA:** `npm run qa:phase9e-communications` — **87/87** (55 original + 32 hardening)  
+**Phase 9D regression:** **72/72** (header corrected from misleading 42)  
+**Security API:** 0 WARN; 6 Phase 9E INFO items documented in `PHASE_9E_SECURITY_AND_PRIVACY_REVIEW.md`  
+**Build/lint/tsc:** Pass  
+
+See `PHASE_9E_QA_TRACEABILITY_MATRIX.md` for full case mapping.

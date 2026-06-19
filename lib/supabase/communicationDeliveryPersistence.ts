@@ -122,3 +122,26 @@ export async function dbListAllDeliveries(limit = 100): Promise<CommunicationDel
 
   return (data ?? []) as CommunicationDeliveryRow[];
 }
+
+export async function dbFindDeliveryRecord(input: {
+  communicationId: string;
+  clientId: string;
+  channel: "email" | "in_app";
+}): Promise<CommunicationDeliveryRow | null> {
+  const admin = createAdminSupabaseClient();
+  const { data, error } = await admin
+    .from("communication_deliveries")
+    .select("*")
+    .eq("communication_id", input.communicationId)
+    .eq("client_id", input.clientId)
+    .eq("channel", input.channel)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to find delivery record: ${error.message}`);
+  }
+
+  return data as CommunicationDeliveryRow | null;
+}

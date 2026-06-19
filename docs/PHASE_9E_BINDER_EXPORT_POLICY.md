@@ -17,7 +17,7 @@ Generate a versioned adviser meeting pack using approved published summaries and
 5. Client access requires explicit publication (`binder_client_publication` feature — default **off**).
 6. Version, generation date, source publication IDs and adviser recorded.
 7. Download audited (`binder_generated`, `binder_downloaded`).
-8. Reuses publication infrastructure; full PDF rendering deferred where impractical in 9E.
+Phase 9E produces a **binder export manifest** (database record with section list, approved publication IDs, adviser/client metadata, and storage path placeholder). It does **not** render a PDF in Phase 9E. Full PDF rendering and client vault publication remain deferred.
 
 ## API
 

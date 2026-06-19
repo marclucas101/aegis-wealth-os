@@ -3,6 +3,12 @@ import "server-only";
 import { isFeatureEnabled } from "@/lib/compliance/featureFlags";
 import { writeAuditLog } from "@/lib/supabase/auditLog";
 
+import { sanitizeAuditMetadata } from "./auditMetadata";
+import {
+  assertLegalTransition,
+  assertPublishable,
+  canTransition,
+} from "./contentLifecycle";
 import { validateContentInput } from "./contentValidation";
 import type {
   ContentApprovalStatus,
@@ -13,6 +19,7 @@ import {
   dbCreateGovernedContent,
   dbCreateGovernedContentVersion,
   dbLoadGovernedContentById,
+  dbPublishGovernedContent,
   dbUpdateGovernedContent,
 } from "../supabase/governedContentPersistence";
 
@@ -64,7 +71,7 @@ export async function createContentDraft(input: {
     action: "content_draft_created",
     entityType: "governed_content",
     entityId: row.id,
-    metadata: { category: row.category, contentType: row.content_type },
+    metadata: sanitizeAuditMetadata({ category: row.category, contentType: row.content_type }),
   });
 
   return row;
@@ -82,6 +89,8 @@ export async function submitContentForReview(input: {
   if (!EDITABLE_STATUSES.includes(row.approval_status)) {
     throw new Error("Content cannot be submitted in its current status");
   }
+
+  assertLegalTransition(row.approval_status, "submitted_for_review");
 
   const validation = validateContentInput({
     title: row.title,
@@ -135,6 +144,8 @@ export async function approveContent(input: {
     throw new Error("Only submitted content can be approved");
   }
 
+  assertLegalTransition(row.approval_status, "approved");
+
   const updated = await dbUpdateGovernedContent(input.contentId, {
     approval_status: "approved",
     approved_by_user_id: input.approverUserId,
@@ -181,7 +192,7 @@ export async function rejectContent(input: {
     action: "content_rejected",
     entityType: "governed_content",
     entityId: row.id,
-    metadata: { reason: input.reason.trim().slice(0, 200) },
+    metadata: sanitizeAuditMetadata({ reason: input.reason.trim().slice(0, 200) }),
   });
 
   return updated;
@@ -215,7 +226,7 @@ export async function requestContentChanges(input: {
     action: "content_changes_requested",
     entityType: "governed_content",
     entityId: row.id,
-    metadata: { reason: input.reason.trim().slice(0, 200) },
+    metadata: sanitizeAuditMetadata({ reason: input.reason.trim().slice(0, 200) }),
   });
 
   return updated;
@@ -231,18 +242,24 @@ export async function publishContent(input: {
     throw new Error("Content not found");
   }
 
-  if (row.approval_status === "published" && row.published_at) {
+  if (row.approval_status === "published" && row.published_at && !row.withdrawn_at) {
     return row;
   }
 
-  if (!["approved", "scheduled"].includes(row.approval_status)) {
-    throw new Error("Only approved content can be published");
+  if (row.withdrawn_at) {
+    throw new Error("Withdrawn content cannot be published");
   }
 
-  const now = new Date().toISOString();
+  assertPublishable(row);
+
   const scheduledAt = input.scheduledAt ?? row.scheduled_at;
 
+  // Phase 9E: no background scheduler — future scheduled_at stores intent only.
+  // Admin must call publish again when due, or omit scheduled_at for immediate publish.
   if (scheduledAt && new Date(scheduledAt) > new Date()) {
+    if (!canTransition(row.approval_status, "scheduled")) {
+      throw new Error("Content cannot be scheduled in its current status");
+    }
     const updated = await dbUpdateGovernedContent(input.contentId, {
       approval_status: "scheduled",
       scheduled_at: scheduledAt,
@@ -253,27 +270,43 @@ export async function publishContent(input: {
       action: "content_scheduled",
       entityType: "governed_content",
       entityId: row.id,
-      metadata: { scheduledAt },
+      metadata: sanitizeAuditMetadata({ scheduledAt }),
     });
 
     return updated;
   }
 
-  const updated = await dbUpdateGovernedContent(input.contentId, {
-    approval_status: "published",
-    published_at: now,
-    scheduled_at: scheduledAt,
+  const published = await dbPublishGovernedContent(input.contentId, {
+    expectedStatuses: ["approved", "scheduled"],
+    publishedAt: new Date().toISOString(),
+    scheduledAt,
   });
+
+  if (!published) {
+    const current = await dbLoadGovernedContentById(input.contentId);
+    if (current?.approval_status === "published" && current.published_at) {
+      return current;
+    }
+    throw new Error("Publish failed — content state changed concurrently");
+  }
+
+  if (row.supersedes_content_id) {
+    await withdrawContent({
+      contentId: row.supersedes_content_id,
+      actorUserId: input.actorUserId,
+      reason: "Superseded by newer approved version",
+    }).catch(() => undefined);
+  }
 
   await writeAuditLog({
     userId: input.actorUserId,
     action: "content_published",
     entityType: "governed_content",
     entityId: row.id,
-    metadata: { version: row.version },
+    metadata: sanitizeAuditMetadata({ version: row.version }),
   });
 
-  return updated;
+  return published;
 }
 
 export async function withdrawContent(input: {

@@ -233,3 +233,43 @@ export async function dbUpdateGovernedContent(
 
   return mapRow(data as Record<string, unknown>);
 }
+
+/** Concurrency-safe publish — updates only when status is still publishable. */
+export async function dbPublishGovernedContent(
+  id: string,
+  input: {
+    expectedStatuses: ContentApprovalStatus[];
+    publishedAt: string;
+    scheduledAt?: string | null;
+  },
+): Promise<GovernedContentRow | null> {
+  const admin = createAdminSupabaseClient();
+  const { data, error } = await admin
+    .from("governed_content")
+    .update({
+      approval_status: "published",
+      published_at: input.publishedAt,
+      scheduled_at: input.scheduledAt ?? null,
+    } as never)
+    .eq("id", id)
+    .in("approval_status", input.expectedStatuses)
+    .is("withdrawn_at", null)
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to publish governed content: ${error.message}`);
+  }
+
+  return data ? mapRow(data as Record<string, unknown>) : null;
+}
+
+/** Exclude published rows superseded by a newer published version. */
+export function filterSupersededPublishedRows(rows: GovernedContentRow[]): GovernedContentRow[] {
+  const supersededIds = new Set(
+    rows
+      .map((row) => row.supersedes_content_id)
+      .filter((id): id is string => Boolean(id)),
+  );
+  return rows.filter((row) => !supersededIds.has(row.id));
+}

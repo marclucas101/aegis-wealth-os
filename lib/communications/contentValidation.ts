@@ -25,6 +25,21 @@ const PROHIBITED_PATTERNS: { pattern: RegExp; message: string }[] = [
 ];
 
 const HTML_TAG_RE = /<[^>]+>/;
+const DANGEROUS_MARKUP_RE =
+  /(<script|on\w+\s*=|javascript\s*:|data\s*:|&#x0*6a;|&lt;script)/i;
+
+const KNOWN_CATEGORIES = new Set([
+  "financial_education",
+  "market_update",
+  "planning_reminder",
+  "company_update",
+  "event",
+  "regulatory_update",
+  "adviser_message",
+  "document_notification",
+  "appointment_update",
+  "review_reminder",
+]);
 
 const FIELD_LIMITS = {
   title: 120,
@@ -74,6 +89,19 @@ export function validateContentInput(
 
   if (HTML_TAG_RE.test(input.title) || HTML_TAG_RE.test(input.summary) || HTML_TAG_RE.test(input.body)) {
     errors.push("HTML tags are not permitted in content");
+  }
+
+  const combined = `${input.title} ${input.summary} ${input.body}`;
+  if (DANGEROUS_MARKUP_RE.test(combined)) {
+    errors.push("Dangerous markup or encoded script content is not permitted");
+  }
+
+  if (input.category && !KNOWN_CATEGORIES.has(input.category)) {
+    errors.push("Unknown content category");
+  }
+
+  if (input.contentType === "promotional_product" && input.category === "financial_education") {
+    errors.push("Product-related content cannot be disguised as education");
   }
 
   if (!input.category) {

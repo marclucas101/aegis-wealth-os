@@ -72,13 +72,13 @@ export default function AdminCommunicationsClient() {
       }
 
       setReason("");
-      const res = await fetch("/api/admin/communications", { cache: "no-store" });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        setError(data.error ?? "Failed to reload");
+      const reloadRes = await fetch("/api/admin/communications", { cache: "no-store" });
+      const reloadData = await reloadRes.json();
+      if (!reloadRes.ok || !reloadData.ok) {
+        setError(reloadData.error ?? "Failed to reload");
         return;
       }
-      setContent(data.content ?? []);
+      setContent(reloadData.content ?? []);
     } catch {
       setError(`${action} failed`);
     } finally {

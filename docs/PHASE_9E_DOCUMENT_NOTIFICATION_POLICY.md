@@ -1,24 +1,28 @@
 # Phase 9E Document Notification Policy
 
-## Events
+## Implemented (Phase 9E)
 
-| Event | Client notification | Condition |
-|-------|---------------------|-----------|
-| `uploaded` | `document_uploaded` | Client-visible document |
-| `published_to_client` | `document_uploaded` | `client_visible` tag |
-| `replaced` | `document_replaced` | Client-visible |
-| `removed` / `withdrawn` | `document_removed` | Was client-visible |
-| `action_required` | `document_action_required` | Client-visible |
-| `downloaded` | None | Audit only |
+| Event | Client notification | Route / trigger |
+|-------|---------------------|-----------------|
+| `uploaded` | `document_uploaded` | `POST /api/documents/upload` |
+| `published_to_client` | `document_uploaded` | Adviser upload when client is active-client stage |
+| `removed` | `document_removed` | `POST /api/documents/delete` |
 
-## Rules
+## Deferred (post–Phase 9E)
 
-1. Internal documents (no `client_visible` tag for prospects; adviser-only uploads) do **not** generate client notifications.
-2. Notification text does not reveal inaccessible filenames, categories, or financial data.
-3. Document removal immediately removes future access; signed URLs retain short expiry (300s).
-4. Audit history is never deleted when a file is removed.
-5. Controlled by `document_event_notifications` feature flag.
+| Event | Status |
+|-------|--------|
+| `replaced` | Type defined; hook not wired to replacement flow |
+| `superseded` | Deferred |
+| `withdrawn` | Deferred (access revocation via archive still enforced) |
+| `action_required` | Deferred |
+| `action_completed` | Deferred |
+| `downloaded` | Audit-only deferred |
 
-## Implementation
+## Rules (all events)
 
-`lib/communications/documentEventNotifications.ts` — called from document upload/delete API routes.
+1. Internal documents do not generate client notifications (`isClientVisible` gate).
+2. Notification text is generic — no filenames, categories, or financial data.
+3. Idempotent creation via `client_id + notification_type + reference_type + reference_id` unique index.
+4. Signed URLs retain short expiry (300s client / 120s vault policy).
+5. Document deletion does not delete audit history.

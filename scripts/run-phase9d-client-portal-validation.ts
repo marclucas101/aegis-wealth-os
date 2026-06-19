@@ -1,5 +1,5 @@
 /**
- * Phase 9D acceptance validation — converted client portal (42 cases).
+ * Phase 9D acceptance validation — converted client portal (72 cases).
  * Run: npm run qa:phase9d-client-portal
  */
 

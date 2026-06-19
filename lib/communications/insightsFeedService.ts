@@ -3,7 +3,7 @@ import "server-only";
 import { isFeatureEnabled } from "@/lib/compliance/featureFlags";
 import { resolveRelationshipStage } from "@/lib/compliance/relationshipStage";
 import type { AppClientRow } from "@/lib/supabase/userProfile";
-import { dbListPublishedContent } from "@/lib/supabase/governedContentPersistence";
+import { dbListPublishedContent, filterSupersededPublishedRows } from "@/lib/supabase/governedContentPersistence";
 import { dbLoadCommunicationPreferences } from "@/lib/supabase/communicationPreferencesPersistence";
 
 import { contentMatchesAudience } from "./audienceTargeting";
@@ -48,7 +48,7 @@ export async function loadClientInsightsFeed(input: {
     return [];
   }
 
-  const allPublished = await dbListPublishedContent();
+  const allPublished = filterSupersededPublishedRows(await dbListPublishedContent());
   const prefs = await dbLoadCommunicationPreferences(input.client.id);
 
   const ctx = {

@@ -26,6 +26,8 @@ published → expired | withdrawn
 
 Until a dedicated compliance role exists, **admins** act as content approvers via `/admin/communications`. A future compliance role may replace this without schema changes.
 
-## Concurrency
+## Scheduling (Phase 9E)
 
-Updates use single-row `UPDATE ... WHERE id` via service role. Version increments on supersede create new rows rather than mutating published rows.
+Phase 9E does **not** include a background scheduler or cron worker. When `scheduled_at` is in the future, content moves to `scheduled` status and remains **invisible** to clients until an admin calls publish again after the scheduled time (manual activation). This avoids a misleading non-functional scheduling state.
+
+Legal transitions are enforced in `lib/communications/contentLifecycle.ts`.
