@@ -20,6 +20,63 @@ export interface NavSection {
 
 export const ADVISORY_SECTION_TITLE = "Advisory";
 
+/** Focused active-client navigation — filtered server-side via entitlements (Phase 9D). */
+export const ACTIVE_CLIENT_NAV_SECTIONS: NavSection[] = [
+  {
+    title: "Your portal",
+    items: [
+      {
+        label: "Overview",
+        href: "/dashboard",
+        description: "Financial overview and plan status",
+        clientOnly: true,
+      },
+      {
+        label: "My Plan",
+        href: "/my-plan",
+        description: "Adviser-approved plan summary",
+        clientOnly: true,
+      },
+      {
+        label: "Roadmap",
+        href: "/roadmap",
+        description: "Agreed actions and progress",
+        clientOnly: true,
+      },
+      {
+        label: "Budget",
+        href: "/budget-optimiser",
+        description: "Income, spending and surplus",
+        clientOnly: true,
+      },
+      {
+        label: "Goals & Reviews",
+        href: "/goals-reviews",
+        description: "Goals and review information",
+        clientOnly: true,
+      },
+      {
+        label: "Documents",
+        href: "/document-vault",
+        description: "Your documents and reports",
+        clientOnly: true,
+      },
+      {
+        label: "My Adviser",
+        href: "/my-adviser",
+        description: "Contact and appointments",
+        clientOnly: true,
+      },
+      {
+        label: "Insights & Updates",
+        href: "/insights",
+        description: "Educational updates from your adviser",
+        clientOnly: true,
+      },
+    ],
+  },
+];
+
 /** Focused prospect navigation — filtered server-side via entitlements. */
 export const PROSPECT_NAV_SECTIONS: NavSection[] = [
   {

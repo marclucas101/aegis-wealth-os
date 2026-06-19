@@ -64,6 +64,8 @@ export type ClientSafeEnvelope<T> = {
   fallbackReason?: ClientSafeFallbackReason;
   fallbackMessage?: string;
   publishedAt?: string | null;
+  stale?: boolean;
+  reviewRecommended?: boolean;
   data: T | null;
 };
 
@@ -341,6 +343,8 @@ export function wrapClientSafeResponse<T>(
     fallbackReason?: ClientSafeFallbackReason;
     fallbackMessage?: string;
     publishedAt?: string | null;
+    stale?: boolean;
+    reviewRecommended?: boolean;
   },
 ): ClientSafeEnvelope<T> {
   return {
@@ -350,5 +354,158 @@ export function wrapClientSafeResponse<T>(
     fallbackMessage: options.fallbackMessage,
     publishedAt: options.publishedAt ?? null,
     data,
+    ...(options.stale !== undefined ? { stale: options.stale } : {}),
+    ...(options.reviewRecommended !== undefined
+      ? { reviewRecommended: options.reviewRecommended }
+      : {}),
+  };
+}
+
+/** Allowlisted keys for client_plan_summary and related plan outputs. */
+export const CLIENT_PLAN_SUMMARY_ALLOWLIST = [
+  "title",
+  "planningObjectives",
+  "agreedPriorities",
+  "adviserObservations",
+  "keyAssumptions",
+  "strategySummary",
+  "protectionOverview",
+  "goalDirection",
+  "agreedActions",
+  "nextReviewDate",
+  "dataAsAt",
+  "adviserName",
+  "publicationStatus",
+  "educationalExplanation",
+] as const;
+
+export type ClientSafePlanSummary = {
+  title: string;
+  planningObjectives: string[];
+  agreedPriorities: string[];
+  adviserObservations: string[];
+  keyAssumptions: string[];
+  strategySummary: string;
+  protectionOverview: string;
+  goalDirection: string[];
+  agreedActions: string[];
+  nextReviewDate: string | null;
+  dataAsAt: string;
+  adviserName: string | null;
+  publicationStatus: "current" | "superseded";
+  educationalExplanation: string;
+};
+
+export type ClientSafePublishedSummary = {
+  id: string;
+  outputType: PublishedOutputType;
+  title: string;
+  publishedAt: string | null;
+  dataAsAt: string | null;
+  adviserName: string | null;
+  publicationStatus: "current" | "superseded" | "stale";
+  staleMessage: string | null;
+  payload: ClientSafePlanSummary | ClientSafeFinancialReadinessSnapshot | Record<string, unknown>;
+};
+
+export type ClientSafeMeetingSummary = {
+  title: string;
+  meetingDate: string | null;
+  summaryPoints: string[];
+  agreedActions: string[];
+  nextSteps: string[];
+  dataAsAt: string;
+  adviserName: string | null;
+  educationalExplanation: string;
+};
+
+const MEETING_SUMMARY_ALLOWLIST = new Set([
+  "title",
+  "meetingDate",
+  "summaryPoints",
+  "agreedActions",
+  "nextSteps",
+  "dataAsAt",
+  "adviserName",
+  "educationalExplanation",
+]);
+
+export function sanitizeClientPlanSummary(
+  payload: Record<string, unknown>,
+): ClientSafePlanSummary {
+  assertNoProhibitedKeysDeep(payload);
+  const allowed = new Set<string>(CLIENT_PLAN_SUMMARY_ALLOWLIST);
+  for (const key of Object.keys(payload)) {
+    if (!allowed.has(key)) {
+      throw new Error(`Non-allowlisted key in plan summary: ${key}`);
+    }
+  }
+
+  const parseStrings = (field: string): string[] => {
+    const value = payload[field];
+    if (value === undefined) return [];
+    return parseStringArray(value, field);
+  };
+
+  return {
+    title: typeof payload.title === "string" ? payload.title : "My Plan",
+    planningObjectives: parseStrings("planningObjectives"),
+    agreedPriorities: parseStrings("agreedPriorities"),
+    adviserObservations: parseStrings("adviserObservations"),
+    keyAssumptions: parseStrings("keyAssumptions"),
+    strategySummary:
+      typeof payload.strategySummary === "string" ? payload.strategySummary : "",
+    protectionOverview:
+      typeof payload.protectionOverview === "string"
+        ? payload.protectionOverview
+        : "",
+    goalDirection: parseStrings("goalDirection"),
+    agreedActions: parseStrings("agreedActions"),
+    nextReviewDate:
+      payload.nextReviewDate === null || typeof payload.nextReviewDate === "string"
+        ? (payload.nextReviewDate as string | null)
+        : null,
+    dataAsAt: typeof payload.dataAsAt === "string" ? payload.dataAsAt : new Date().toISOString(),
+    adviserName:
+      payload.adviserName === null || typeof payload.adviserName === "string"
+        ? (payload.adviserName as string | null)
+        : null,
+    publicationStatus:
+      payload.publicationStatus === "superseded" ? "superseded" : "current",
+    educationalExplanation:
+      typeof payload.educationalExplanation === "string"
+        ? payload.educationalExplanation
+        : CLIENT_TERMINOLOGY.basedOnInformationProvided,
+  };
+}
+
+export function sanitizeMeetingSummaryPayload(
+  payload: Record<string, unknown>,
+): ClientSafeMeetingSummary {
+  assertNoProhibitedKeysDeep(payload);
+  for (const key of Object.keys(payload)) {
+    if (!MEETING_SUMMARY_ALLOWLIST.has(key)) {
+      throw new Error(`Non-allowlisted key in meeting summary: ${key}`);
+    }
+  }
+
+  return {
+    title: typeof payload.title === "string" ? payload.title : "Meeting summary",
+    meetingDate:
+      payload.meetingDate === null || typeof payload.meetingDate === "string"
+        ? (payload.meetingDate as string | null)
+        : null,
+    summaryPoints: parseStringArray(payload.summaryPoints ?? [], "summaryPoints"),
+    agreedActions: parseStringArray(payload.agreedActions ?? [], "agreedActions"),
+    nextSteps: parseStringArray(payload.nextSteps ?? [], "nextSteps"),
+    dataAsAt: typeof payload.dataAsAt === "string" ? payload.dataAsAt : new Date().toISOString(),
+    adviserName:
+      payload.adviserName === null || typeof payload.adviserName === "string"
+        ? (payload.adviserName as string | null)
+        : null,
+    educationalExplanation:
+      typeof payload.educationalExplanation === "string"
+        ? payload.educationalExplanation
+        : CLIENT_TERMINOLOGY.adviserReviewedSummary,
   };
 }

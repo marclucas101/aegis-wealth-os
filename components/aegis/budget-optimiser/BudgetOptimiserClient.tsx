@@ -32,6 +32,7 @@ import {
   type SavedBudgetAccountRecord,
   type SpendingStatus,
 } from "@/src/features/budget-optimiser";
+import { CLIENT_TERMINOLOGY } from "@/lib/compliance/terminology";
 
 const panelClass =
   "relative rounded-sm border border-[#D1A866]/15 bg-[#071B2A]/40 p-4 sm:p-5";
@@ -567,6 +568,15 @@ function BudgetOptimiserLoaded() {
           </div>
         ))}
       </section>
+
+      {analysis.savingsCapacity !== undefined && analysis.savingsCapacity > 0 ? (
+        <p className="text-sm font-light leading-relaxed text-[#F3F1EA]/60">
+          {CLIENT_TERMINOLOGY.budgetSurplusGuidance.replace(
+            "{amount}",
+            formatCurrency(analysis.savingsCapacity),
+          )}
+        </p>
+      ) : null}
 
       <section className={panelClass}>
         <h3 className="text-sm font-light tracking-wide text-[#F3F1EA]">

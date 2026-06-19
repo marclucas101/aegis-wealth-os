@@ -123,7 +123,10 @@ export function validateSafeReturnUrl(input: {
 
     return matchesEntitledPath(normalized, [
       ...PROSPECT_ENTITLED_PATHS,
+      "/my-plan",
       "/roadmap",
+      "/goals-reviews",
+      "/insights",
       "/shield-diagnostic",
       "/stress-testing",
       "/wealth-blueprint",

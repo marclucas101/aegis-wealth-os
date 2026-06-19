@@ -55,13 +55,36 @@ export const PUBLICATION_STATUSES: readonly PublicationStatus[] = [
 export type PublishedOutputType =
   | "financial_readiness_snapshot"
   | "financial_overview"
+  | "client_plan_summary"
   | "roadmap_summary"
   | "annual_review_summary"
+  | "goal_plan_summary"
   | "wealth_blueprint_summary"
   | "stress_test_summary"
   | "shield_diagnostic_summary"
+  | "meeting_summary"
   | "meeting_presentation"
   | "insights_update";
+
+/** Active-client portal routes (Phase 9D). */
+export const ACTIVE_CLIENT_PORTAL_PATHS = [
+  "/dashboard",
+  "/my-plan",
+  "/roadmap",
+  "/budget-optimiser",
+  "/goals-reviews",
+  "/document-vault",
+  "/my-adviser",
+  "/insights",
+  "/profile",
+] as const;
+
+export type ClientRoadmapDisplayStatus =
+  | "not_started"
+  | "in_progress"
+  | "waiting_on_you"
+  | "with_your_adviser"
+  | "completed";
 
 /** Server-resolved feature keys (must match platform_feature_controls). */
 export type PlatformFeatureKey =

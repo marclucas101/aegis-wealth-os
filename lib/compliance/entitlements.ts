@@ -1,7 +1,11 @@
 import "server-only";
 
 import type { NavItem, NavSection } from "@/lib/navigation";
-import { NAV_SECTIONS, PROSPECT_NAV_SECTIONS } from "@/lib/navigation";
+import {
+  ACTIVE_CLIENT_NAV_SECTIONS,
+  NAV_SECTIONS,
+  PROSPECT_NAV_SECTIONS,
+} from "@/lib/navigation";
 import type { UserRole } from "@/lib/roles";
 import { isAdvisorRole } from "@/lib/roles";
 import type { AppClientRow, AppUserRow } from "@/lib/supabase/userProfile";
@@ -53,19 +57,22 @@ const ACTIVE_CLIENT_FEATURES: ClientFeatureKey[] = [
 /** Maps nav hrefs to entitlement feature keys. */
 const HREF_TO_FEATURE: Record<string, ClientFeatureKey> = {
   "/prospect": "financial_readiness_snapshot",
-  "/dashboard": "financial_readiness_snapshot",
+  "/dashboard": "financial_overview",
   "/discover": "complete_information",
   "/profile": "complete_information",
   "/meeting-preparation": "meeting_preparation",
   "/my-adviser": "my_adviser",
+  "/my-plan": "my_plan",
+  "/insights": "insights_and_updates",
   "/shield-diagnostic": "shield_diagnostic",
   "/stress-testing": "stress_testing",
   "/roadmap": "roadmap",
   "/budget-optimiser": "budget",
+  "/goals-reviews": "goals_and_reviews",
   "/annual-review": "goals_and_reviews",
   "/wealth-blueprint": "my_plan",
   "/document-vault": "documents",
-  "/promotions": "insights_and_updates",
+  "/promotions": "promotions",
 };
 
 function resolveFeatureForHref(
@@ -133,19 +140,33 @@ function buildFeatureMap(
     }
     features.financial_overview =
       flags.client_published_financial_overview ?? true;
+    features.my_plan = true;
+    features.roadmap = true;
+    features.budget = true;
+    features.goals_and_reviews = true;
+    features.documents = true;
+    features.my_adviser = true;
     features.insights_and_updates = flags.insights_and_updates ?? true;
+    features.promotions = false;
     features.stress_testing = flags.client_stress_test_visibility ?? false;
-    // Red features remain off unless legacy flag (dev only)
     features.shield_diagnostic = flags.raw_client_financial_views ?? false;
-    features.roadmap = flags.raw_client_financial_views ?? false;
     features.wealth_blueprint = flags.raw_client_financial_views ?? false;
-    features.goals_and_reviews = flags.raw_client_financial_views ?? false;
   }
 
   if (stage === "inactive_client") {
     features.my_adviser = true;
     features.limited_documents = true;
     features.documents = true;
+    features.financial_overview = false;
+    features.my_plan = false;
+    features.roadmap = false;
+    features.budget = false;
+    features.goals_and_reviews = false;
+    features.insights_and_updates = false;
+    features.promotions = false;
+    features.shield_diagnostic = false;
+    features.stress_testing = false;
+    features.wealth_blueprint = false;
   }
 
   return features;
@@ -301,22 +322,31 @@ export function getNavSectionsForEntitlements(
   entitlements: ClientEntitlements | null,
 ): NavSection[] {
   if (role === "client" && entitlements) {
-    const prospectNav = PROSPECT_NAV_SECTIONS.map((section) => ({
-      ...section,
-      items: section.items.filter((item) =>
-        isNavItemVisibleForEntitlements(item, role, entitlements),
-      ),
-    })).filter((section) => section.items.length > 0);
+    const isProspectExperience =
+      entitlements.features.financial_readiness_snapshot &&
+      entitlements.features.complete_information &&
+      !entitlements.features.financial_overview;
 
-    if (prospectNav.length > 0 && entitlements.features.shield_diagnostic === false) {
-      const isProspectExperience =
-        entitlements.features.financial_readiness_snapshot &&
-        entitlements.features.complete_information &&
-        !entitlements.features.financial_overview;
+    if (isProspectExperience) {
+      return PROSPECT_NAV_SECTIONS.map((section) => ({
+        ...section,
+        items: section.items.filter((item) =>
+          isNavItemVisibleForEntitlements(item, role, entitlements),
+        ),
+      })).filter((section) => section.items.length > 0);
+    }
 
-      if (isProspectExperience) {
-        return prospectNav;
-      }
+    const isActiveClientExperience =
+      entitlements.features.financial_overview &&
+      !entitlements.features.financial_readiness_snapshot;
+
+    if (isActiveClientExperience) {
+      return ACTIVE_CLIENT_NAV_SECTIONS.map((section) => ({
+        ...section,
+        items: section.items.filter((item) =>
+          isNavItemVisibleForEntitlements(item, role, entitlements),
+        ),
+      })).filter((section) => section.items.length > 0);
     }
   }
 

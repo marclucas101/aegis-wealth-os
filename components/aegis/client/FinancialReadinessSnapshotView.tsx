@@ -17,27 +17,31 @@ const BAND_LABELS: Record<string, string> = {
 
 type Props = {
   envelope: ClientSafeEnvelope<ClientSafeFinancialReadinessSnapshot>;
+  /** When true, renders content only (no page header or footer panels). */
+  embedded?: boolean;
 };
 
-export default function FinancialReadinessSnapshotView({ envelope }: Props) {
+export default function FinancialReadinessSnapshotView({ envelope, embedded }: Props) {
   const snapshot = envelope.data;
   const isFallback = envelope.accessMode === "fallback" || !snapshot;
 
   return (
     <>
-      <ClientPortalHeader
-        eyebrow={CLIENT_TERMINOLOGY.financialReadinessSnapshot}
-        title={
-          isFallback
-            ? envelope.fallbackMessage ?? CLIENT_TERMINOLOGY.adviserReviewInProgress
-            : "Your planning readiness overview"
-        }
-        subtitle={
-          isFallback
-            ? "Your adviser will provide a reviewed summary when ready."
-            : CLIENT_TERMINOLOGY.basedOnInformationProvided
-        }
-      />
+      {!embedded ? (
+        <ClientPortalHeader
+          eyebrow={CLIENT_TERMINOLOGY.financialReadinessSnapshot}
+          title={
+            isFallback
+              ? envelope.fallbackMessage ?? CLIENT_TERMINOLOGY.adviserReviewInProgress
+              : "Your planning readiness overview"
+          }
+          subtitle={
+            isFallback
+              ? "Your adviser will provide a reviewed summary when ready."
+              : CLIENT_TERMINOLOGY.basedOnInformationProvided
+          }
+        />
+      ) : null}
 
       {isFallback ? (
         <div className="rounded-sm border border-[#D1A866]/15 bg-[#10283A]/40 px-6 py-8">
@@ -128,11 +132,15 @@ export default function FinancialReadinessSnapshotView({ envelope }: Props) {
         </div>
       )}
 
-      <div className="mt-8">
-        <CallMyAdviserPanel />
-      </div>
+      {!embedded ? (
+        <>
+          <div className="mt-8">
+            <CallMyAdviserPanel />
+          </div>
 
-      <ClientTrustNotice variant="full" context="general" />
+          <ClientTrustNotice variant="full" context="general" />
+        </>
+      ) : null}
     </>
   );
 }

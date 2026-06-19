@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import ActiveClientRoadmapView from "@/components/aegis/client/ActiveClientRoadmapView";
 import ClientPortalHeader from "@/components/aegis/client/ClientPortalHeader";
 import ClientSafeFallbackPanel, {
   isClientSafeEnvelopeResponse,
 } from "@/components/aegis/client/ClientSafeFallbackPanel";
 import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
 import type { ClientSafeEnvelope } from "@/lib/compliance/clientSafeDtos";
+import type { ClientSafeRoadmapPayload } from "@/lib/compliance/clientRoadmapData";
 import RoadmapActionCard from "@/components/aegis/roadmap/RoadmapActionCard";
 import RoadmapEmptyState from "@/components/aegis/roadmap/RoadmapEmptyState";
 import RoadmapProgressPanel from "@/components/aegis/roadmap/RoadmapProgressPanel";
@@ -24,7 +26,7 @@ import {
 import type { RoadmapSnapshot } from "@/lib/supabase/moduleQueries";
 import { calculateProjectedShield } from "@/src/lib/scoring";
 
-type RoadmapMode = "loading" | "empty" | "cloud" | "local" | "fallback";
+type RoadmapMode = "loading" | "empty" | "cloud" | "local" | "fallback" | "active_client";
 type ProfileSource = "cloud" | "local";
 
 function ProfileSourceBadge({ source }: { source: ProfileSource }) {
@@ -76,6 +78,8 @@ export default function RoadmapClient() {
   );
   const [fallbackEnvelope, setFallbackEnvelope] =
     useState<ClientSafeEnvelope<unknown> | null>(null);
+  const [activeClientRoadmap, setActiveClientRoadmap] =
+    useState<ClientSafeRoadmapPayload | null>(null);
   const [statuses, setStatuses] = useState<Record<string, RoadmapItemStatus>>(
     {},
   );
@@ -86,6 +90,40 @@ export default function RoadmapClient() {
 
     async function loadRoadmap() {
       try {
+        const activeResponse = await fetch("/api/client/roadmap", {
+          cache: "no-store",
+        });
+
+        if (cancelled) return;
+
+        if (activeResponse.ok) {
+          const activeData = (await activeResponse.json()) as {
+            ok: boolean;
+            envelope?: ClientSafeEnvelope<ClientSafeRoadmapPayload | null>;
+          };
+
+          if (
+            activeData.ok &&
+            activeData.envelope &&
+            activeData.envelope.accessMode !== "fallback" &&
+            activeData.envelope.data
+          ) {
+            setActiveClientRoadmap(activeData.envelope.data);
+            setMode("active_client");
+            return;
+          }
+
+          if (
+            activeData.ok &&
+            activeData.envelope &&
+            activeData.envelope.accessMode === "fallback"
+          ) {
+            setFallbackEnvelope(activeData.envelope);
+            setMode("fallback");
+            return;
+          }
+        }
+
         const response = await fetch("/api/roadmap/current", {
           cache: "no-store",
         });
@@ -216,13 +254,27 @@ export default function RoadmapClient() {
     return (
       <div className="flex flex-col gap-6">
         <ClientPortalHeader
-          eyebrow="Wealth Roadmap"
-          title="Adviser-reviewed roadmap required"
-          subtitle="Priority actions are shared after your adviser review."
+          eyebrow="Roadmap"
+          title="Agreed actions and progress"
+          subtitle="Your adviser will share agreed actions when ready."
         />
         <ClientSafeFallbackPanel title="Roadmap" envelope={fallbackEnvelope} />
         <ClientTrustNotice variant="compact" context="planning" />
       </div>
+    );
+  }
+
+  if (mode === "active_client" && activeClientRoadmap) {
+    return (
+      <>
+        <ClientPortalHeader
+          eyebrow="Roadmap"
+          title="Agreed actions and progress"
+          subtitle="Client actions and adviser progress — completing a task does not constitute acceptance of advice."
+        />
+        <ActiveClientRoadmapView roadmap={activeClientRoadmap} />
+        <ClientTrustNotice variant="compact" context="planning" />
+      </>
     );
   }
 
