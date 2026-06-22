@@ -497,7 +497,18 @@ function runSelfTests(): void {
     "cron route with DB throttle must not WARN for missing rateLimitOrThrow",
   );
 
-  console.log("  OK   Scanner self-tests passed (8 cases)");
+  const cronGetThrottled = analyzeRouteSource(
+    `import { validateCronSecret } from "@/lib/security/cronAuth";
+     import { enforceDatabaseBackedSchedulerThrottle } from "@/lib/jobs/schedulerThrottle";
+     export async function GET(request: Request) {
+       validateCronSecret(request);
+       await enforceDatabaseBackedSchedulerThrottle({ jobName: "scheduled_publishing" });
+     }`,
+    "/api/internal/jobs/scheduled-publishing",
+  );
+  assert(cronGetThrottled.hasRateLimit, "GET cron route with DB throttle must satisfy rate-limit check");
+
+  console.log("  OK   Scanner self-tests passed (9 cases)");
 }
 
 function main(): void {

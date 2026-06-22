@@ -13,9 +13,12 @@
 
 | Route | Auth | Client | Adviser | Admin session alone |
 |-------|------|--------|---------|---------------------|
+| `GET /api/internal/jobs/scheduled-publishing` | `CRON_SECRET` | ❌ | ❌ | ❌ |
 | `POST /api/internal/jobs/scheduled-publishing` | `CRON_SECRET` | ❌ | ❌ | ❌ |
 | `POST /api/admin/jobs/scheduled-publishing/run` | `requireAdminAccess` | ❌ | ❌ | ✅ |
 | `GET /api/admin/jobs/runs` | `requireAdminAccess` | ❌ | ❌ | ✅ |
+
+Vercel Cron invokes the internal scheduler with **GET** and `Authorization: Bearer <CRON_SECRET>`. User-agent is **not** trusted. GET and POST share `executeScheduledPublishingInternal` (secret validation, DB-backed throttle, active-run lock, sanitized response).
 
 ## Fail-closed behaviour
 

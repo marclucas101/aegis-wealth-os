@@ -2,10 +2,7 @@ import { NextResponse } from "next/server";
 
 import { enforceDatabaseBackedSchedulerThrottle } from "@/lib/jobs/schedulerThrottle";
 import { runAutomationJob } from "@/lib/jobs/jobRunner";
-import {
-  cronUnauthorizedResponse,
-  validateCronSecret,
-} from "@/lib/security/cronAuth";
+import { validateCronSecret } from "@/lib/security/cronAuth";
 import { toPublicErrorMessage } from "@/lib/security/apiGuards";
 
 export const dynamic = "force-dynamic";
@@ -39,11 +36,15 @@ function noStoreJson<T>(body: T, init?: { status?: number; headers?: Record<stri
   return response;
 }
 
-export async function POST(
+/**
+ * Shared scheduler invocation for Vercel Cron (GET) and manual/operator POST calls.
+ * No session fallback — CRON_SECRET only.
+ */
+export async function executeScheduledPublishingInternal(
   request: Request,
 ): Promise<NextResponse<ScheduledPublishingJobResponse>> {
   if (!validateCronSecret(request)) {
-    return cronUnauthorizedResponse();
+    return noStoreJson({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -102,4 +103,17 @@ export async function POST(
 
     return noStoreJson({ ok: false, error: message }, { status: 500 });
   }
+}
+
+/** Vercel Cron invokes scheduled paths with HTTP GET and Authorization: Bearer CRON_SECRET. */
+export async function GET(
+  request: Request,
+): Promise<NextResponse<ScheduledPublishingJobResponse>> {
+  return executeScheduledPublishingInternal(request);
+}
+
+export async function POST(
+  request: Request,
+): Promise<NextResponse<ScheduledPublishingJobResponse>> {
+  return executeScheduledPublishingInternal(request);
 }

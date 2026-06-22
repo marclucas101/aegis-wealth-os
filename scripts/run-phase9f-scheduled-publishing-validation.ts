@@ -1,5 +1,5 @@
 /**
- * Phase 9F.1 scheduled publishing validation — 86 explicit checks.
+ * Phase 9F.1 scheduled publishing validation — 95 explicit checks.
  * Run: npm run qa:phase9f-scheduled-publishing
  */
 
@@ -129,7 +129,11 @@ const TESTS: TestCase[] = [
   }),
   record(28, "Valid internal execution route exists", () => {
     assert(existsSync(join(ROOT, "app/api/internal/jobs/scheduled-publishing/route.ts")), "route");
-    assert(read("app/api/internal/jobs/scheduled-publishing/route.ts").includes("runAutomationJob"), "runner");
+    const route = read("app/api/internal/jobs/scheduled-publishing/route.ts");
+    assert(route.includes("executeScheduledPublishingInternal"), "shared runner");
+    assert(route.includes("runAutomationJob"), "job runner");
+    assert(route.includes("export async function GET"), "GET handler");
+    assert(route.includes("export async function POST"), "POST handler");
   }),
   record(29, "Internal route has no session fallback", () => {
     const route = read("app/api/internal/jobs/scheduled-publishing/route.ts");
@@ -430,6 +434,61 @@ const TESTS: TestCase[] = [
     assert(core.includes("key_columns_ordered = 'job_run_id'"), "items_run key match");
     assert(core.includes("ELSE 'conflicting'"), "conflicting fallback");
     assert(core.includes("NOT ik.is_unique"), "non-unique ordinary index");
+  }),
+
+  // Vercel Cron GET compatibility
+  record(87, "GET without secret is rejected via validateCronSecret", () => {
+    const route = read("app/api/internal/jobs/scheduled-publishing/route.ts");
+    assert(route.includes("if (!validateCronSecret(request))"), "secret gate");
+    assert(route.includes('error: "Unauthorized"'), "401 body");
+    assert(route.includes("status: 401"), "401 status");
+  }),
+  record(88, "GET uses timing-safe secret validation", () => {
+    assert(read("lib/security/cronAuth.ts").includes("timingSafeEqual"), "timing safe");
+    assert(read("app/api/internal/jobs/scheduled-publishing/route.ts").includes("validateCronSecret"), "uses cron auth");
+  }),
+  record(89, "GET delegates to shared runner with runAutomationJob", () => {
+    const route = read("app/api/internal/jobs/scheduled-publishing/route.ts");
+    assert(/export async function GET[\s\S]*executeScheduledPublishingInternal/.test(route), "GET shared");
+    assert(route.includes('jobName: "scheduled_publishing"'), "job name");
+  }),
+  record(90, "GET path returns 429 when database throttle blocks", () => {
+    const route = read("app/api/internal/jobs/scheduled-publishing/route.ts");
+    assert(route.includes("enforceDatabaseBackedSchedulerThrottle"), "throttle");
+    assert(route.includes("Scheduler invocation throttled"), "throttle message");
+    assert(route.includes("status: 429"), "429 status");
+    assert(route.includes("Retry-After"), "retry header");
+  }),
+  record(91, "GET path returns 409 when active run is blocked", () => {
+    const route = read("app/api/internal/jobs/scheduled-publishing/route.ts");
+    assert(route.includes("activeRunBlocked"), "active guard");
+    assert(route.includes("status: 409"), "409 status");
+    assert(route.includes("already active"), "active message");
+  }),
+  record(92, "GET does not accept browser session instead of secret", () => {
+    const route = read("app/api/internal/jobs/scheduled-publishing/route.ts");
+    assert(!route.includes("requireAdminAccess"), "no admin session");
+    assert(!route.includes("getUser"), "no supabase session");
+    assert(!route.includes("user-agent"), "no user-agent auth");
+    assert(!route.includes("User-Agent"), "no user-agent auth");
+  }),
+  record(93, "GET and POST call the same executeScheduledPublishingInternal", () => {
+    const route = read("app/api/internal/jobs/scheduled-publishing/route.ts");
+    assert((route.match(/return executeScheduledPublishingInternal\(request\)/g) ?? []).length === 2, "both delegate");
+  }),
+  record(94, "GET and POST responses set private no-store cache control", () => {
+    const route = read("app/api/internal/jobs/scheduled-publishing/route.ts");
+    assert(route.includes('"Cache-Control", "private, no-store"'), "no-store header");
+    assert((route.match(/noStoreJson/g) ?? []).length >= 4, "noStoreJson used for outcomes");
+  }),
+  record(95, "Internal scheduler response omits sensitive fields", () => {
+    const route = read("app/api/internal/jobs/scheduled-publishing/route.ts");
+    const responseType = route.slice(route.indexOf("export type ScheduledPublishingJobResponse"), route.indexOf("function noStoreJson"));
+    assert(!responseType.includes("email"), "no email in type");
+    assert(!responseType.includes("stack"), "no stack in type");
+    assert(!responseType.includes("provider"), "no provider in type");
+    assert(responseType.includes("sanitizedError"), "sanitized error only");
+    assert(!route.includes("err.stack"), "no stack leak");
   }),
 ];
 

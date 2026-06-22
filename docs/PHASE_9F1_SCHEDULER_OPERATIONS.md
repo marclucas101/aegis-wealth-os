@@ -6,9 +6,11 @@ Provider-neutral deployment guide for scheduled governed-content publication.
 
 Automated publication invokes:
 
-`POST /api/internal/jobs/scheduled-publishing`
+`GET /api/internal/jobs/scheduled-publishing` (Vercel Cron — default HTTP method)
 
-The route is **not** a public cron endpoint. It requires the server-only `CRON_SECRET` (same variable as birthday reminders).
+`POST /api/internal/jobs/scheduled-publishing` (manual operator / curl — same auth and execution path)
+
+Both methods call the same internal handler. Authentication is **only** `CRON_SECRET` via `Authorization: Bearer` (or `x-cron-secret`). Do not rely on the Vercel cron user-agent.
 
 ## Required environment variable
 
@@ -34,6 +36,15 @@ Send either:
 No browser session is accepted.
 
 ### Example (curl)
+
+**Vercel Cron (GET — production default):**
+
+```bash
+curl "https://your-domain.com/api/internal/jobs/scheduled-publishing" \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
+
+**Manual operator (POST — optional):**
 
 ```bash
 curl -X POST "https://your-domain.com/api/internal/jobs/scheduled-publishing" \
@@ -122,4 +133,4 @@ Add to `vercel.json` when ready (not provisioned automatically in Phase 9F.1):
 }
 ```
 
-Ensure `CRON_SECRET` is set in Vercel so cron requests authenticate.
+Vercel Cron sends **GET** with `Authorization: Bearer <CRON_SECRET>`. Ensure `CRON_SECRET` is set in Vercel project settings (Sensitive). Test the GET route after deploy before enabling the schedule.
