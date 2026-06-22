@@ -3,6 +3,21 @@
 Operator playbook for classifying and resolving schema/history drift.  
 **This document does not authorize any remote write.** Execute only after backup and explicit approval.
 
+## Finalised state (2026-06-22)
+
+| Item | Status |
+|------|--------|
+| Pre-Phase-9 schema vs historical migrations | **EXACT_MATCH** (operator-verified) |
+| Additive remediation migrations `202606220001`–`004` | **Removed** — not required |
+| Required operator action | **History repair only** for six versions |
+| Phase 9 migrations | **Pending** — separate approval window |
+
+See `docs/REMOTE_MIGRATION_EVIDENCE_REVIEW.md` and `docs/MIGRATION_HISTORY_REPAIR_SEQUENCE.md`.
+
+**No additive remediation migration is required.**
+
+---
+
 ## Classifications
 
 | Status | Meaning |
@@ -16,30 +31,31 @@ Operator playbook for classifying and resolving schema/history drift.
 
 ---
 
-## ABSENT
-
-**Indicators:** Rollup checks all `present = false`; table/column queries return no rows.
-
-**Later action (operator):**
-1. Confirm migration not in `supabase_migrations.schema_migrations`
-2. Validate on clean local or hosted staging project (`db reset`)
-3. Apply migration normally via `supabase db push` on approved staging target
-
-**Do not:** assume absence without running `verify_pending_migrations.sql`
-
----
-
-## EXACT_MATCH
+## EXACT_MATCH (current pre-Phase-9 state)
 
 **Indicators:** All required checks present; column types/nullability match; policies/triggers/indexes match; migration **not** in history.
 
-**Later action (operator):**
-1. Re-run full `verify_202606100019_adviser_profiles.sql` (or per-migration verify)
-2. Export results and attach to change record
-3. **Only then** consider `supabase migration repair --status applied <version>` for that version
-4. Re-run `supabase migration list` and dry-run before next push
+**Operator action:**
+1. Re-run dedicated verify SQL if uncertain
+2. Record operator classification (screenshots acceptable; do not fabricate JSON)
+3. **Only then** run `supabase migration repair --status applied <version>` for that version
 
-**Do not:** repair based on table existence alone
+`migration repair` updates **migration history only**. It does **not** apply schema DDL.
+
+**Exact repair order:**
+
+```text
+202606100019 → 202606100020 → 202606100021 → 202606150001 → 202606180001 → 202606180002
+```
+
+After all six repairs:
+
+```text
+npx supabase migration list
+npx supabase db push --dry-run
+```
+
+Dry run should begin with Phase 9 (`202606200001`+), not pre-Phase-9 migrations.
 
 ---
 
@@ -47,16 +63,16 @@ Operator playbook for classifying and resolving schema/history drift.
 
 **Indicators:** Table exists but policies missing; bucket exists but storage policies missing; columns differ.
 
-**Example risk (019):** `adviser_profiles` exists from manual SQL but RLS policies or `adviser-photos` policies differ.
-
 **Later action (operator):**
 1. Document each missing/differing object from diagnostic SQL
 2. Create **additive remediation migration** (new timestamp) that adds only missing pieces
 3. Validate remediation on staging
 4. Apply remediation + reconcile history for original migration only after full verify
 
-**Do not:** add `IF NOT EXISTS` to historical `202606100019` file  
+**Do not:** add `IF NOT EXISTS` to historical migration files  
 **Do not:** `migration repair` until structural equivalence proven
+
+*(Not applicable to current pre-Phase-9 chain — all six migrations are EXACT_MATCH.)*
 
 ---
 
@@ -86,53 +102,44 @@ Operator playbook for classifying and resolving schema/history drift.
 **Indicators:** No diagnostic export; partial SQL results only.
 
 **Later action:**
-1. Run `verify_pending_migrations.sql` section O on remote
-2. Export JSON for `classify-migration-drift.ts`
+1. Run dedicated verify SQL on remote
+2. Export JSON when available
 3. Do not push or repair
 
 ---
 
-## Specific guidance: 202606100019 failure
+## History reconciliation order (final)
 
-Remote error: `relation "adviser_profiles" already exists`.
+After pre-Phase-9 structural verification (complete):
 
-| Scenario | Classification | Operator path |
-|----------|----------------|---------------|
-| Table + all 4 RLS policies + bucket + 4 storage policies + function + trigger | EXACT_MATCH | Repair 019 after verify |
-| Table only, missing policies/bucket | PARTIAL_MATCH | Remediation migration |
-| Table with different columns | CONFLICTING | Transformation required |
-| Table absent in diagnostics but error seen | UNKNOWN | Re-check schema/search_path |
+1. Repair 019 → 020 → 021 → 150001 → 180001 → 180002 (history only)
+2. Confirm `migration list` and `db push --dry-run`
+3. Phase 9 apply in separate approved window
 
----
-
-## Remediation migration naming convention
-
-```
-YYYYMMDDHHMM_phase<N>_remediation_<short_description>.sql
-```
-
-Content rules:
-- Additive only (`CREATE POLICY`, `ALTER TABLE ADD COLUMN`, etc.)
-- Reference docs/MIGRATION_CHAIN_AUDIT.md conflict ID
-- Include verification comment pointing to diagnostic SQL
-
----
-
-## History reconciliation order
-
-After all pending migrations are structurally verified:
-
-1. Repair/mark 019 only if EXACT_MATCH or after remediation proves equivalence
-2. Dry-run push for 020
-3. Continue timestamp order through 007
-4. Never batch-repair without per-migration verify
+Never batch-repair without per-migration verify.
 
 ---
 
 ## Prohibited shortcuts
 
 - Blind `migration repair` on all pending versions
-- Broad `CREATE TABLE IF NOT EXISTS` on 019/020
-- Dropping `adviser_profiles` to unblock push
+- Treating `migration repair` as schema application
+- Broad `CREATE TABLE IF NOT EXISTS` on historical files to mask drift
+- Dropping production objects to unblock push
 - Pushing to production without staging proof
-- Using production as drift experimentation target
+- Fabricating diagnostic JSON evidence
+
+---
+
+## Remediation migration naming convention
+
+Only if future drift requires additive fixes:
+
+```
+YYYYMMDDHHMM_phase<N>_remediation_<short_description>.sql
+```
+
+Content rules:
+- Additive only
+- Reference `docs/MIGRATION_CHAIN_AUDIT.md` conflict ID
+- Include verification comment pointing to diagnostic SQL

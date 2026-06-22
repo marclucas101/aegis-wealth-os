@@ -1,18 +1,17 @@
 /**
- * Classify pending migration drift from a diagnostic snapshot JSON export.
+ * Classify pending migration drift from diagnostic snapshot JSON exports.
  * Does NOT connect to any database.
  *
  * Usage:
  *   npx tsx scripts/classify-migration-drift.ts --snapshot path/to/export.json
- *   npx tsx scripts/classify-migration-drift.ts --manual  (stdin JSON)
- *
- * Snapshot format (from verify_pending_migrations.sql section O):
- * [
- *   { "migration": "202606100019", "check_id": "adviser_profiles_table", "present": true, "state": "present" }
- * ]
+ *   npx tsx scripts/classify-migration-drift.ts --compare pre.json post.json
+ *   npx tsx scripts/classify-migration-drift.ts --history path/to/history.json --schema path/to/schema.json
+ *   npx tsx scripts/classify-migration-drift.ts --demo-absent
  */
 
 import { readFileSync } from "node:fs";
+
+import { PRE_PHASE9_HISTORY_REPAIR_ORDER } from "./migration-evidence";
 
 export type DriftClassification =
   | "ABSENT"
@@ -28,6 +27,17 @@ export type MigrationCheck = {
   present: boolean;
   state?: string;
   match_status?: string;
+  total_required_checks?: number;
+  present_checks?: number;
+  absent_checks?: number;
+  conflicting_checks?: number;
+  unknown_checks?: number;
+  classification?: string;
+};
+
+export type MigrationHistoryRow = {
+  version: string;
+  applied: boolean;
 };
 
 export type MigrationManifest = {
@@ -123,11 +133,20 @@ export const PENDING_MIGRATIONS: MigrationManifest[] = [
   },
 ];
 
+export { PRE_PHASE9_HISTORY_REPAIR_ORDER };
+
+const PHASE9_VERSIONS = PENDING_MIGRATIONS.filter((m) => m.version >= "202606200001").map(
+  (m) => m.version,
+);
+
+function loadJsonFile<T>(path: string): T {
+  return JSON.parse(readFileSync(path, "utf8")) as T;
+}
+
 function loadSnapshot(args: string[]): MigrationCheck[] {
   const snapshotIdx = args.indexOf("--snapshot");
   if (snapshotIdx >= 0 && args[snapshotIdx + 1]) {
-    const raw = readFileSync(args[snapshotIdx + 1], "utf8");
-    return JSON.parse(raw) as MigrationCheck[];
+    return loadJsonFile<MigrationCheck[]>(args[snapshotIdx + 1]);
   }
   if (args.includes("--demo-absent")) {
     return PENDING_MIGRATIONS.flatMap((m) =>
@@ -148,7 +167,7 @@ function loadSnapshot(args: string[]): MigrationCheck[] {
     ];
   }
   throw new Error(
-    "Provide --snapshot <file.json> or a demo mode (--demo-absent, --demo-partial-019). No database connection.",
+    "Provide --snapshot <file.json>, --compare pre post, --history + --schema, or a demo mode. No database connection.",
   );
 }
 
@@ -171,6 +190,24 @@ export function classifyMigration(
     return "UNKNOWN";
   }
 
+  const aggregated = relevant.find(
+    (c) => typeof c.total_required_checks === "number" && typeof c.present_checks === "number",
+  );
+  if (aggregated) {
+    const total = aggregated.total_required_checks ?? 0;
+    const present = aggregated.present_checks ?? 0;
+    const absent = aggregated.absent_checks ?? 0;
+    const conflicting = aggregated.conflicting_checks ?? 0;
+    const unknown = aggregated.unknown_checks ?? 0;
+
+    if (total <= 0) return "UNKNOWN";
+    if (present === total && absent === 0 && conflicting === 0 && unknown === 0) return "EXACT_MATCH";
+    if (present === 0 && absent > 0 && conflicting === 0) return "ABSENT";
+    if (conflicting > 0) return "CONFLICTING";
+    if (present > 0 && absent > 0) return "PARTIAL_MATCH";
+    return "UNKNOWN";
+  }
+
   const required = manifest.requiredChecks;
   const results = required.map((id) => {
     const row = relevant.find((c) => c.check_id === id);
@@ -181,14 +218,124 @@ export function classifyMigration(
   if (presentCount === 0) return "ABSENT";
   if (presentCount === required.length) {
     const conflicting = relevant.some((c) => c.match_status === "CONFLICTING");
-    return conflicting ? "CONFLICTING" : "EXACT_MATCH";
+    const hasUnknown = relevant.some((c) => c.state?.toLowerCase() === "unknown");
+    return conflicting ? "CONFLICTING" : hasUnknown ? "UNKNOWN" : "EXACT_MATCH";
   }
   if (presentCount > 0 && presentCount < required.length) return "PARTIAL_MATCH";
   return "UNKNOWN";
 }
 
+export type DriftComparison = {
+  migration: string;
+  before: DriftClassification;
+  after: DriftClassification;
+  improved: boolean;
+};
+
+export function compareRemediationSnapshots(
+  before: MigrationCheck[],
+  after: MigrationCheck[],
+): DriftComparison[] {
+  const beforeMap = new Map<string, DriftClassification>();
+  const afterMap = new Map<string, DriftClassification>();
+  const order = ["202606100020", "202606100021", "202606150001", "202606180001", "202606180002"];
+
+  for (const manifest of PENDING_MIGRATIONS) {
+    beforeMap.set(manifest.version, classifyMigration(manifest, before, beforeMap));
+  }
+  for (const manifest of PENDING_MIGRATIONS) {
+    afterMap.set(manifest.version, classifyMigration(manifest, after, afterMap));
+  }
+
+  return order.map((migration) => {
+    const b = beforeMap.get(migration) ?? "UNKNOWN";
+    const a = afterMap.get(migration) ?? "UNKNOWN";
+    const improved =
+      (b === "PARTIAL_MATCH" || b === "ABSENT" || b === "CONFLICTING") && a === "EXACT_MATCH";
+    return { migration, before: b, after: a, improved };
+  });
+}
+
+export type DriftWarning = {
+  code: string;
+  migration: string;
+  message: string;
+};
+
+export function detectHistorySchemaWarnings(
+  history: MigrationHistoryRow[],
+  schemaChecks: MigrationCheck[],
+): DriftWarning[] {
+  const warnings: DriftWarning[] = [];
+  const historyMap = new Map(history.map((h) => [h.version, h.applied]));
+  const schemaMap = new Map<string, DriftClassification>();
+  const prior = new Map<string, DriftClassification>();
+
+  for (const manifest of PENDING_MIGRATIONS) {
+    schemaMap.set(manifest.version, classifyMigration(manifest, schemaChecks, prior));
+  }
+
+  for (const manifest of PENDING_MIGRATIONS) {
+    const applied = historyMap.get(manifest.version) ?? false;
+    const schema = schemaMap.get(manifest.version) ?? "UNKNOWN";
+
+    if (!applied && schema === "EXACT_MATCH") {
+      warnings.push({
+        code: "SCHEMA_EXACT_HISTORY_PENDING",
+        migration: manifest.version,
+        message: "Schema matches migration but history row is not applied",
+      });
+    }
+    if (applied && (schema === "PARTIAL_MATCH" || schema === "ABSENT")) {
+      warnings.push({
+        code: "HISTORY_APPLIED_SCHEMA_PARTIAL",
+        migration: manifest.version,
+        message: "Migration marked applied but schema is not EXACT_MATCH",
+      });
+    }
+    if (applied && schema === "ABSENT") {
+      warnings.push({
+        code: "HISTORY_APPLIED_SCHEMA_ABSENT",
+        migration: manifest.version,
+        message: "Migration marked applied but expected schema appears absent",
+      });
+    }
+  }
+
+  return warnings;
+}
+
 function main(): void {
   const args = process.argv.slice(2);
+  const compareIdx = args.indexOf("--compare");
+  if (compareIdx >= 0 && args[compareIdx + 1] && args[compareIdx + 2]) {
+    const before = loadJsonFile<MigrationCheck[]>(args[compareIdx + 1]);
+    const after = loadJsonFile<MigrationCheck[]>(args[compareIdx + 2]);
+    console.log("Pre vs post remediation comparison\n");
+    for (const row of compareRemediationSnapshots(before, after)) {
+      const mark = row.improved ? "↑" : row.before === row.after ? "=" : "↓";
+      console.log(`  ${mark} ${row.migration}: ${row.before} → ${row.after}`);
+    }
+    return;
+  }
+
+  const historyIdx = args.indexOf("--history");
+  const schemaIdx = args.indexOf("--schema");
+  if (historyIdx >= 0 && schemaIdx >= 0 && args[historyIdx + 1] && args[schemaIdx + 1]) {
+    const history = loadJsonFile<MigrationHistoryRow[]>(args[historyIdx + 1]);
+    const schema = loadJsonFile<MigrationCheck[]>(args[schemaIdx + 1]);
+    const warnings = detectHistorySchemaWarnings(history, schema);
+    console.log("History vs schema warnings\n");
+    if (warnings.length === 0) {
+      console.log("  (none)");
+    } else {
+      for (const w of warnings) {
+        console.log(`  [${w.code}] ${w.migration}: ${w.message}`);
+      }
+    }
+    return;
+  }
+
   const checks = loadSnapshot(args);
   const results: { version: string; name: string; classification: DriftClassification }[] = [];
   const map = new Map<string, DriftClassification>();
@@ -201,14 +348,15 @@ function main(): void {
 
   console.log("Migration drift classification (read-only analysis)\n");
   for (const row of results) {
-    console.log(`  ${row.version} ${row.name}: ${row.classification}`);
+    const phase9 = PHASE9_VERSIONS.includes(row.version) ? " [Phase 9]" : "";
+    console.log(`  ${row.version} ${row.name}: ${row.classification}${phase9}`);
   }
 
   const needsEvidence = results.some((r) =>
     ["UNKNOWN", "PARTIAL_MATCH", "CONFLICTING"].includes(r.classification),
   );
   if (needsEvidence && !args.includes("--demo-absent") && !args.includes("--demo-partial-019")) {
-    console.log("\nNote: Run verify_pending_migrations.sql on remote and export section O as JSON.");
+    console.log("\nNote: Export dedicated diagnostics to supabase/diagnostics/results/ as JSON.");
   }
 }
 

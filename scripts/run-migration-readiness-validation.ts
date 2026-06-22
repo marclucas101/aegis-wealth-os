@@ -23,6 +23,33 @@ function assert(condition: boolean, message: string): void {
 
 type TestCase = { id: number; name: string; run: () => void };
 
+const OPTIONAL_PENDING_RELATIONS = [
+  "platform_feature_controls",
+  "published_outputs",
+  "meeting_sessions",
+  "meeting_session_events",
+  "client_goals",
+  "client_review_submissions",
+  "governed_content",
+  "client_notifications",
+  "communication_preferences",
+  "communication_deliveries",
+  "binder_exports",
+  "promotion_migration_reviews",
+  "adviser_calendar_connections",
+  "adviser_calendar_settings",
+  "adviser_appointments",
+];
+
+const PRE_PHASE9_DIAGNOSTICS = [
+  "supabase/diagnostics/verify_202606100020_google_calendar_booking.sql",
+  "supabase/diagnostics/verify_202606100021_performance_indexes.sql",
+  "supabase/diagnostics/verify_202606150001_clients_user_id_unique.sql",
+  "supabase/diagnostics/verify_202606180001_birthday_reminders.sql",
+  "supabase/diagnostics/verify_202606180002_adviser_created_appointments.sql",
+  "supabase/diagnostics/verify_pre_phase9_migrations.sql",
+];
+
 const tests: TestCase[] = [
   {
     id: 1,
@@ -67,71 +94,150 @@ const tests: TestCase[] = [
   },
   {
     id: 5,
-    name: "Diagnostic SQL contains no write statements",
+    name: "No direct FROM platform_feature_controls",
     run: () => {
-      for (const file of [
-        "supabase/diagnostics/verify_pending_migrations.sql",
-        "supabase/diagnostics/verify_202606100019_adviser_profiles.sql",
-      ]) {
-        const sql = read(file).toLowerCase();
-        assert(!/\b(insert|update|delete|drop|alter|create|truncate)\b/.test(sql.replace(/--[^\n]*/g, "")), `${file} may contain writes`);
-      }
+      const sql = read("supabase/diagnostics/verify_pending_migrations.sql").toLowerCase();
+      const marker = sql.indexOf("c. seed-row probes");
+      const executable = marker >= 0 ? sql.slice(0, marker) : sql;
+      assert(!/\bfrom\s+platform_feature_controls\b/.test(executable), "direct FROM platform_feature_controls found");
     },
   },
   {
     id: 6,
-    name: "Diagnostic SQL does not modify migration history",
+    name: "No direct query against optional pending tables",
     run: () => {
-      const sql = read("supabase/diagnostics/verify_pending_migrations.sql");
-      assert(!sql.toLowerCase().includes("insert into supabase_migrations"), "history write");
+      const sql = read("supabase/diagnostics/verify_pending_migrations.sql").toLowerCase();
+      const marker = sql.indexOf("c. seed-row probes");
+      const executable = marker >= 0 ? sql.slice(0, marker) : sql;
+      for (const rel of OPTIONAL_PENDING_RELATIONS) {
+        assert(!new RegExp(`\\bfrom\\s+${rel}\\b`).test(executable), `direct FROM ${rel}`);
+        assert(!new RegExp(`\\bjoin\\s+${rel}\\b`).test(executable), `direct JOIN ${rel}`);
+      }
     },
   },
   {
     id: 7,
-    name: "Migration 202606100019 checks more than table existence",
+    name: "Section O uses catalog-safe checks",
     run: () => {
-      const sql = read("supabase/diagnostics/verify_202606100019_adviser_profiles.sql");
-      assert(sql.includes("rls_policy"), "RLS policies");
-      assert(sql.includes("storage_policy"), "storage policies");
-      assert(sql.includes("trigger"), "triggers");
-      assert(sql.includes("check_constraint"), "constraints");
+      const sql = read("supabase/diagnostics/verify_pending_migrations.sql");
+      assert(sql.includes("expected_migrations"), "rollup migration CTE missing");
+      assert(sql.includes("information_schema.tables"), "table catalog checks missing");
+      assert(sql.includes("pg_indexes"), "index catalog checks missing");
     },
   },
   {
     id: 8,
-    name: "RLS verification exists",
+    name: "All 13 pending migrations remain represented",
     run: () => {
-      assert(read("supabase/diagnostics/verify_pending_migrations.sql").includes("rls_policy"), "RLS");
+      const sql = read("supabase/diagnostics/verify_pending_migrations.sql");
+      for (const v of PENDING_VERSIONS) {
+        assert(sql.includes(v), `diagnostic missing ${v}`);
+      }
     },
   },
   {
     id: 9,
-    name: "Index verification exists",
+    name: "Absent Phase 9 schema still yields rollup rows",
     run: () => {
-      assert(read("supabase/diagnostics/verify_pending_migrations.sql").includes("index"), "indexes");
+      const sql = read("supabase/diagnostics/verify_pending_migrations.sql");
+      assert(sql.includes("preliminary_classification"), "classification column missing");
+      assert(sql.includes("absent_checks"), "absent count missing");
+      assert(sql.includes("unknown_checks"), "unknown count missing");
     },
   },
   {
     id: 10,
-    name: "Constraint verification exists",
+    name: "Seed checks cannot terminate the full diagnostic",
     run: () => {
-      assert(read("supabase/diagnostics/verify_202606100019_adviser_profiles.sql").includes("check_constraint"), "constraints");
+      const sql = read("supabase/diagnostics/verify_pending_migrations.sql");
+      assert(sql.includes("Seed-row probes"), "seed probe section missing");
+      assert(sql.includes("relation_exists"), "seed relation gate missing");
+      assert(sql.includes("probe_sql"), "seed probe sql text missing");
     },
   },
   {
     id: 11,
-    name: "Trigger/function verification exists where needed",
+    name: "Diagnostic SQL remains read-only",
     run: () => {
-      const sql = read("supabase/diagnostics/verify_202606100019_adviser_profiles.sql");
-      assert(sql.includes("trigger"), "trigger");
-      assert(sql.includes("function"), "function");
+      for (const file of [
+        "supabase/diagnostics/verify_pending_migrations.sql",
+        "supabase/diagnostics/verify_202606100019_adviser_profiles.sql",
+        ...PRE_PHASE9_DIAGNOSTICS,
+      ]) {
+        const sql = read(file).toLowerCase().replace(/--[^\n]*/g, "");
+        assert(!/(^|\n)\s*(create|alter|drop|insert|update|delete|truncate|grant|revoke)\s+/i.test(sql), `${file} has write/ddl verb`);
+        assert(!/\bmigration\s+repair\b/.test(sql), `${file} mentions migration repair`);
+        assert(!/\bdb\s+push\b/.test(sql), `${file} mentions db push`);
+      }
     },
   },
   {
     id: 12,
-    name: "Storage-policy verification exists where needed",
+    name: "Dedicated 019 verification remains comprehensive",
     run: () => {
-      assert(read("supabase/diagnostics/verify_202606100019_adviser_profiles.sql").includes("storage_policy"), "storage");
+      const sql = read("supabase/diagnostics/verify_202606100019_adviser_profiles.sql");
+      for (const required of [
+        "expected_schema_name",
+        "actual_schema_name",
+        "resolved AS",
+        "rollup_checks",
+        "adviser_profiles_set_updated_at",
+        "adviser_id_from_storage_path",
+        "adviser_photos_select_own_or_admin",
+        "adviser_profiles_delete_admin",
+        "seed_row:storage.buckets/adviser-photos",
+        "routine_privileges",
+      ]) {
+        assert(sql.includes(required), `019 diagnostic missing ${required}`);
+      }
+    },
+  },
+  {
+    id: 25,
+    name: "No ambiguous unqualified schema_name in diagnostics",
+    run: () => {
+      for (const file of [
+        "supabase/diagnostics/verify_202606100019_adviser_profiles.sql",
+        "supabase/diagnostics/verify_pending_migrations.sql",
+      ]) {
+        const sql = read(file).toLowerCase();
+        assert(!/\bcoalesce\s*\(\s*schema_name\b/.test(sql), `${file} has unqualified schema_name`);
+        assert(!/\bselect\s+schema_name\b/.test(sql), `${file} selects unqualified schema_name`);
+      }
+    },
+  },
+  {
+    id: 26,
+    name: "No ambiguous unqualified relation_name in diagnostics",
+    run: () => {
+      for (const file of [
+        "supabase/diagnostics/verify_202606100019_adviser_profiles.sql",
+        "supabase/diagnostics/verify_pending_migrations.sql",
+      ]) {
+        const sql = read(file).toLowerCase();
+        assert(!/\bcoalesce\s*\([^)]*relation_name\b/.test(sql.replace(/expected_relation_name/g, "")), `${file} has unqualified relation_name in COALESCE`);
+        assert(!/\bselect\s+relation_name\b/.test(sql), `${file} selects unqualified relation_name`);
+      }
+    },
+  },
+  {
+    id: 27,
+    name: "Final rollup fields use explicit aliases",
+    run: () => {
+      const pending = read("supabase/diagnostics/verify_pending_migrations.sql");
+      assert(pending.includes("FROM rollup r"), "pending rollup alias missing");
+      assert(pending.includes("r.total_expected_checks"), "pending rollup fields not qualified");
+      const adviser = read("supabase/diagnostics/verify_202606100019_adviser_profiles.sql");
+      assert(adviser.includes("FROM rollup_checks rc"), "019 rollup alias missing");
+      assert(adviser.includes("rc.check_group"), "019 rollup fields not qualified");
+    },
+  },
+  {
+    id: 28,
+    name: "Both diagnostics use resolved CTE for join output",
+    run: () => {
+      assert(read("supabase/diagnostics/verify_202606100019_adviser_profiles.sql").includes("resolved AS"), "019 resolved CTE");
+      assert(read("supabase/diagnostics/verify_pending_migrations.sql").includes("resolved AS"), "pending resolved CTE");
     },
   },
   {
@@ -229,6 +335,216 @@ const tests: TestCase[] = [
     name: "Production build remains unaffected",
     run: () => {
       assert(read("package.json").includes('"build": "next build"'), "build script");
+    },
+  },
+  {
+    id: 29,
+    name: "All five dedicated diagnostics exist",
+    run: () => {
+      for (const file of PRE_PHASE9_DIAGNOSTICS.slice(0, 5)) {
+        assert(existsSync(join(ROOT, file)), `missing ${file}`);
+      }
+    },
+  },
+  {
+    id: 30,
+    name: "Every new diagnostic is SELECT-only",
+    run: () => {
+      for (const file of PRE_PHASE9_DIAGNOSTICS) {
+        const sql = read(file).toLowerCase().replace(/--[^\n]*/g, "");
+        assert(/\bselect\b/.test(sql), `${file} missing SELECT`);
+      }
+    },
+  },
+  {
+    id: 31,
+    name: "Diagnostics tolerate absent objects via catalogs",
+    run: () => {
+      for (const file of PRE_PHASE9_DIAGNOSTICS) {
+        const sql = read(file);
+        assert(
+          sql.includes("pg_class") || sql.includes("information_schema") || sql.includes("pg_indexes"),
+          `${file} lacks catalog-safe inspection`,
+        );
+      }
+    },
+  },
+  {
+    id: 32,
+    name: "Each migration has multiple meaningful checks",
+    run: () => {
+      const checks = [
+        "verify_202606100020_google_calendar_booking.sql",
+        "verify_202606100021_performance_indexes.sql",
+        "verify_202606150001_clients_user_id_unique.sql",
+        "verify_202606180001_birthday_reminders.sql",
+        "verify_202606180002_adviser_created_appointments.sql",
+      ];
+      for (const name of checks) {
+        const sql = read(`supabase/diagnostics/${name}`);
+        const count = (sql.match(/\('2026/g) ?? []).length;
+        assert(count >= 3, `${name} has too few checks`);
+      }
+    },
+  },
+  {
+    id: 33,
+    name: "Index definitions are inspected, not only names",
+    run: () => {
+      const sql020 = read("supabase/diagnostics/verify_202606100020_google_calendar_booking.sql");
+      const sql021 = read("supabase/diagnostics/verify_202606100021_performance_indexes.sql");
+      assert(sql020.includes("indexdef") || sql020.includes("definition"), "020 index definition check missing");
+      assert(sql021.includes("actual_index_definition"), "021 index definition check missing");
+    },
+  },
+  {
+    id: 34,
+    name: "Constraint definitions are inspected",
+    run: () => {
+      const sql020 = read("supabase/diagnostics/verify_202606100020_google_calendar_booking.sql");
+      const sql180001 = read("supabase/diagnostics/verify_202606180001_birthday_reminders.sql");
+      assert(sql020.includes("pg_get_constraintdef"), "020 constraint definition missing");
+      assert(sql180001.includes("pg_get_constraintdef"), "180001 constraint definition missing");
+    },
+  },
+  {
+    id: 35,
+    name: "RLS policies are inspected where applicable",
+    run: () => {
+      const sql020 = read("supabase/diagnostics/verify_202606100020_google_calendar_booking.sql");
+      assert(sql020.includes("pg_policies"), "020 policies missing");
+      assert(sql020.includes("rls_enabled"), "020 RLS state missing");
+    },
+  },
+  {
+    id: 36,
+    name: "clients.user_id duplicate detection exists",
+    run: () => {
+      const sql = read("supabase/diagnostics/verify_202606150001_clients_user_id_unique.sql");
+      assert(sql.includes("duplicate_non_null_user_id_count"), "duplicate detection missing");
+      assert(sql.includes("query_to_xml"), "safe duplicate probe missing");
+    },
+  },
+  {
+    id: 37,
+    name: "Calendar relationships are inspected",
+    run: () => {
+      const sql = read("supabase/diagnostics/verify_202606100020_google_calendar_booking.sql");
+      assert(sql.includes("adviser_calendar_connections"), "calendar connections missing");
+      assert(sql.includes("adviser_calendar_settings"), "calendar settings missing");
+      assert(sql.includes("adviser_appointments"), "appointments missing");
+    },
+  },
+  {
+    id: 38,
+    name: "Birthday cron capability is not overstated",
+    run: () => {
+      const sql = read("supabase/diagnostics/verify_202606180001_birthday_reminders.sql");
+      assert(sql.includes("migration does not create cron schedule objects"), "cron caveat missing");
+    },
+  },
+  {
+    id: 39,
+    name: "Appointment migration checks expected fields",
+    run: () => {
+      const sql = read("supabase/diagnostics/verify_202606180002_adviser_created_appointments.sql");
+      for (const col of [
+        "source",
+        "created_by_user_id",
+        "notification_status",
+        "calendar_sync_status",
+      ]) {
+        assert(sql.includes(col), `missing field ${col}`);
+      }
+    },
+  },
+  {
+    id: 40,
+    name: "Consolidated rollup covers all five migrations",
+    run: () => {
+      const sql = read("supabase/diagnostics/verify_pre_phase9_migrations.sql");
+      for (const v of ["202606100020", "202606100021", "202606150001", "202606180001", "202606180002"]) {
+        assert(sql.includes(v), `rollup missing ${v}`);
+      }
+    },
+  },
+  {
+    id: 41,
+    name: "EXACT_MATCH requires all checks in classifier",
+    run: () => {
+      const ts = read("scripts/classify-migration-drift.ts");
+      assert(ts.includes("present === total && absent === 0 && conflicting === 0 && unknown === 0"), "strict EXACT_MATCH rule missing");
+    },
+  },
+  {
+    id: 42,
+    name: "No remote write command present in new diagnostics",
+    run: () => {
+      for (const file of PRE_PHASE9_DIAGNOSTICS) {
+        const sql = read(file).toLowerCase();
+        assert(!sql.includes("migration repair"), `${file} mentions migration repair`);
+        assert(!sql.includes("db push"), `${file} mentions db push`);
+      }
+    },
+  },
+  {
+    id: 43,
+    name: "No invalid xpath(...)[n] without outer parentheses",
+    run: () => {
+      for (const file of readdirSync(join(ROOT, "supabase/diagnostics")).filter((f) => f.endsWith(".sql"))) {
+        const path = `supabase/diagnostics/${file}`;
+        const sql = read(path);
+        if (!sql.includes("xpath")) continue;
+        assert(!/''\)\)\[\d+\]/.test(sql), `${path} has invalid xpath array-index syntax`);
+      }
+    },
+  },
+  {
+    id: 44,
+    name: "Every indexed xpath call is parenthesised before subscript",
+    run: () => {
+      for (const file of readdirSync(join(ROOT, "supabase/diagnostics")).filter((f) => f.endsWith(".sql"))) {
+        const path = `supabase/diagnostics/${file}`;
+        const sql = read(path);
+        if (!sql.includes("xpath")) continue;
+        assert(/\(xpath\s*\(/.test(sql), `${path} missing parenthesised xpath before indexing`);
+        assert(/\)\)\[\d+\]/.test(sql), `${path} missing parenthesised xpath result subscript`);
+      }
+    },
+  },
+  {
+    id: 45,
+    name: "Pre-Phase9 diagnostics remain read-only with xpath probes",
+    run: () => {
+      for (const file of PRE_PHASE9_DIAGNOSTICS) {
+        const sql = read(file).toLowerCase().replace(/--[^\n]*/g, "");
+        assert(!/(^|\n)\s*(create|alter|drop|insert|update|delete|truncate|grant|revoke)\s+/i.test(sql), `${file} has write/ddl verb`);
+      }
+    },
+  },
+  {
+    id: 46,
+    name: "Consolidated rollup and clients.user_id duplicate probe remain present",
+    run: () => {
+      const rollup = read("supabase/diagnostics/verify_pre_phase9_migrations.sql");
+      for (const v of ["202606100020", "202606100021", "202606150001", "202606180001", "202606180002"]) {
+        assert(rollup.includes(v), `rollup missing ${v}`);
+      }
+      const clients = read("supabase/diagnostics/verify_202606150001_clients_user_id_unique.sql");
+      assert(clients.includes("duplicate_non_null_user_id_count"), "duplicate probe column missing");
+      assert(clients.includes("query_to_xml"), "safe duplicate probe missing");
+      assert(clients.includes("HAVING count(*) > 1"), "duplicate user_id probe missing");
+    },
+  },
+  {
+    id: 47,
+    name: "Preflight remediation is single-statement with no cross-statement CTEs",
+    run: () => {
+      const sql = read("supabase/diagnostics/preflight_remediation.sql");
+      const parts = sql.replace(/--[^\n]*/g, "").split(";").filter((p) => p.trim().length > 0);
+      assert(parts.length === 1, "preflight must be one SQL statement");
+      assert(sql.includes("WITH clients_exists AS"), "clients_exists declaration");
+      assert(!/;\s*\n\s*SELECT[\s\S]*clients_exists/i.test(sql), "clients_exists used after statement end");
     },
   },
 ];

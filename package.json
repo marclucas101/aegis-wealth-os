@@ -32,6 +32,10 @@
     "qa:phase9d-client-portal": "npx tsx scripts/run-phase9d-client-portal-validation.ts",
     "qa:phase9e-communications": "npx tsx scripts/run-phase9e-communications-validation.ts",
     "qa:migration-readiness": "npx tsx scripts/run-migration-readiness-validation.ts",
+    "qa:phase9-migration-readiness": "npx tsx scripts/run-phase9-migration-readiness-validation.ts",
+    "qa:phase9-column-canonicalization": "npx tsx scripts/run-phase9-column-canonicalization-validation.ts",
+    "qa:migration-remediation": "npx tsx scripts/run-migration-remediation-validation.ts",
+    "qa:diagnostic-sql-syntax": "npx tsx scripts/run-diagnostic-sql-syntax-validation.ts",
     "qa:migration-drift": "npx tsx scripts/classify-migration-drift.ts --demo-absent",
     "supabase:confirm-target": "npx tsx scripts/confirm-supabase-target.ts",
     "demo:seed": "npx tsx scripts/seed-demo-data.ts",
@@ -54,6 +58,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
+    "libpg-query": "^17.7.3",
     "supabase": "^2.105.0",
     "tailwindcss": "^4",
     "typescript": "^5"
