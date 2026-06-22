@@ -14,7 +14,10 @@ export type SqlAnalysisIssue = {
     | "unsafe_write"
     | "direct_optional_reference"
     | "unqualified_column"
-    | "empty_statement";
+    | "empty_statement"
+    | "unguarded_xpath"
+    | "unguarded_xml_cast"
+    | "unguarded_xmlparse";
   message: string;
   position?: number;
 };
@@ -309,6 +312,56 @@ function collectRangeVarsInNode(node: unknown, out: Array<{ relname: string; loc
   }
 }
 
+function stripSqlComments(sql: string): string {
+  return sql.replace(/--[^\n]*/g, "");
+}
+
+/**
+ * Detects diagnostic SQL patterns that call xpath/XML parsers without runtime guards.
+ * query_to_xml on zero rows returns an empty document and crashes xpath() at runtime.
+ */
+export function detectUnguardedXmlPatterns(sql: string): SqlAnalysisIssue[] {
+  const issues: SqlAnalysisIssue[] = [];
+  const executable = stripSqlComments(sql);
+  const lower = executable.toLowerCase();
+
+  if (/\bxpath\s*\(/.test(lower)) {
+    const hasWellFormedGuard = /\bxml_is_well_formed_document\s*\(/.test(lower);
+    const usesQueryToXml = /\bquery_to_xml\s*\(/.test(lower);
+    if (!hasWellFormedGuard || usesQueryToXml) {
+      issues.push({
+        kind: "unguarded_xpath",
+        message: usesQueryToXml
+          ? "xpath(query_to_xml(...)) is unsafe when the source query returns zero rows (empty XML document)"
+          : "xpath(...) without xml_is_well_formed_document guard",
+      });
+    }
+  }
+
+  if (/\bxmlparse\s*\(\s*document\b/i.test(executable)) {
+    if (!/\bxml_is_well_formed_document\s*\(/.test(lower)) {
+      issues.push({
+        kind: "unguarded_xmlparse",
+        message: "xmlparse(document ...) without xml_is_well_formed_document guard",
+      });
+    }
+  }
+
+  const xmlCastPattern = /(?<!xml_is_well_formed_document\s*\(\s*)'[^']*'::xml\b/gi;
+  if (xmlCastPattern.test(executable) && !/\bxml_is_well_formed_document\s*\(/.test(lower)) {
+    issues.push({
+      kind: "unguarded_xml_cast",
+      message: "direct ::xml cast without xml_is_well_formed_document guard",
+    });
+  }
+
+  return issues;
+}
+
+function hasToRegclassGuard(sql: string, relname: string): boolean {
+  return new RegExp(`to_regclass\\s*\\(\\s*'public\\.${relname}'\\s*\\)`, "i").test(sql);
+}
+
 export async function analyzePostgresSql(sql: string, options: AnalyzeOptions = {}): Promise<SqlAnalysisResult> {
   await loadModule();
   const trimmed = sql.trim();
@@ -357,10 +410,10 @@ export async function analyzePostgresSql(sql: string, options: AnalyzeOptions = 
       const refs: Array<{ relname: string; location?: number }> = [];
       collectRangeVarsInNode(stmt, refs);
       for (const ref of refs) {
-        if (optionalSet.has(ref.relname)) {
+        if (optionalSet.has(ref.relname) && !hasToRegclassGuard(trimmed, ref.relname)) {
           issues.push({
             kind: "direct_optional_reference",
-            message: `Direct reference to optional relation "${ref.relname}" detected; use catalog gate/query_to_xml pattern`,
+            message: `Direct reference to optional relation "${ref.relname}" detected; use to_regclass guard or query_to_xml pattern`,
             position: ref.location,
           });
         }

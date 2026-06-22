@@ -586,12 +586,87 @@ const tests: TestCase[] = [
       for (const file of [
         "supabase/diagnostics/verify_202606200008_phase9f_scheduled_publishing.sql",
         "supabase/diagnostics/preflight_202606200008_phase9f.sql",
+        "supabase/diagnostics/verify_202606200008_phase9f_discrepancies.sql",
       ]) {
         const sql = read(file).toLowerCase();
         assert(!sql.includes("insert into supabase_migrations"), file);
         assert(!sql.includes("delete from supabase_migrations"), file);
         assert(!sql.includes("update supabase_migrations"), file);
       }
+    },
+  },
+  {
+    id: 52,
+    name: "Phase 9F discrepancy diagnostic exists",
+    run: () => {
+      assert(
+        existsSync(join(ROOT, "supabase/diagnostics/verify_202606200008_phase9f_discrepancies.sql")),
+        "missing discrepancies diagnostic",
+      );
+    },
+  },
+  {
+    id: 53,
+    name: "Phase 9F discrepancy diagnostic is SELECT-only",
+    run: () => {
+      const sql = read("supabase/diagnostics/verify_202606200008_phase9f_discrepancies.sql").toLowerCase();
+      assert(/\bselect\b/.test(sql), "missing SELECT");
+      assert(!/(^|\n)\s*(insert|update|delete|truncate|create|alter|drop)\s+/m.test(sql), "write DDL/DML");
+      assert(!/\bxpath\s*\(/.test(sql), "xpath present");
+      assert(!/\bquery_to_xml\s*\(/.test(sql), "query_to_xml present");
+    },
+  },
+  {
+    id: 54,
+    name: "Phase 9F discrepancy diagnostic shares verify inventory",
+    run: () => {
+      const verify = read("supabase/diagnostics/verify_202606200008_phase9f_scheduled_publishing.sql");
+      const discrepancies = read("supabase/diagnostics/verify_202606200008_phase9f_discrepancies.sql");
+      assert(
+        verify.includes("('202606200008','seed','platform_feature_controls.scheduled_content_automation','disabled')"),
+        "verify seed row",
+      );
+      assert(
+        discrepancies.includes("('202606200008','seed','platform_feature_controls.scheduled_content_automation','disabled')"),
+        "discrepancies seed row",
+      );
+      const count = (discrepancies.match(/\('202606200008'/g) ?? []).length;
+      assert(count === 35, `inventory count ${count}`);
+    },
+  },
+  {
+    id: 55,
+    name: "Phase 9F discrepancy diagnostic does not mask with rollup",
+    run: () => {
+      const sql = read("supabase/diagnostics/verify_202606200008_phase9f_discrepancies.sql");
+      assert(sql.includes("WHERE r.state IN ('conflicting', 'absent', 'unknown')"), "state filter");
+      assert(!sql.includes("classification"), "no rollup classification column");
+      assert(sql.includes("suggested_interpretation"), "per-check interpretation");
+    },
+  },
+  {
+    id: 57,
+    name: "Phase 9F diagnostics use pg_index catalog for index verification",
+    run: () => {
+      const sql = read("supabase/diagnostics/verify_202606200008_phase9f_scheduled_publishing.sql");
+      assert(sql.includes("index_key_cols"), "index_key_cols");
+      assert(sql.includes("pg_get_expr(ix.indpred"), "indpred");
+      assert(!sql.includes("FROM pg_indexes"), "no pg_indexes");
+    },
+  },
+  {
+    id: 58,
+    name: "Phase 9F verify and discrepancy diagnostics share resolved core",
+    run: () => {
+      const verify = read("supabase/diagnostics/verify_202606200008_phase9f_scheduled_publishing.sql");
+      const discrepancies = read("supabase/diagnostics/verify_202606200008_phase9f_discrepancies.sql");
+      const begin = "-- PHASE9F_RESOLVED_CORE_BEGIN";
+      const end = "-- PHASE9F_RESOLVED_CORE_END";
+      const extract = (text: string) => text.slice(text.indexOf(begin) + begin.length, text.indexOf(end)).trim();
+      const vCore = extract(verify);
+      const dCore = extract(discrepancies);
+      assert(vCore === dCore, "resolved core mismatch");
+      assert(vCore.includes("predicate_canonical"), "predicate canonicalisation");
     },
   },
 ];

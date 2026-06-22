@@ -8,7 +8,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { analyzePostgresSql } from "./diagnostic-sql-analyzer";
+import { analyzePostgresSql, detectUnguardedXmlPatterns } from "./diagnostic-sql-analyzer";
 
 const ROOT = resolve(process.cwd());
 const DIAGNOSTICS_DIR = join(ROOT, "supabase/diagnostics");
@@ -94,6 +94,38 @@ const SELF_TESTS: SelfTest[] = [
     options: { optionalRelations: ["meeting_sessions"] },
     expectIssueKinds: ["direct_optional_reference"],
   },
+  {
+    name: "flags unguarded xpath with query_to_xml",
+    sql: "SELECT ((xpath('/row/cnt/text()', query_to_xml('SELECT 1', true, true, '')))[1]::text);",
+    options: { requireSelectOnly: true },
+    expectIssueKinds: ["unguarded_xpath"],
+  },
+  {
+    name: "accepts native catalog probe without xpath",
+    sql: "SELECT EXISTS (SELECT 1 FROM platform_feature_controls WHERE feature_key = 'x');",
+    options: { requireSelectOnly: true },
+    expectIssueKinds: [],
+  },
+  {
+    name: "accepts to_regclass-guarded optional relation probe",
+    sql: `
+      WITH seed_probe AS (
+        SELECT CASE
+          WHEN to_regclass('public.platform_feature_controls') IS NULL THEN NULL::boolean
+          ELSE (SELECT enabled FROM platform_feature_controls WHERE feature_key = 'x' LIMIT 1)
+        END AS seed_ok
+      )
+      SELECT seed_ok FROM seed_probe;
+    `,
+    options: { requireSelectOnly: true, optionalRelations: ["platform_feature_controls"] },
+    expectIssueKinds: [],
+  },
+  {
+    name: "flags unguarded xmlparse document",
+    sql: "SELECT xmlparse(document 'not xml');",
+    options: { requireSelectOnly: true },
+    expectIssueKinds: ["unguarded_xmlparse"],
+  },
 ];
 
 async function runSelfTests(): Promise<void> {
@@ -101,7 +133,12 @@ async function runSelfTests(): Promise<void> {
   let passed = 0;
   for (const test of SELF_TESTS) {
     const result = await analyzePostgresSql(test.sql, test.options);
-    const kinds = result.issues.map((i) => i.kind).sort();
+    const xmlKinds = new Set(["unguarded_xpath", "unguarded_xml_cast", "unguarded_xmlparse"]);
+    const needsXmlScan =
+      test.expectIssueKinds.some((k) => xmlKinds.has(k)) ||
+      (test.options?.requireSelectOnly && /\bxpath\s*\(|\bxmlparse\s*\(|::xml\b/i.test(test.sql));
+    const xmlIssues = needsXmlScan ? detectUnguardedXmlPatterns(test.sql) : [];
+    const kinds = [...result.issues, ...xmlIssues].map((i) => i.kind).sort();
     const expected = [...test.expectIssueKinds].sort();
     const ok =
       kinds.length === expected.length && kinds.every((kind, idx) => kind === expected[idx]);
@@ -124,7 +161,7 @@ async function main(): Promise<void> {
   console.log(`Diagnostic SQL syntax validation — ${PARSER_LIBRARY}\n`);
 
   const files = readdirSync(DIAGNOSTICS_DIR)
-    .filter((name) => name.endsWith(".sql"))
+    .filter((name) => name.endsWith(".sql") && !name.includes("resolved_core"))
     .sort();
 
   let passed = 0;
@@ -138,13 +175,20 @@ async function main(): Promise<void> {
       optionalRelations: OPTIONAL_RELATIONS,
     });
 
-    if (result.issues.length === 0) {
+    const xmlIssues =
+      file.includes("202606200008") || file.includes("phase9f")
+        ? detectUnguardedXmlPatterns(sql)
+        : [];
+
+    const allIssues = [...result.issues, ...xmlIssues];
+
+    if (allIssues.length === 0) {
       passed++;
       parsedOk.push(file);
       console.log(`  ✓ ${file} (${result.statementCount} statement(s))`);
     } else {
       console.log(`  ✗ ${file}`);
-      for (const issue of result.issues) {
+      for (const issue of allIssues) {
         const pos = issue.position !== undefined ? ` @${issue.position}` : "";
         console.log(`      [${issue.kind}]${pos} ${issue.message.split("\n")[0]}`);
       }

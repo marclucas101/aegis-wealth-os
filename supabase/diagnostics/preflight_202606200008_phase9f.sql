@@ -65,12 +65,12 @@ probes AS (
     'feature.scheduled_content_automation_seed_conflict',
     CASE
       WHEN NOT (SELECT feature_controls_exists FROM refs) THEN 'UNKNOWN'
-      WHEN NULLIF(((xpath('/row/cnt/text()', query_to_xml($$
-          SELECT count(*)::text AS cnt
-            FROM platform_feature_controls
-           WHERE feature_key = 'scheduled_content_automation'
-             AND enabled = true
-      $$, true, true, '')))[1]::text), '')::bigint > 0 THEN 'WARNING'
+      WHEN EXISTS (
+        SELECT 1
+        FROM platform_feature_controls pfc
+        WHERE pfc.feature_key = 'scheduled_content_automation'
+          AND pfc.enabled = true
+      ) THEN 'WARNING'
       ELSE 'READY'
     END,
     'Migration seed is disabled and uses ON CONFLICT DO NOTHING — pre-enabled row is not overwritten'
@@ -79,11 +79,11 @@ probes AS (
     'history.duplicate_migration_entry',
     CASE
       WHEN NOT (SELECT history_table_exists FROM refs) THEN 'UNKNOWN'
-      WHEN NULLIF(((xpath('/row/cnt/text()', query_to_xml($$
-          SELECT count(*)::text AS cnt
-            FROM supabase_migrations.schema_migrations
-           WHERE version = '202606200008'
-      $$, true, true, '')))[1]::text), '')::bigint > 0 THEN 'BLOCKER'
+      WHEN EXISTS (
+        SELECT 1
+        FROM supabase_migrations.schema_migrations sm
+        WHERE sm.version = '202606200008'
+      ) THEN 'BLOCKER'
       ELSE 'READY'
     END,
     'Migration version must not already be recorded in schema_migrations'
@@ -92,11 +92,11 @@ probes AS (
     'history.prerequisite_202606200007',
     CASE
       WHEN NOT (SELECT history_table_exists FROM refs) THEN 'UNKNOWN'
-      WHEN NULLIF(((xpath('/row/cnt/text()', query_to_xml($$
-          SELECT count(*)::text AS cnt
-            FROM supabase_migrations.schema_migrations
-           WHERE version = '202606200007'
-      $$, true, true, '')))[1]::text), '')::bigint = 0 THEN 'WARNING'
+      WHEN NOT EXISTS (
+        SELECT 1
+        FROM supabase_migrations.schema_migrations sm
+        WHERE sm.version = '202606200007'
+      ) THEN 'WARNING'
       ELSE 'READY'
     END,
     'Phase 9E hardening (202606200007) should be applied before 202606200008'
