@@ -1,0 +1,91 @@
+# Migration Dependency Graph
+
+Pending migrations `202606100019`–`202606200007` and their prerequisites.
+
+```mermaid
+flowchart TD
+  subgraph applied [Applied on remote through 018]
+    M003[202606100003 users_and_clients]
+    M007[202606100007 roadmap_and_reviews]
+    M013[202606100013 advisor_tasks]
+    M016[202606100016 promotions]
+    M018[202606100018 adviser_feedback]
+  end
+
+  M019[202606100019 adviser_profiles]
+  M020[202606100020 google_calendar]
+  M021[202606100021 perf_indexes]
+  M150[202606150001 clients_user_id_unique]
+  M8A[202606180001 birthday_reminders]
+  M8B[202606180002 adviser_appointments]
+  M9A1[202606200001 phase9a_access]
+  M9A2[202606200002 publication_hardening]
+  M9C1[202606200003 meeting_studio]
+  M9C2[202606200004 meeting_rls_docs]
+  M9D[202606200005 client_portal]
+  M9E1[202606200006 communications]
+  M9E2[202606200007 comms_hardening]
+
+  M018 --> M019
+  M003 --> M019
+  M019 --> M020
+  M018 --> M021
+  M003 --> M150
+  M013 --> M8A
+  M020 --> M8B
+  M003 --> M9A1
+  M9A1 --> M9A2
+  M9A1 --> M9C1
+  M020 --> M9C1
+  M9C1 --> M9C2
+  M9A1 --> M9D
+  M007 --> M9D
+  M9A1 --> M9E1
+  M016 --> M9E1
+  M9E1 --> M9E2
+```
+
+## Blocking relationships
+
+| Migration | Blocked until |
+|-----------|---------------|
+| 202606100020 | 019 reconciled (optional FK path via users only, but 019 failure stops push) |
+| 202606180002 | 020 tables exist |
+| 202606200003 | 001 + 020 (appointment_id FK) |
+| 202606200002 | 001 published_outputs |
+| 202606200004 | 003 policies exist |
+| 202606200005 | 001 + roadmap_items |
+| 202606200006 | 001 + promotions |
+| 202606200007 | 006 |
+
+## Parallel-safe (after 018)
+
+These can apply independently **once push resumes**, but 021 and 150001 do not depend on 019:
+
+| Migration | Depends only on applied ≤018 |
+|-----------|------------------------------|
+| 202606100021 | ✓ (feedback, clients, discover) |
+| 202606150001 | ✓ (clients) |
+| 202606180001 | ✓ (clients, advisor_tasks) |
+
+**However:** `supabase db push` applies in timestamp order — 019 must reconcile before any later migration runs.
+
+## Critical path for drift reconciliation
+
+1. **202606100019** — first failure; must classify EXACT_MATCH vs PARTIAL_MATCH vs CONFLICTING
+2. **202606100020** — likely second risk if calendar tables were created manually
+3. **202606200001** — foundation for all Phase 9 features
+4. Remaining migrations chain in timestamp order
+
+## Feature cross-dependencies (application layer)
+
+| Application feature | Minimum migrations |
+|--------------------|--------------------|
+| My Adviser profiles | 019 |
+| Calendar booking | 019, 020 |
+| Adviser-created appointments | 020, 8B |
+| Birthday reminders | 8A |
+| Phase 9A access/publication | 9A1, 9A2 |
+| Meeting Studio | 9A1, 020, 9C1, 9C2 |
+| Converted client portal | 9A1, 9D |
+| Communications governance | 9A1, 9E1, 9E2 |

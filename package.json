@@ -31,6 +31,9 @@
     "qa:phase9c-meeting-studio": "npx tsx scripts/run-phase9c-meeting-studio-validation.ts",
     "qa:phase9d-client-portal": "npx tsx scripts/run-phase9d-client-portal-validation.ts",
     "qa:phase9e-communications": "npx tsx scripts/run-phase9e-communications-validation.ts",
+    "qa:migration-readiness": "npx tsx scripts/run-migration-readiness-validation.ts",
+    "qa:migration-drift": "npx tsx scripts/classify-migration-drift.ts --demo-absent",
+    "supabase:confirm-target": "npx tsx scripts/confirm-supabase-target.ts",
     "demo:seed": "npx tsx scripts/seed-demo-data.ts",
     "demo:clear": "npx tsx scripts/clear-demo-data.ts",
     "final:check": "npx tsx scripts/final-readiness-check.ts"
