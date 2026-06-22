@@ -212,10 +212,12 @@ export const HARDENING_TESTS: Phase9eTestCase[] = [
   },
   {
     id: 76,
-    name: "Scheduling has no background worker — manual publish documented",
+    name: "Scheduling automation is opt-in — disabled by default with manual publish",
     run: () => {
       const workflow = read("lib/communications/contentWorkflow.ts");
-      assert(workflow.includes("no background scheduler"), "manual scheduling note");
+      assert(workflow.includes("scheduled_content_automation"), "automation feature referenced");
+      const flags = read("lib/compliance/featureFlags.ts");
+      assert(/scheduled_content_automation:[\s\S]*?enabled:\s*false/.test(flags), "default off");
       const doc = read("docs/PHASE_9E_APPROVAL_WORKFLOW.md");
       assert(doc.includes("manual") || doc.includes("Manual"), "documented manual publish");
     },

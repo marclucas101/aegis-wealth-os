@@ -190,7 +190,8 @@ const ORIGINAL_TESTS: TestCase[] = [
   }),
 
   record(32, "Email failure does not roll back content publication", () => {
-    assert(read("app/api/admin/communications/[contentId]/publish/route.ts").includes("queueInsightEmailDelivery"), "async");
+    const delivery = read("lib/communications/publicationDelivery.ts");
+    assert(delivery.includes("queueInsightEmailDelivery"), "async");
     assert(read("lib/communications/emailDelivery.ts").includes("delivery_failed"), "track failure");
   }),
 
@@ -245,7 +246,7 @@ const ORIGINAL_TESTS: TestCase[] = [
 
   record(44, "Disabling email preserves in-app notification", () => {
     assert(read("docs/PHASE_9E_EMAIL_DELIVERY_POLICY.md").includes("retains in-app"), "doc");
-    assert(read("app/api/admin/communications/[contentId]/publish/route.ts").includes("dbCreateClientNotification"), "in-app");
+    assert(read("lib/communications/publicationDelivery.ts").includes("dbCreateClientNotification"), "in-app");
   }),
 
   record(45, "Product content kill switch works", () => {

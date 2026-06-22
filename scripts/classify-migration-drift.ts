@@ -131,6 +131,12 @@ export const PENDING_MIGRATIONS: MigrationManifest[] = [
     dependsOn: ["202606200006"],
     requiredChecks: ["idempotency_indexes"],
   },
+  {
+    version: "202606200008",
+    name: "phase9f_scheduled_publishing",
+    dependsOn: ["202606200007"],
+    requiredChecks: ["automation_job_runs_table", "automation_job_items_table"],
+  },
 ];
 
 export { PRE_PHASE9_HISTORY_REPAIR_ORDER };

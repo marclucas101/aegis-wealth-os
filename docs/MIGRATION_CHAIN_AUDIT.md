@@ -198,6 +198,19 @@ Evidence-based inventory of every file under `supabase/migrations/`.
 | **Clean DB** | Safe |
 | **Existing DB** | Safe (IF NOT EXISTS) |
 
+### 202606200008 — phase9f_scheduled_publishing.sql
+
+| Attribute | Detail |
+|-----------|--------|
+| **Purpose** | Scheduled publishing automation — job runs, item evidence, feature control |
+| **Tables** | `automation_job_runs`, `automation_job_items` |
+| **Indexes** | Partial unique active-run index + history indexes |
+| **RLS** | Enabled; no client/adviser policies |
+| **Seeds** | `scheduled_content_automation` (disabled) |
+| **Depends on** | **202606200007**, `platform_feature_controls` |
+| **Clean DB** | Safe |
+| **Existing DB** | Safe (IF NOT EXISTS) |
+
 ---
 
 ## Historical migration edit policy

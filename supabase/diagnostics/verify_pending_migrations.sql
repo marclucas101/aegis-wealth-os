@@ -1,4 +1,4 @@
--- Read-only verification for pending migrations 202606100019..202606200007.
+-- Read-only verification for pending migrations 202606100019..202606200008.
 -- Safe when expected post-018 relations are absent.
 -- No writes. No schema changes. No migration-history modification.
 
@@ -10,7 +10,7 @@ WITH pending(version) AS (
     ('202606100019'), ('202606100020'), ('202606100021'), ('202606150001'),
     ('202606180001'), ('202606180002'), ('202606200001'), ('202606200002'),
     ('202606200003'), ('202606200004'), ('202606200005'), ('202606200006'),
-    ('202606200007')
+    ('202606200007'), ('202606200008')
 ),
 history_table AS (
   SELECT EXISTS (
@@ -129,7 +129,17 @@ WITH expected_checks AS (
     ('202606200006','rls_enabled','public','promotion_migration_reviews',NULL),
     ('202606200006','seed_row','public','platform_feature_controls','phase9e_feature_rows'),
     ('202606200007','index','public','client_notifications','idx_client_notifications_idempotent'),
-    ('202606200007','index','public','communication_deliveries','idx_communication_deliveries_idempotent')
+    ('202606200007','index','public','communication_deliveries','idx_communication_deliveries_idempotent'),
+
+    -- 9F.1 scheduled publishing automation
+    ('202606200008','table','public','automation_job_runs',NULL),
+    ('202606200008','table','public','automation_job_items',NULL),
+    ('202606200008','rls_enabled','public','automation_job_runs',NULL),
+    ('202606200008','rls_enabled','public','automation_job_items',NULL),
+    ('202606200008','index','public','automation_job_runs','idx_automation_job_runs_single_active'),
+    ('202606200008','index','public','automation_job_runs','idx_automation_job_runs_job_started'),
+    ('202606200008','index','public','automation_job_items','idx_automation_job_items_run'),
+    ('202606200008','seed_row','public','platform_feature_controls','scheduled_content_automation')
   ) AS expected(
     expected_migration,
     expected_check_kind,
@@ -366,7 +376,7 @@ WITH expected_migrations(version) AS (
     ('202606100019'), ('202606100020'), ('202606100021'), ('202606150001'),
     ('202606180001'), ('202606180002'), ('202606200001'), ('202606200002'),
     ('202606200003'), ('202606200004'), ('202606200005'), ('202606200006'),
-    ('202606200007')
+    ('202606200007'), ('202606200008')
 ),
 rollup_checks AS (
   SELECT * FROM (VALUES
@@ -391,7 +401,10 @@ rollup_checks AS (
     ('202606200005','table', EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='client_goals')),
     ('202606200006','table', EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='governed_content')),
     ('202606200006','seed_row', NULL::boolean),
-    ('202606200007','index', EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_client_notifications_idempotent'))
+    ('202606200007','index', EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_client_notifications_idempotent')),
+    ('202606200008','table', EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='automation_job_runs')),
+    ('202606200008','index', EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_automation_job_runs_single_active')),
+    ('202606200008','seed_row', NULL::boolean)
   ) AS rollup_input(rollup_migration, rollup_check_kind, rollup_is_present)
 ),
 checks AS (

@@ -264,6 +264,47 @@ export async function dbPublishGovernedContent(
   return data ? mapRow(data as Record<string, unknown>) : null;
 }
 
+/** List scheduled content due for automated publication. */
+export async function dbListDueScheduledContent(limit: number): Promise<GovernedContentRow[]> {
+  const admin = createAdminSupabaseClient();
+  const now = new Date().toISOString();
+
+  const { data, error } = await admin
+    .from("governed_content")
+    .select("*")
+    .eq("approval_status", "scheduled")
+    .not("scheduled_at", "is", null)
+    .lte("scheduled_at", now)
+    .is("withdrawn_at", null)
+    .order("scheduled_at", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(`Failed to list due scheduled content: ${error.message}`);
+  }
+
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => mapRow(row));
+}
+
+/** True when a newer version of this content is already published. */
+export async function dbHasPublishedSupersedingVersion(contentId: string): Promise<boolean> {
+  const admin = createAdminSupabaseClient();
+  const { data, error } = await admin
+    .from("governed_content")
+    .select("id")
+    .eq("supersedes_content_id", contentId)
+    .eq("approval_status", "published")
+    .is("withdrawn_at", null)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to check superseding version: ${error.message}`);
+  }
+
+  return Boolean(data);
+}
+
 /** Exclude published rows superseded by a newer published version. */
 export function filterSupersededPublishedRows(rows: GovernedContentRow[]): GovernedContentRow[] {
   const supersededIds = new Set(

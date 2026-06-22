@@ -245,7 +245,9 @@ export function analyzeRouteSource(
     routePath,
     methods,
     authKind,
-    hasRateLimit: source.includes("rateLimitOrThrow"),
+    hasRateLimit:
+      source.includes("rateLimitOrThrow") ||
+      source.includes("enforceDatabaseBackedSchedulerThrottle"),
     hasAuditLog:
       source.includes("writeAuditLog") || hasServiceLayerAudit(source),
     hasToPublicError: source.includes("toPublicErrorMessage"),
@@ -479,7 +481,23 @@ function runSelfTests(): void {
     "body-less client POST must not trigger rejectClientId REVIEW",
   );
 
-  console.log("  OK   Scanner self-tests passed (6 cases)");
+  const cronThrottled = analyzeRouteSource(
+    `import { validateCronSecret } from "@/lib/security/cronAuth";
+     import { enforceDatabaseBackedSchedulerThrottle } from "@/lib/jobs/schedulerThrottle";
+     export async function POST() {
+       validateCronSecret(new Request("http://x"));
+       await enforceDatabaseBackedSchedulerThrottle({ jobName: "scheduled_publishing" });
+     }`,
+    "/api/internal/jobs/scheduled-publishing",
+  );
+  assert(cronThrottled.hasRateLimit, "database-backed scheduler throttle must satisfy rate-limit check");
+  const cronThrottleFindings = auditRoutes([cronThrottled]);
+  assert(
+    !cronThrottleFindings.some((f) => f.severity === "warn" && f.message.includes("missing rateLimitOrThrow")),
+    "cron route with DB throttle must not WARN for missing rateLimitOrThrow",
+  );
+
+  console.log("  OK   Scanner self-tests passed (8 cases)");
 }
 
 function main(): void {

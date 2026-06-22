@@ -254,8 +254,8 @@ export async function publishContent(input: {
 
   const scheduledAt = input.scheduledAt ?? row.scheduled_at;
 
-  // Phase 9E: no background scheduler — future scheduled_at stores intent only.
-  // Admin must call publish again when due, or omit scheduled_at for immediate publish.
+  // Phase 9F.1: automated publication via scheduled_content_automation job when enabled.
+  // Future scheduled_at stores intent until due; admin may also publish manually when due.
   if (scheduledAt && new Date(scheduledAt) > new Date()) {
     if (!canTransition(row.approval_status, "scheduled")) {
       throw new Error("Content cannot be scheduled in its current status");

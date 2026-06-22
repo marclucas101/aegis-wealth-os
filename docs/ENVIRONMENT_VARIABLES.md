@@ -82,7 +82,7 @@ Recommended Vercel mapping:
 | `BASE_URL` | `https://your-domain.com` | Preview URL when running smoke tests | `http://localhost:3000` |
 | `RESEND_API_KEY` | Resend API key (production email) | Optional | Omit (dev logs emails) |
 | `EMAIL_FROM` | Verified sender, e.g. `AEGIS <appointments@yourdomain.com>` | Optional | Omit (dev logs emails) |
-| `CRON_SECRET` | Strong random secret for Vercel Cron | Optional | Local dev only |
+| `CRON_SECRET` | Strong random secret for Vercel Cron and internal job routes (`/api/internal/tasks/*`, `/api/internal/jobs/scheduled-publishing`) | Optional | Local dev only |
 
 ### Supabase project settings
 

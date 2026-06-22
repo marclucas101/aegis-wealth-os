@@ -1,6 +1,6 @@
 # Migration Dependency Graph
 
-Pending migrations `202606100019`–`202606200007` and their prerequisites.
+Pending migrations `202606100019`–`202606200008` and their prerequisites.
 
 ```mermaid
 flowchart TD
@@ -25,6 +25,7 @@ flowchart TD
   M9D[202606200005 client_portal]
   M9E1[202606200006 communications]
   M9E2[202606200007 comms_hardening]
+  M9F1[202606200008 scheduled_publishing]
 
   M018 --> M019
   M003 --> M019
@@ -43,6 +44,7 @@ flowchart TD
   M9A1 --> M9E1
   M016 --> M9E1
   M9E1 --> M9E2
+  M9E2 --> M9F1
 ```
 
 ## Blocking relationships
@@ -57,6 +59,7 @@ flowchart TD
 | 202606200005 | 001 + roadmap_items |
 | 202606200006 | 001 + promotions |
 | 202606200007 | 006 |
+| 202606200008 | 007, platform_feature_controls |
 
 ## Parallel-safe (after 018)
 
@@ -89,3 +92,4 @@ These can apply independently **once push resumes**, but 021 and 150001 do not d
 | Meeting Studio | 9A1, 020, 9C1, 9C2 |
 | Converted client portal | 9A1, 9D |
 | Communications governance | 9A1, 9E1, 9E2 |
+| Scheduled publishing automation | 9E2, 9F1 |

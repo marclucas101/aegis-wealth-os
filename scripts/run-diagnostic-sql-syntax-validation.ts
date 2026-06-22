@@ -38,6 +38,8 @@ const OPTIONAL_RELATIONS = [
   "communication_deliveries",
   "binder_exports",
   "promotion_migration_reviews",
+  "automation_job_runs",
+  "automation_job_items",
 ];
 
 const SELF_TESTS: SelfTest[] = [

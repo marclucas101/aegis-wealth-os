@@ -1,5 +1,7 @@
 import "server-only";
 
+import { timingSafeEqual } from "node:crypto";
+
 import { NextResponse } from "next/server";
 
 /**
@@ -13,11 +15,26 @@ export function validateCronSecret(request: Request): boolean {
   }
 
   const authorization = request.headers.get("authorization");
-  if (authorization === `Bearer ${secret}`) {
-    return true;
+  if (authorization?.startsWith("Bearer ")) {
+    const token = authorization.slice("Bearer ".length);
+    return secretsMatch(token, secret);
   }
 
-  return request.headers.get("x-cron-secret") === secret;
+  const headerSecret = request.headers.get("x-cron-secret");
+  if (headerSecret) {
+    return secretsMatch(headerSecret, secret);
+  }
+
+  return false;
+}
+
+function secretsMatch(provided: string, expected: string): boolean {
+  const providedBuf = Buffer.from(provided);
+  const expectedBuf = Buffer.from(expected);
+  if (providedBuf.length !== expectedBuf.length) {
+    return false;
+  }
+  return timingSafeEqual(providedBuf, expectedBuf);
 }
 
 export function cronUnauthorizedResponse(): NextResponse<{ ok: false; error: string }> {

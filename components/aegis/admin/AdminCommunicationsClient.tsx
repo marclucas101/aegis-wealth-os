@@ -90,9 +90,17 @@ export default function AdminCommunicationsClient() {
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-[#F3F1EA]/50">
-        Review and approve governed communications. Until a dedicated compliance role exists, admins act as content approvers.
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-[#F3F1EA]/50">
+          Review and approve governed communications. Until a dedicated compliance role exists, admins act as content approvers.
+        </p>
+        <a
+          href="/admin/communications/automation"
+          className="text-xs text-[#D1A866] underline underline-offset-2"
+        >
+          Scheduled publishing operations →
+        </a>
+      </div>
 
       {error && (
         <div className="rounded-sm border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-200/80">
@@ -185,6 +193,16 @@ export default function AdminCommunicationsClient() {
                   className="rounded-sm bg-[#D1A866]/20 px-3 py-1.5 text-xs text-[#D1A866] disabled:opacity-50"
                 >
                   Publish
+                </button>
+              )}
+              {selected.approvalStatus === "scheduled" && (
+                <button
+                  type="button"
+                  disabled={actionLoading}
+                  onClick={() => void runAction("publish")}
+                  className="rounded-sm bg-[#D1A866]/20 px-3 py-1.5 text-xs text-[#D1A866] disabled:opacity-50"
+                >
+                  Publish now
                 </button>
               )}
               {selected.approvalStatus === "published" && (

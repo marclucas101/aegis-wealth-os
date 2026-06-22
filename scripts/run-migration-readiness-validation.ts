@@ -36,6 +36,8 @@ const OPTIONAL_PENDING_RELATIONS = [
   "communication_deliveries",
   "binder_exports",
   "promotion_migration_reviews",
+  "automation_job_runs",
+  "automation_job_items",
   "adviser_calendar_connections",
   "adviser_calendar_settings",
   "adviser_appointments",
@@ -127,7 +129,7 @@ const tests: TestCase[] = [
   },
   {
     id: 8,
-    name: "All 13 pending migrations remain represented",
+    name: "All 14 pending migrations remain represented",
     run: () => {
       const sql = read("supabase/diagnostics/verify_pending_migrations.sql");
       for (const v of PENDING_VERSIONS) {
@@ -545,6 +547,51 @@ const tests: TestCase[] = [
       assert(parts.length === 1, "preflight must be one SQL statement");
       assert(sql.includes("WITH clients_exists AS"), "clients_exists declaration");
       assert(!/;\s*\n\s*SELECT[\s\S]*clients_exists/i.test(sql), "clients_exists used after statement end");
+    },
+  },
+  {
+    id: 48,
+    name: "Phase 9F.1 dedicated verify diagnostic exists",
+    run: () => {
+      assert(
+        existsSync(join(ROOT, "supabase/diagnostics/verify_202606200008_phase9f_scheduled_publishing.sql")),
+        "missing verify_202606200008",
+      );
+    },
+  },
+  {
+    id: 49,
+    name: "Phase 9F.1 preflight diagnostic exists",
+    run: () => {
+      assert(
+        existsSync(join(ROOT, "supabase/diagnostics/preflight_202606200008_phase9f.sql")),
+        "missing preflight_202606200008",
+      );
+    },
+  },
+  {
+    id: 50,
+    name: "Phase 9F diagnostics verify active-run index predicate",
+    run: () => {
+      const sql = read("supabase/diagnostics/verify_202606200008_phase9f_scheduled_publishing.sql");
+      assert(sql.includes("idx_automation_job_runs_single_active"), "index name");
+      assert(sql.includes("index_def"), "index definition check");
+      assert(sql.includes("running"), "predicate");
+    },
+  },
+  {
+    id: 51,
+    name: "Phase 9F diagnostics do not modify migration history",
+    run: () => {
+      for (const file of [
+        "supabase/diagnostics/verify_202606200008_phase9f_scheduled_publishing.sql",
+        "supabase/diagnostics/preflight_202606200008_phase9f.sql",
+      ]) {
+        const sql = read(file).toLowerCase();
+        assert(!sql.includes("insert into supabase_migrations"), file);
+        assert(!sql.includes("delete from supabase_migrations"), file);
+        assert(!sql.includes("update supabase_migrations"), file);
+      }
     },
   },
 ];

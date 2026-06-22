@@ -1,20 +1,16 @@
 import { NextResponse } from "next/server";
 
 import { publishContent } from "@/lib/communications/contentWorkflow";
-import { queueInsightEmailDelivery } from "@/lib/communications/emailDelivery";
+import { deliverPublicationNotifications } from "@/lib/communications/publicationDelivery";
 import { isFeatureEnabled } from "@/lib/compliance/featureFlags";
-import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { dbCreateClientNotification } from "@/lib/supabase/clientNotificationsPersistence";
 import {
   parseJsonBodySafely,
   rateLimitOrThrow,
   rejectUnexpectedFields,
   toPublicErrorMessage,
 } from "@/lib/security/apiGuards";
-import { writeAuditLog } from "@/lib/supabase/auditLog";
 import { requireAdminAccess } from "@/lib/supabase/adminManagement";
 import { dbLoadGovernedContentById } from "@/lib/supabase/governedContentPersistence";
-import type { GovernedContentRow } from "@/lib/communications/types";
 
 export const dynamic = "force-dynamic";
 
@@ -68,30 +64,10 @@ export async function POST(
     });
 
     if (updated.approval_status === "published") {
-      const inAppEnabled = await isFeatureEnabled("client_in_app_notifications");
-      const targetClientIds = await resolvePublishTargets(updated);
-
-      for (const clientId of targetClientIds) {
-        if (inAppEnabled) {
-          await dbCreateClientNotification({
-            clientId,
-            notificationType: "new_insight",
-            title: updated.title,
-            summary: updated.summary.slice(0, 300),
-            referenceType: "governed_content",
-            referenceId: updated.id,
-          });
-          await writeAuditLog({
-            clientId,
-            userId: access.user.id,
-            action: "notification_created",
-            entityType: "client_notification",
-            entityId: updated.id,
-            metadata: { type: "new_insight" },
-          });
-        }
-        await queueInsightEmailDelivery({ content: updated, clientId });
-      }
+      await deliverPublicationNotifications({
+        content: updated,
+        actorUserId: access.user.id,
+      });
     }
 
     return NextResponse.json({
@@ -105,28 +81,4 @@ export async function POST(
       { status: 500 },
     );
   }
-}
-
-async function resolvePublishTargets(row: GovernedContentRow): Promise<string[]> {
-  if (row.target_client_ids.length > 0) {
-    return row.target_client_ids;
-  }
-
-  const admin = createAdminSupabaseClient();
-  let query = admin.from("clients").select("id");
-
-  if (row.audience_scope === "assigned_active_clients" && row.adviser_user_id) {
-    query = query.eq("advisor_user_id", row.adviser_user_id).eq("relationship_stage", "active_client");
-  } else if (row.audience_scope === "all_active_clients") {
-    query = query.eq("relationship_stage", "active_client");
-  } else if (row.audience_scope === "assigned_prospects" && row.adviser_user_id) {
-    query = query.eq("advisor_user_id", row.adviser_user_id).eq("relationship_stage", "prospect");
-  } else if (row.audience_scope === "all_prospects") {
-    query = query.eq("relationship_stage", "prospect");
-  } else {
-    return [];
-  }
-
-  const { data } = await query;
-  return ((data ?? []) as { id: string }[]).map((c) => c.id);
 }
