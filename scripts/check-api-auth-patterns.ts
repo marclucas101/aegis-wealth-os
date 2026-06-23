@@ -80,6 +80,11 @@ export const AUDITED_AUTH_PATTERNS: ReadonlyArray<{
   note: string;
 }> = [
   { pattern: "requireAdminAccess", kind: "admin", note: "Central admin gate" },
+  {
+    pattern: "requirePromotionMigrationAdminAccess",
+    kind: "admin",
+    note: "Legacy promotion migration — wraps requireAdminAccess + admin_content_approval",
+  },
   { pattern: "requireAdvisorAccess", kind: "advisor", note: "Central adviser gate" },
   {
     pattern: "requireAdvisorMeetingAuth",

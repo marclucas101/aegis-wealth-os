@@ -100,6 +100,12 @@ export default function AdminCommunicationsClient() {
         >
           Scheduled publishing operations →
         </a>
+        <a
+          href="/admin/promotions-migration"
+          className="text-xs text-[#D1A866] underline underline-offset-2"
+        >
+          Legacy promotions migration →
+        </a>
       </div>
 
       {error && (

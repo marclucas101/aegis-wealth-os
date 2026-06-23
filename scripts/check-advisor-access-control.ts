@@ -136,18 +136,24 @@ function checkAdminPagesUseLayout(): Finding {
   };
 }
 
-function checkApiGuards(prefix: string, guardName: string): Finding {
-  const apiDir = join(API_ROOT, prefix);
+function checkAdminApiGuards(): Finding {
+  const apiDir = join(API_ROOT, "admin");
   const routes = walkFiles(apiDir, "route.ts");
-  const missing = routes.filter((file) => !read(file).includes(guardName));
+  const missing = routes.filter((file) => {
+    const source = read(file);
+    return (
+      !source.includes("requireAdminAccess") &&
+      !source.includes("requirePromotionMigrationAdminAccess")
+    );
+  });
 
   return {
-    id: `api-${prefix}-guards`,
+    id: "api-admin-guards",
     pass: missing.length === 0,
     detail:
       missing.length === 0
-        ? `All ${routes.length} /api/${prefix} route(s) use ${guardName}`
-        : `Missing ${guardName}: ${missing.map(rel).join(", ")}`,
+        ? `All ${routes.length} /api/admin route(s) use admin auth guards`
+        : `Missing admin auth guard: ${missing.map(rel).join(", ")}`,
   };
 }
 
@@ -325,7 +331,7 @@ function main(): void {
     checkAdvisorPagesUseLayout(),
     checkAdminPagesUseLayout(),
     checkAdvisorApiGuards(),
-    checkApiGuards("admin", "requireAdminAccess"),
+    checkAdminApiGuards(),
     checkNavigationRoleFiltering(),
     checkAuthHelpers(),
     checkNoSignOutOnAccessDenied(),
