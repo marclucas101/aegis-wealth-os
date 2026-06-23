@@ -37,6 +37,13 @@ export type RequestMetadata = {
   user_agent: string | null;
 };
 
+/** Standard cache headers for personalised adviser/client API responses. */
+export function privateNoStoreHeaders(): HeadersInit {
+  return {
+    "Cache-Control": "private, no-store, max-age=0, must-revalidate",
+  };
+}
+
 export type StringValidationResult =
   | { ok: true; value: string }
   | { ok: false; error: string };

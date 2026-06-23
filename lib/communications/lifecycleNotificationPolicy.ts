@@ -36,6 +36,19 @@ const GENERIC_COMPLETE_SUMMARY =
   "Your adviser has completed a review. Sign in to Aurelis for details.";
 
 export const LIFECYCLE_EVENT_POLICIES: Record<LifecycleEventName, LifecycleEventPolicy> = {
+  available: {
+    event: "available",
+    sourceEntityTypes: ["document"],
+    recipientType: "client",
+    inAppEligible: true,
+    emailEligible: false,
+    titleKey: "document.available.title",
+    summaryKey: "document.available.summary",
+    notificationType: "document_uploaded",
+    requiredReferences: ["referenceType", "referenceId"],
+    allowedMetadataKeys: ["destinationRoute"],
+    idempotencyStrategy: "event-entity-recipient-version",
+  },
   replaced: {
     event: "replaced",
     sourceEntityTypes: ["document"],
@@ -51,7 +64,7 @@ export const LIFECYCLE_EVENT_POLICIES: Record<LifecycleEventName, LifecycleEvent
   },
   superseded: {
     event: "superseded",
-    sourceEntityTypes: ["governed_content", "published_output"],
+    sourceEntityTypes: ["document", "governed_content", "published_output"],
     recipientType: "client",
     inAppEligible: true,
     emailEligible: false,
@@ -121,6 +134,8 @@ export function resolveLifecycleCopy(policy: LifecycleEventPolicy): {
   summary: string;
 } {
   switch (policy.event) {
+    case "available":
+      return { title: "New document available", summary: GENERIC_DOCUMENT_SUMMARY };
     case "replaced":
       return { title: "Document updated", summary: GENERIC_DOCUMENT_SUMMARY };
     case "superseded":

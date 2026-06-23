@@ -143,6 +143,16 @@ export const PENDING_MIGRATIONS: MigrationManifest[] = [
     dependsOn: ["202606200008"],
     requiredChecks: ["client_notifications_lifecycle_columns", "lifecycle_idempotency_index"],
   },
+  {
+    version: "202606200010",
+    name: "phase9f3_binder_pdf_client_vault",
+    dependsOn: ["202606200009"],
+    requiredChecks: [
+      "binder_exports_generation_columns",
+      "binder_exports_generation_idempotent_index",
+      "binder_exports_bucket",
+    ],
+  },
 ];
 
 export { PRE_PHASE9_HISTORY_REPAIR_ORDER };

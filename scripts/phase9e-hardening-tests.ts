@@ -244,7 +244,9 @@ export const HARDENING_TESTS: Phase9eTestCase[] = [
     id: 79,
     name: "Binder excludes expired/withdrawn sources",
     run: () => {
-      const binder = read("lib/communications/binderExport.ts");
+      const binder =
+        read("lib/binder/binderSectionResolvers.ts") +
+        read("lib/binder/binderPdfRedaction.ts");
       assert(binder.includes("isCurrentPublishedOutput"), "current published only");
     },
   },

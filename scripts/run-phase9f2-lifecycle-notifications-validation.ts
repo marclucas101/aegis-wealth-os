@@ -35,11 +35,10 @@ function record(id: number, name: string, fn: () => void): TestCase {
 
 const TESTS: TestCase[] = [
   record(1, "audit doc exists", () => assert(existsSync("docs/PHASE_9F2_EXISTING_NOTIFICATION_AUDIT.md"), "audit")),
-  record(2, "six deferred events in audit", () => {
-    const audit = read("docs/PHASE_9F2_EXISTING_NOTIFICATION_AUDIT.md");
-    for (const e of ["replaced", "superseded", "withdrawn", "action_required", "action_completed", "downloaded"]) {
-      assert(audit.includes(`\`${e}\``), e);
-    }
+  record(2, "lifecycle events include available for binder publication", () => {
+    assert(read("lib/communications/lifecycleNotificationTypes.ts").includes('"available"'), "available");
+    const policy = read("lib/communications/lifecycleNotificationPolicy.ts");
+    assert(policy.includes("available:"), "available policy");
   }),
   record(3, "lifecycle types module", () => assert(existsSync("lib/communications/lifecycleNotificationTypes.ts"), "types")),
   record(4, "lifecycle policy module", () => assert(existsSync("lib/communications/lifecycleNotificationPolicy.ts"), "policy")),

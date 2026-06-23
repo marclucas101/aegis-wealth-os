@@ -219,11 +219,21 @@ const ORIGINAL_TESTS: TestCase[] = [
   }),
 
   record(38, "Binder export requires assigned adviser", () => {
-    assert(read("lib/communications/binderExport.ts").includes("resolveAccessibleClient"), "assignment");
+    const binder = read("lib/binder/binderGenerationService.ts");
+    assert(
+      binder.includes("resolveAccessibleClient") ||
+        read("lib/binder/binderSectionResolvers.ts").includes("resolveAccessibleClient"),
+      "assignment",
+    );
   }),
 
   record(39, "Binder includes only approved sections", () => {
-    assert(read("lib/communications/binderExport.ts").includes("isCurrentPublishedOutput"), "approved");
+    const binder = read("lib/binder/binderSectionResolvers.ts");
+    assert(
+      binder.includes("isCurrentPublishedOutput") ||
+        read("lib/binder/binderPdfRedaction.ts").includes("isCurrentPublishedOutput"),
+      "approved",
+    );
   }),
 
   record(40, "Binder excludes internal notes", () => {

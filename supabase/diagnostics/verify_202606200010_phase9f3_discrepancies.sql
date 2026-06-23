@@ -1,0 +1,397 @@
+-- Read-only discrepancy report for 202606200010_phase9f3_binder_pdf_client_vault.sql
+-- Filtered view of the same resolved inventory as verify_202606200010_phase9f3_binder_pdf_client_vault.sql.
+
+WITH
+-- PHASE9F3_RESOLVED_CORE_BEGIN
+expected AS (
+  SELECT * FROM (VALUES
+    ('202606200010','column','binder_exports','binder_lineage_id'),
+    ('202606200010','column','binder_exports','generation_status'),
+    ('202606200010','column','binder_exports','generation_idempotency_key'),
+    ('202606200010','column','binder_exports','storage_bucket'),
+    ('202606200010','column','binder_exports','file_size_bytes'),
+    ('202606200010','column','binder_exports','mime_type'),
+    ('202606200010','column','binder_exports','content_hash'),
+    ('202606200010','column','binder_exports','generation_error_code'),
+    ('202606200010','column','binder_exports','generation_completed_at'),
+    ('202606200010','column','binder_exports','published_document_id'),
+    ('202606200010','column','binder_exports','supersedes_binder_id'),
+    ('202606200010','column','binder_exports','withdrawn_at'),
+    ('202606200010','column','binder_exports','withdrawal_reason'),
+    ('202606200010','column_attr','binder_exports.binder_lineage_id','data_type|uuid'),
+    ('202606200010','column_attr','binder_exports.binder_lineage_id','is_nullable|NO'),
+    ('202606200010','column_attr','binder_exports.generation_status','data_type|text'),
+    ('202606200010','column_attr','binder_exports.generation_status','is_nullable|NO'),
+    ('202606200010','column_attr','binder_exports.generation_status','default|legacy_manifest'),
+    ('202606200010','column_attr','binder_exports.generation_idempotency_key','data_type|text'),
+    ('202606200010','column_attr','binder_exports.generation_idempotency_key','is_nullable|YES'),
+    ('202606200010','column_attr','binder_exports.storage_bucket','data_type|text'),
+    ('202606200010','column_attr','binder_exports.storage_bucket','default|binder-exports'),
+    ('202606200010','column_attr','binder_exports.published_document_id','data_type|uuid'),
+    ('202606200010','column_attr','binder_exports.published_document_id','is_nullable|YES'),
+    ('202606200010','column_attr','binder_exports.version','data_type|integer'),
+    ('202606200010','constraint','binder_exports_generation_status_check','generating'),
+    ('202606200010','constraint','binder_exports_version_positive','version > 0'),
+    ('202606200010','constraint','binder_exports_mime_pdf','application/pdf'),
+    ('202606200010','constraint','binder_exports_content_hash_shape','sha256'),
+    ('202606200010','constraint','binder_exports_published_document_link','published_document_id'),
+    ('202606200010','constraint','binder_exports_withdrawn_timestamp','withdrawn_at'),
+    ('202606200010','constraint','binder_exports_ready_requires_artifact','ready'),
+    ('202606200010','fk','binder_exports.published_document_id','documents'),
+    ('202606200010','fk','binder_exports.supersedes_binder_id','binder_exports'),
+    ('202606200010','index','idx_binder_exports_generation_idempotent','UNIQUE|binder_exports|generation_idempotency_key'),
+    ('202606200010','index_def','idx_binder_exports_generation_idempotent','generation_idempotency_key IS NOT NULL'),
+    ('202606200010','index','idx_binder_exports_lineage_version','UNIQUE|binder_exports|binder_lineage_id, version'),
+    ('202606200010','index','idx_binder_exports_client_status','binder_exports|client_id, status, created_at DESC'),
+    ('202606200010','index','idx_binder_exports_client_lineage','binder_exports|client_id, binder_lineage_id, version DESC'),
+    ('202606200010','index','idx_binder_exports_published_document','binder_exports|published_document_id'),
+    ('202606200010','index_def','idx_binder_exports_published_document','published_document_id IS NOT NULL'),
+    ('202606200010','index','idx_binder_exports_client_published_current','binder_exports|client_id, created_at DESC'),
+    ('202606200010','index_def','idx_binder_exports_client_published_current','published_to_client'),
+    ('202606200010','index','idx_binder_exports_lineage_current_published','UNIQUE|binder_exports|binder_lineage_id'),
+    ('202606200010','index_def','idx_binder_exports_lineage_current_published','published_to_client'),
+    ('202606200010','comment_col','binder_exports.binder_lineage_id','Phase 9F.3'),
+    ('202606200010','comment_col','binder_exports.generation_status','Phase 9F.3'),
+    ('202606200010','comment_col','binder_exports.storage_bucket','Phase 9F.3'),
+    ('202606200010','comment_col','binder_exports.published_document_id','Phase 9F.3'),
+    ('202606200010','comment','binder_exports','Phase 9E/9F.3'),
+    ('202606200010','rls','binder_exports','enabled'),
+    ('202606200010','no_policy','binder_exports','zero_client_policies'),
+    ('202606200010','no_policy','binder_exports','zero_adviser_policies'),
+    ('202606200010','no_policy','binder_exports','zero_insert_policies'),
+    ('202606200010','bucket','binder-exports','public|false'),
+    ('202606200010','bucket_attr','binder-exports','file_size_limit|26214400'),
+    ('202606200010','bucket_attr','binder-exports','allowed_mime_types|application/pdf'),
+    ('202606200010','no_storage_policy','binder-exports','zero_authenticated_policies'),
+    ('202606200010','prereq_table','binder_exports',NULL),
+    ('202606200010','prereq_table','documents',NULL),
+    ('202606200010','prereq_table','platform_feature_controls',NULL),
+    ('202606200010','seed','platform_feature_controls.binder_export','present'),
+    ('202606200010','seed','platform_feature_controls.binder_client_publication','present'),
+    ('202606200010','seed','platform_feature_controls.document_event_notifications','present'),
+    ('202606200010','seed_attr','platform_feature_controls.binder_client_publication','enabled|false')
+  ) AS t(migration, check_kind, object_name, expected_detail)
+),
+tbl AS (
+  SELECT c.relname, c.relrowsecurity, c.oid
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public' AND c.relkind IN ('r','p')
+),
+cols AS (
+  SELECT table_name, column_name, data_type, is_nullable, column_default
+  FROM information_schema.columns
+  WHERE table_schema = 'public'
+),
+col_comments AS (
+  SELECT c.relname AS table_name, a.attname AS column_name, d.description
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+  LEFT JOIN pg_description d ON d.objoid = c.oid AND d.objsubid = a.attnum
+  WHERE n.nspname = 'public'
+),
+tbl_comment AS (
+  SELECT c.relname AS table_name, d.description
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  LEFT JOIN pg_description d ON d.objoid = c.oid AND d.classoid = 'pg_class'::regclass AND d.objsubid = 0
+  WHERE n.nspname = 'public' AND c.relkind IN ('r','p')
+),
+constraint_catalog AS (
+  SELECT con.conname AS constraint_name, pg_get_constraintdef(con.oid) AS constraint_def
+  FROM pg_constraint con
+  JOIN pg_class rel ON rel.oid = con.conrelid
+  JOIN pg_namespace n ON n.oid = rel.relnamespace
+  WHERE n.nspname = 'public'
+),
+fk_catalog AS (
+  SELECT
+    con.conname AS constraint_name,
+    rel.relname AS table_name,
+    a.attname AS column_name,
+    conf.relname AS foreign_table_name
+  FROM pg_constraint con
+  JOIN pg_class rel ON rel.oid = con.conrelid
+  JOIN pg_class conf ON conf.oid = con.confrelid
+  JOIN pg_namespace n ON n.oid = rel.relnamespace
+  JOIN pg_attribute a ON a.attrelid = rel.oid AND a.attnum = ANY(con.conkey)
+  WHERE n.nspname = 'public' AND con.contype = 'f'
+),
+feature_flags AS (
+  SELECT feature_key, enabled
+  FROM platform_feature_controls
+  WHERE feature_key IN ('binder_export', 'binder_client_publication', 'document_event_notifications')
+),
+index_key_cols AS (
+  SELECT
+    n.nspname AS schema_name,
+    tbl.relname AS table_name,
+    ic.relname AS index_name,
+    ix.indisunique AS is_unique,
+    ix.indisvalid AS is_valid,
+    ix.indisready AS is_ready,
+    pg_get_indexdef(ix.indexrelid) AS indexdef,
+    pg_get_expr(ix.indpred, ix.indrelid) AS predicate_raw,
+    (
+      SELECT string_agg(
+        a.attname ||
+        CASE WHEN (ix.indoption[k.ordinality - 1] & 2) = 2 THEN ' DESC' ELSE '' END,
+        ', ' ORDER BY k.ordinality
+      )
+      FROM unnest(ix.indkey::int[]) WITH ORDINALITY AS k(attnum, ordinality)
+      JOIN pg_attribute a ON a.attrelid = tbl.oid AND a.attnum = k.attnum AND k.attnum > 0
+    ) AS key_columns_ordered
+  FROM pg_index ix
+  JOIN pg_class ic ON ic.oid = ix.indexrelid
+  JOIN pg_class tbl ON tbl.oid = ix.indrelid
+  JOIN pg_namespace n ON n.oid = ic.relnamespace
+  WHERE n.nspname = 'public' AND ic.relkind = 'i'
+),
+index_catalog AS (
+  SELECT ik.*,
+    CASE
+      WHEN ik.predicate_raw IS NULL THEN NULL::text
+      ELSE regexp_replace(
+        regexp_replace(
+          lower(
+            regexp_replace(
+              regexp_replace(
+                regexp_replace(
+                  btrim(regexp_replace(ik.predicate_raw, '^\\s*where\\s+', '', 'i')),
+                  '::text\\b', '', 'gi'
+                ),
+                '''([^'']+)''::text', '''\1''', 'gi'
+              ),
+              '\\s+', ' ', 'g'
+            )
+          ),
+          '^\\((.*)\\)$', '\\1'
+        ),
+        '^\\((.*)\\)$', '\\1'
+      )
+    END AS predicate_canonical
+  FROM index_key_cols ik
+),
+pol AS (
+  SELECT tablename, policyname, cmd, roles::text AS roles_text
+  FROM pg_policies WHERE schemaname = 'public'
+),
+client_policies AS (
+  SELECT count(*)::bigint AS policy_count FROM pol
+  WHERE tablename = 'binder_exports' AND roles_text ILIKE '%authenticated%'
+),
+adviser_policies AS (
+  SELECT count(*)::bigint AS policy_count FROM pol
+  WHERE tablename = 'binder_exports'
+    AND (roles_text ILIKE '%advisor%' OR roles_text ILIKE '%adviser%')
+),
+insert_policies AS (
+  SELECT count(*)::bigint AS policy_count FROM pol
+  WHERE tablename = 'binder_exports' AND cmd = 'INSERT'
+),
+bucket_probe AS (
+  SELECT id, public, file_size_limit, allowed_mime_types
+  FROM storage.buckets WHERE id = 'binder-exports'
+),
+storage_binder_policies AS (
+  SELECT count(*)::bigint AS policy_count
+  FROM pg_policies sp
+  WHERE sp.schemaname = 'storage' AND sp.tablename = 'objects'
+    AND sp.roles::text ILIKE '%authenticated%'
+    AND (COALESCE(sp.qual, '') ILIKE '%binder-exports%' OR COALESCE(sp.with_check, '') ILIKE '%binder-exports%')
+),
+seed_probe AS (
+  SELECT
+    CASE WHEN to_regclass('public.platform_feature_controls') IS NULL THEN NULL::boolean
+      ELSE EXISTS (SELECT 1 FROM platform_feature_controls WHERE feature_key = 'binder_export' LIMIT 1) END AS binder_export_present,
+    CASE WHEN to_regclass('public.platform_feature_controls') IS NULL THEN NULL::boolean
+      ELSE EXISTS (SELECT 1 FROM platform_feature_controls WHERE feature_key = 'binder_client_publication' LIMIT 1) END AS binder_publication_present,
+    CASE WHEN to_regclass('public.platform_feature_controls') IS NULL THEN NULL::boolean
+      ELSE EXISTS (SELECT 1 FROM platform_feature_controls WHERE feature_key = 'document_event_notifications' LIMIT 1) END AS document_notifications_present,
+    (SELECT enabled FROM feature_flags WHERE feature_key = 'binder_client_publication' LIMIT 1) AS binder_publication_enabled
+),
+refs AS (
+  SELECT EXISTS (
+    SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'supabase_migrations' AND c.relname = 'schema_migrations' AND c.relkind IN ('r', 'p')
+  ) AS history_table_exists
+),
+migration_history AS (
+  SELECT CASE
+    WHEN NOT (SELECT history_table_exists FROM refs) THEN NULL::boolean
+    ELSE EXISTS (SELECT 1 FROM supabase_migrations.schema_migrations WHERE version = '202606200010')
+  END AS migration_recorded
+),
+resolved AS (
+  SELECT
+    e.migration,
+    e.check_kind || ':' || e.object_name
+      || CASE WHEN e.expected_detail IS NULL OR e.expected_detail = '' THEN '' ELSE '.' || e.expected_detail END AS check_id,
+    e.check_kind,
+    e.object_name AS expected_object,
+    e.expected_detail,
+    CASE
+      WHEN e.check_kind = 'index' AND e.object_name = 'idx_binder_exports_generation_idempotent' THEN
+        CASE WHEN ik.table_name = 'binder_exports' AND ik.is_unique AND ik.is_valid AND ik.is_ready
+          AND ik.key_columns_ordered = 'generation_idempotency_key' THEN 'present' WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
+      WHEN e.check_kind = 'index_def' AND e.object_name = 'idx_binder_exports_generation_idempotent' THEN
+        CASE WHEN ik.predicate_canonical = lower(regexp_replace(e.expected_detail, '\\s+', ' ', 'g')) THEN 'present'
+          WHEN ik.index_name IS NULL THEN 'absent' WHEN ik.predicate_raw IS NULL THEN 'conflicting' ELSE 'conflicting' END
+      WHEN e.check_kind = 'index' AND e.object_name = 'idx_binder_exports_lineage_version' THEN
+        CASE WHEN ik.table_name = 'binder_exports' AND ik.is_unique AND ik.is_valid AND ik.is_ready
+          AND ik.key_columns_ordered = 'binder_lineage_id, version' THEN 'present' WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
+      WHEN e.check_kind = 'index' AND e.object_name = 'idx_binder_exports_client_status' THEN
+        CASE WHEN ik.table_name = 'binder_exports' AND NOT ik.is_unique AND ik.is_valid AND ik.is_ready
+          AND ik.key_columns_ordered = 'client_id, status, created_at DESC' THEN 'present' WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
+      WHEN e.check_kind = 'index' AND e.object_name = 'idx_binder_exports_client_lineage' THEN
+        CASE WHEN ik.table_name = 'binder_exports' AND NOT ik.is_unique AND ik.is_valid AND ik.is_ready
+          AND ik.key_columns_ordered = 'client_id, binder_lineage_id, version DESC' THEN 'present' WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
+      WHEN e.check_kind = 'index' AND e.object_name = 'idx_binder_exports_published_document' THEN
+        CASE WHEN ik.table_name = 'binder_exports' AND NOT ik.is_unique AND ik.is_valid AND ik.is_ready
+          AND ik.key_columns_ordered = 'published_document_id' THEN 'present' WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
+      WHEN e.check_kind = 'index_def' AND e.object_name = 'idx_binder_exports_published_document' THEN
+        CASE WHEN ik.predicate_canonical = lower(regexp_replace(e.expected_detail, '\\s+', ' ', 'g')) THEN 'present'
+          WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
+      WHEN e.check_kind = 'index' AND e.object_name = 'idx_binder_exports_client_published_current' THEN
+        CASE WHEN ik.table_name = 'binder_exports' AND NOT ik.is_unique AND ik.is_valid AND ik.is_ready
+          AND ik.key_columns_ordered = 'client_id, created_at DESC' THEN 'present' WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
+      WHEN e.check_kind = 'index_def' AND e.object_name = 'idx_binder_exports_client_published_current' THEN
+        CASE WHEN ik.predicate_canonical ILIKE '%published_to_client%' AND ik.predicate_canonical ILIKE '%published_document_id%' THEN 'present'
+          WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
+      WHEN e.check_kind = 'index' AND e.object_name = 'idx_binder_exports_lineage_current_published' THEN
+        CASE WHEN ik.table_name = 'binder_exports' AND ik.is_unique AND ik.is_valid AND ik.is_ready
+          AND ik.key_columns_ordered = 'binder_lineage_id' THEN 'present' WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
+      WHEN e.check_kind = 'index_def' AND e.object_name = 'idx_binder_exports_lineage_current_published' THEN
+        CASE WHEN ik.predicate_canonical ILIKE '%published_to_client%' AND ik.predicate_canonical ILIKE '%withdrawn_at%' THEN 'present'
+          WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
+      WHEN e.check_kind IN ('index','index_def') AND ik.index_name IS NULL THEN 'absent'
+      WHEN e.check_kind = 'column' AND to_regclass('public.binder_exports') IS NULL THEN 'absent'
+      WHEN e.check_kind = 'column' AND c.column_name IS NULL THEN 'absent'
+      WHEN e.check_kind = 'column' AND c.column_name IS NOT NULL THEN 'present'
+      WHEN e.check_kind = 'column_attr' AND to_regclass('public.binder_exports') IS NULL THEN 'absent'
+      WHEN e.check_kind = 'column_attr' AND ca.column_name IS NULL THEN 'absent'
+      WHEN e.check_kind = 'column_attr' AND split_part(e.expected_detail, '|', 1) = 'data_type' AND ca.data_type = split_part(e.expected_detail, '|', 2) THEN 'present'
+      WHEN e.check_kind = 'column_attr' AND split_part(e.expected_detail, '|', 1) = 'is_nullable' AND ca.is_nullable = split_part(e.expected_detail, '|', 2) THEN 'present'
+      WHEN e.check_kind = 'column_attr' AND split_part(e.expected_detail, '|', 1) = 'default'
+        AND ca.column_default IS NOT NULL AND ca.column_default ILIKE '%' || split_part(e.expected_detail, '|', 2) || '%' THEN 'present'
+      WHEN e.check_kind = 'column_attr' THEN 'conflicting'
+      WHEN e.check_kind = 'constraint' AND e.object_name = 'binder_exports_generation_status_check' THEN
+        CASE WHEN ccn.constraint_name IS NULL THEN 'absent'
+          WHEN ccn.constraint_def ILIKE '%generating%' AND ccn.constraint_def ILIKE '%legacy_manifest%' THEN 'present' ELSE 'conflicting' END
+      WHEN e.check_kind = 'constraint' AND e.object_name = 'binder_exports_version_positive' THEN
+        CASE WHEN ccn.constraint_name IS NULL THEN 'absent' WHEN ccn.constraint_def ILIKE '%version > 0%' THEN 'present' ELSE 'conflicting' END
+      WHEN e.check_kind = 'constraint' AND e.object_name = 'binder_exports_mime_pdf' THEN
+        CASE WHEN ccn.constraint_name IS NULL THEN 'absent' WHEN ccn.constraint_def ILIKE '%application/pdf%' THEN 'present' ELSE 'conflicting' END
+      WHEN e.check_kind = 'constraint' AND e.object_name = 'binder_exports_content_hash_shape' THEN
+        CASE WHEN ccn.constraint_name IS NULL THEN 'absent' WHEN ccn.constraint_def ILIKE '%[a-f0-9]%' THEN 'present' ELSE 'conflicting' END
+      WHEN e.check_kind = 'constraint' AND e.object_name = 'binder_exports_published_document_link' THEN
+        CASE WHEN ccn.constraint_name IS NULL THEN 'absent' WHEN ccn.constraint_def ILIKE '%published_document_id%' THEN 'present' ELSE 'conflicting' END
+      WHEN e.check_kind = 'constraint' AND e.object_name = 'binder_exports_withdrawn_timestamp' THEN
+        CASE WHEN ccn.constraint_name IS NULL THEN 'absent' WHEN ccn.constraint_def ILIKE '%withdrawn_at%' THEN 'present' ELSE 'conflicting' END
+      WHEN e.check_kind = 'constraint' AND e.object_name = 'binder_exports_ready_requires_artifact' THEN
+        CASE WHEN ccn.constraint_name IS NULL THEN 'absent' WHEN ccn.constraint_def ILIKE '%generation_status%' AND ccn.constraint_def ILIKE '%content_hash%' THEN 'present' ELSE 'conflicting' END
+      WHEN e.check_kind = 'constraint' THEN 'conflicting'
+      WHEN e.check_kind = 'fk' AND fk.constraint_name IS NULL THEN 'absent'
+      WHEN e.check_kind = 'fk' AND fk.foreign_table_name = e.expected_detail THEN 'present'
+      WHEN e.check_kind = 'fk' THEN 'conflicting'
+      WHEN e.check_kind = 'comment_col' AND ccm.column_name IS NULL THEN 'absent'
+      WHEN e.check_kind = 'comment_col' AND ccm.description ILIKE '%' || e.expected_detail || '%' THEN 'present'
+      WHEN e.check_kind = 'comment_col' THEN 'conflicting'
+      WHEN e.check_kind = 'comment' AND tc.table_name IS NULL THEN 'absent'
+      WHEN e.check_kind = 'comment' AND tc.description ILIKE '%' || e.expected_detail || '%' THEN 'present'
+      WHEN e.check_kind = 'comment' THEN 'conflicting'
+      WHEN e.check_kind = 'rls' AND t.relname IS NULL THEN 'absent'
+      WHEN e.check_kind = 'rls' AND t.relrowsecurity THEN 'present'
+      WHEN e.check_kind = 'rls' THEN 'conflicting'
+      WHEN e.check_kind = 'no_policy' AND e.expected_detail = 'zero_client_policies' AND (to_regclass('public.binder_exports') IS NULL OR cp.policy_count = 0) THEN 'present'
+      WHEN e.check_kind = 'no_policy' AND e.expected_detail = 'zero_adviser_policies' AND (to_regclass('public.binder_exports') IS NULL OR ap.policy_count = 0) THEN 'present'
+      WHEN e.check_kind = 'no_policy' AND e.expected_detail = 'zero_insert_policies' AND (to_regclass('public.binder_exports') IS NULL OR ip.policy_count = 0) THEN 'present'
+      WHEN e.check_kind = 'no_policy' THEN 'conflicting'
+      WHEN e.check_kind = 'bucket' AND bp.id IS NULL THEN 'absent'
+      WHEN e.check_kind = 'bucket' AND split_part(e.expected_detail, '|', 1) = 'public' AND bp.public::text = split_part(e.expected_detail, '|', 2) THEN 'present'
+      WHEN e.check_kind = 'bucket' THEN 'conflicting'
+      WHEN e.check_kind = 'bucket_attr' AND bp.id IS NULL THEN 'absent'
+      WHEN e.check_kind = 'bucket_attr' AND split_part(e.expected_detail, '|', 1) = 'file_size_limit' AND bp.file_size_limit::text = split_part(e.expected_detail, '|', 2) THEN 'present'
+      WHEN e.check_kind = 'bucket_attr' AND split_part(e.expected_detail, '|', 1) = 'allowed_mime_types' AND bp.allowed_mime_types::text ILIKE '%application/pdf%' THEN 'present'
+      WHEN e.check_kind = 'bucket_attr' THEN 'conflicting'
+      WHEN e.check_kind = 'no_storage_policy' AND e.expected_detail = 'zero_authenticated_policies' AND sbp.policy_count = 0 THEN 'present'
+      WHEN e.check_kind = 'no_storage_policy' THEN 'conflicting'
+      WHEN e.check_kind = 'prereq_table' AND to_regclass('public.' || e.object_name) IS NULL THEN 'absent'
+      WHEN e.check_kind = 'prereq_table' THEN 'present'
+      WHEN e.check_kind = 'seed' AND e.object_name = 'platform_feature_controls.binder_export' AND sp.binder_export_present IS NULL THEN 'unknown'
+      WHEN e.check_kind = 'seed' AND e.object_name = 'platform_feature_controls.binder_export' AND sp.binder_export_present THEN 'present'
+      WHEN e.check_kind = 'seed' AND e.object_name = 'platform_feature_controls.binder_export' THEN 'conflicting'
+      WHEN e.check_kind = 'seed' AND e.object_name = 'platform_feature_controls.binder_client_publication' AND sp.binder_publication_present IS NULL THEN 'unknown'
+      WHEN e.check_kind = 'seed' AND e.object_name = 'platform_feature_controls.binder_client_publication' AND sp.binder_publication_present THEN 'present'
+      WHEN e.check_kind = 'seed' AND e.object_name = 'platform_feature_controls.binder_client_publication' THEN 'conflicting'
+      WHEN e.check_kind = 'seed' AND e.object_name = 'platform_feature_controls.document_event_notifications' AND sp.document_notifications_present IS NULL THEN 'unknown'
+      WHEN e.check_kind = 'seed' AND e.object_name = 'platform_feature_controls.document_event_notifications' AND sp.document_notifications_present THEN 'present'
+      WHEN e.check_kind = 'seed' AND e.object_name = 'platform_feature_controls.document_event_notifications' THEN 'conflicting'
+      WHEN e.check_kind = 'seed_attr' AND e.object_name = 'platform_feature_controls.binder_client_publication' AND sp.binder_publication_enabled IS NULL THEN 'unknown'
+      WHEN e.check_kind = 'seed_attr' AND split_part(e.expected_detail, '|', 1) = 'enabled' AND sp.binder_publication_enabled::text = split_part(e.expected_detail, '|', 2) THEN 'present'
+      WHEN e.check_kind = 'seed_attr' THEN 'conflicting'
+      ELSE 'conflicting'
+    END AS state,
+    CASE
+      WHEN e.check_kind = 'fk' THEN fk.constraint_name IS NOT NULL
+      WHEN e.check_kind = 'seed_attr' THEN sp.binder_publication_enabled IS NOT NULL
+      ELSE NULL::boolean
+    END AS present,
+    CASE
+      WHEN e.check_kind = 'column_attr' THEN COALESCE(ca.data_type, '?') || '|' || COALESCE(ca.is_nullable, '?') || '|' || COALESCE(ca.column_default, '')
+      WHEN e.check_kind IN ('index','index_def') THEN 'schema=' || COALESCE(ik.schema_name, '?') || '|table=' || COALESCE(ik.table_name, '?') || '|unique=' || COALESCE(ik.is_unique::text, '?') || '|keys=' || COALESCE(ik.key_columns_ordered, '?') || '|predicate_raw=' || COALESCE(ik.predicate_raw, '')
+      WHEN e.check_kind = 'constraint' THEN ccn.constraint_def
+      WHEN e.check_kind = 'fk' THEN fk.foreign_table_name
+      WHEN e.check_kind = 'rls' THEN CASE WHEN t.relrowsecurity THEN 'enabled' ELSE 'disabled' END
+      WHEN e.check_kind = 'comment_col' THEN ccm.description
+      WHEN e.check_kind = 'comment' THEN tc.description
+      WHEN e.check_kind = 'no_policy' AND e.expected_detail = 'zero_client_policies' THEN cp.policy_count::text
+      WHEN e.check_kind = 'no_policy' AND e.expected_detail = 'zero_adviser_policies' THEN ap.policy_count::text
+      WHEN e.check_kind = 'no_policy' AND e.expected_detail = 'zero_insert_policies' THEN ip.policy_count::text
+      WHEN e.check_kind = 'bucket' THEN 'public=' || COALESCE(bp.public::text, '?')
+      WHEN e.check_kind = 'bucket_attr' AND split_part(e.expected_detail, '|', 1) = 'file_size_limit' THEN bp.file_size_limit::text
+      WHEN e.check_kind = 'bucket_attr' THEN bp.allowed_mime_types::text
+      WHEN e.check_kind = 'no_storage_policy' THEN sbp.policy_count::text
+      WHEN e.check_kind = 'seed_attr' THEN COALESCE(sp.binder_publication_enabled::text, 'row_absent')
+      ELSE NULL
+    END AS detail,
+    e.expected_detail AS expected_canonical_detail,
+    NULL::text AS actual_canonical_detail,
+    mh.migration_recorded
+  FROM expected e
+  LEFT JOIN tbl t ON e.check_kind = 'rls' AND t.relname = e.object_name
+  LEFT JOIN cols c ON e.check_kind = 'column' AND c.table_name = e.object_name AND c.column_name = e.expected_detail
+  LEFT JOIN cols ca ON e.check_kind = 'column_attr' AND ca.table_name = split_part(e.object_name, '.', 1) AND ca.column_name = split_part(e.object_name, '.', 2)
+  LEFT JOIN col_comments ccm ON e.check_kind = 'comment_col' AND ccm.table_name = split_part(e.object_name, '.', 1) AND ccm.column_name = split_part(e.object_name, '.', 2)
+  LEFT JOIN tbl_comment tc ON e.check_kind = 'comment' AND tc.table_name = e.object_name
+  LEFT JOIN constraint_catalog ccn ON e.check_kind = 'constraint' AND ccn.constraint_name = e.object_name
+  LEFT JOIN fk_catalog fk ON e.check_kind = 'fk'
+    AND fk.table_name = split_part(e.object_name, '.', 1)
+    AND fk.column_name = split_part(e.object_name, '.', 2)
+  LEFT JOIN index_catalog ik ON e.check_kind IN ('index','index_def') AND ik.index_name = e.object_name
+  CROSS JOIN client_policies cp
+  CROSS JOIN adviser_policies ap
+  CROSS JOIN insert_policies ip
+  CROSS JOIN bucket_probe bp
+  CROSS JOIN storage_binder_policies sbp
+  CROSS JOIN seed_probe sp
+  CROSS JOIN migration_history mh
+)-- PHASE9F3_RESOLVED_CORE_END
+,
+discrepancies AS (
+  SELECT
+    r.check_id, r.check_kind, r.expected_object, r.state, r.expected_detail,
+    r.detail AS actual_detail, r.expected_canonical_detail, r.actual_canonical_detail,
+    CASE
+      WHEN r.state = 'absent' THEN 'Expected object missing — migration not applied or partial apply.'
+      WHEN r.state = 'conflicting' THEN 'Object present but attributes differ from migration contract.'
+      WHEN r.state = 'unknown' THEN 'Seed or optional dependency could not be verified.'
+      ELSE 'Discrepancy requires manual review.'
+    END AS suggested_interpretation
+  FROM resolved r
+  WHERE r.state IN ('conflicting', 'absent', 'unknown')
+)
+SELECT check_id, check_kind, expected_object, state, expected_detail, actual_detail,
+  expected_canonical_detail, actual_canonical_detail, suggested_interpretation
+FROM discrepancies ORDER BY check_id;

@@ -246,4 +246,17 @@ export type BinderExportRow = {
   version: number;
   created_at: string;
   updated_at: string;
+  binder_lineage_id?: string;
+  generation_status?: string;
+  generation_idempotency_key?: string | null;
+  storage_bucket?: string | null;
+  file_size_bytes?: number | null;
+  mime_type?: string | null;
+  content_hash?: string | null;
+  generation_error_code?: string | null;
+  generation_completed_at?: string | null;
+  published_document_id?: string | null;
+  supersedes_binder_id?: string | null;
+  withdrawn_at?: string | null;
+  withdrawal_reason?: string | null;
 };

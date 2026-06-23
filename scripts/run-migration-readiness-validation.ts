@@ -756,6 +756,156 @@ const tests: TestCase[] = [
       assert(existsSync(join(ROOT, "docs/PHASE_9F2_EVENT_WIRING_AUDIT.md")), "wiring");
     },
   },
+  {
+    id: 67,
+    name: "Phase 9F.3 dedicated verify diagnostic exists",
+    run: () => {
+      assert(
+        existsSync(join(ROOT, "supabase/diagnostics/verify_202606200010_phase9f3_binder_pdf_client_vault.sql")),
+        "missing verify_202606200010",
+      );
+    },
+  },
+  {
+    id: 68,
+    name: "Phase 9F.3 preflight diagnostic exists",
+    run: () => {
+      assert(
+        existsSync(join(ROOT, "supabase/diagnostics/preflight_202606200010_phase9f3.sql")),
+        "missing preflight_202606200010",
+      );
+    },
+  },
+  {
+    id: 69,
+    name: "Phase 9F.3 discrepancy diagnostic exists",
+    run: () => {
+      assert(
+        existsSync(join(ROOT, "supabase/diagnostics/verify_202606200010_phase9f3_discrepancies.sql")),
+        "missing discrepancies_202606200010",
+      );
+    },
+  },
+  {
+    id: 70,
+    name: "Phase 9F.3 diagnostics are SELECT-only",
+    run: () => {
+      for (const file of [
+        "supabase/diagnostics/verify_202606200010_phase9f3_binder_pdf_client_vault.sql",
+        "supabase/diagnostics/preflight_202606200010_phase9f3.sql",
+        "supabase/diagnostics/verify_202606200010_phase9f3_discrepancies.sql",
+      ]) {
+        const sql = read(file).toLowerCase();
+        assert(!sql.includes("insert into"), file);
+        assert(!sql.includes("update "), file);
+        assert(!sql.includes("delete from"), file);
+      }
+    },
+  },
+  {
+    id: 71,
+    name: "Phase 9F.3 diagnostics use no XML",
+    run: () => {
+      for (const file of [
+        "supabase/diagnostics/verify_202606200010_phase9f3_binder_pdf_client_vault.sql",
+        "supabase/diagnostics/preflight_202606200010_phase9f3.sql",
+        "supabase/diagnostics/verify_202606200010_phase9f3_discrepancies.sql",
+      ]) {
+        const sql = read(file);
+        assert(!sql.includes("xpath("), file);
+        assert(!sql.includes("query_to_xml"), file);
+      }
+    },
+  },
+  {
+    id: 72,
+    name: "Phase 9F.3 verify and discrepancies share resolved core",
+    run: () => {
+      const verify = read("supabase/diagnostics/verify_202606200010_phase9f3_binder_pdf_client_vault.sql");
+      const discrepancies = read("supabase/diagnostics/verify_202606200010_phase9f3_discrepancies.sql");
+      const begin = "-- PHASE9F3_RESOLVED_CORE_BEGIN";
+      const end = "-- PHASE9F3_RESOLVED_CORE_END";
+      const extract = (text: string) => text.slice(text.indexOf(begin) + begin.length, text.indexOf(end)).trim();
+      assert(extract(verify) === extract(discrepancies), "core mismatch");
+    },
+  },
+  {
+    id: 73,
+    name: "Phase 9F.3 resolved core shared file exists",
+    run: () => {
+      assert(existsSync(join(ROOT, "supabase/diagnostics/phase9f3_202606200010_resolved_core.sql")), "core");
+    },
+  },
+  {
+    id: 74,
+    name: "Phase 9F.3 migration file exists",
+    run: () => {
+      assert(
+        existsSync(join(ROOT, "supabase/migrations/202606200010_phase9f3_binder_pdf_client_vault.sql")),
+        "migration",
+      );
+    },
+  },
+  {
+    id: 75,
+    name: "Phase 9F.3 migration audit document exists",
+    run: () => {
+      assert(existsSync(join(ROOT, "docs/PHASE_9F3_MIGRATION_AUDIT.md")), "audit");
+    },
+  },
+  {
+    id: 76,
+    name: "Phase 9F.3 verify rollup classification EXACT_MATCH",
+    run: () => {
+      const verify = read("supabase/diagnostics/verify_202606200010_phase9f3_binder_pdf_client_vault.sql");
+      assert(verify.includes("EXACT_MATCH"), "rollup");
+      assert(verify.includes("total_required_checks"), "summary");
+    },
+  },
+  {
+    id: 77,
+    name: "Phase 9F.3 storage architecture doc exists",
+    run: () => {
+      assert(existsSync(join(ROOT, "docs/PHASE_9F3_STORAGE_ARCHITECTURE.md")), "storage");
+      assert(read("docs/PHASE_9F3_STORAGE_ARCHITECTURE.md").includes("binder-exports"), "bucket");
+    },
+  },
+  {
+    id: 78,
+    name: "Phase 9F.3 binder PDF architecture doc exists",
+    run: () => {
+      assert(existsSync(join(ROOT, "docs/PHASE_9F3_BINDER_PDF_ARCHITECTURE.md")), "pdf arch");
+    },
+  },
+  {
+    id: 79,
+    name: "Phase 9F.3 system audit doc exists",
+    run: () => {
+      assert(existsSync(join(ROOT, "docs/PHASE_9F3_EXISTING_SYSTEM_AUDIT.md")), "audit");
+    },
+  },
+  {
+    id: 80,
+    name: "Phase 9F.3 preflight avoids direct optional-column references",
+    run: () => {
+      const preflight = read("supabase/diagnostics/preflight_202606200010_phase9f3.sql");
+      assert(preflight.includes("to_jsonb(be) ->> 'generation_idempotency_key'"), "jsonb idempotency");
+      assert(!preflight.includes("SELECT generation_idempotency_key FROM"), "no direct column select");
+      assert(preflight.includes("information_schema.columns"), "catalog column probe");
+    },
+  },
+  {
+    id: 81,
+    name: "Phase 9F.3 preflight probes CTE has explicit output column names",
+    run: () => {
+      const preflight = read("supabase/diagnostics/preflight_202606200010_phase9f3.sql");
+      assert(preflight.includes("probes (probe_id, classification, detail) AS ("), "typed probes");
+      assert(
+        /SELECT\s+probe_id\s*,\s*classification\s*,\s*detail\s+FROM\s+probes/i.test(preflight),
+        "final select columns",
+      );
+    },
+  },
 ];
 
 function main(): void {
