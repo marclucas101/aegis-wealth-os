@@ -1,6 +1,7 @@
 import "server-only";
 
 import { canClientViewDocument } from "@/lib/compliance/documentVisibility";
+import { emitLifecycleNotificationSafe } from "@/lib/communications/lifecycleNotificationService";
 import { createAdminSupabaseClient } from "./admin";
 import type { AppClientRow } from "./userProfile";
 
@@ -457,6 +458,18 @@ export async function createDocumentSignedUrl(
   ) {
     throw new Error("Document not found");
   }
+
+  const downloadDate = new Date().toISOString().slice(0, 10);
+  await emitLifecycleNotificationSafe({
+    event: "downloaded",
+    sourceEntityType: "document",
+    sourceEntityId: documentId,
+    sourceLifecycleVersion: downloadDate,
+    recipientClientId: client.id,
+    referenceId: documentId,
+    actorUserId: clientUserId,
+    isClientVisible: true,
+  });
 
   return issueSignedUrlForDocument(document);
 }

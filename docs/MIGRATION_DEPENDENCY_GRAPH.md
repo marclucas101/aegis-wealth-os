@@ -1,6 +1,6 @@
 # Migration Dependency Graph
 
-Pending migrations `202606100019`–`202606200008` and their prerequisites.
+Pending migrations `202606100019`–`202606200009` and their prerequisites.
 
 ```mermaid
 flowchart TD
@@ -26,6 +26,7 @@ flowchart TD
   M9E1[202606200006 communications]
   M9E2[202606200007 comms_hardening]
   M9F1[202606200008 scheduled_publishing]
+  M9F2[202606200009 lifecycle_notifications]
 
   M018 --> M019
   M003 --> M019
@@ -45,6 +46,7 @@ flowchart TD
   M016 --> M9E1
   M9E1 --> M9E2
   M9E2 --> M9F1
+  M9F1 --> M9F2
 ```
 
 ## Blocking relationships
@@ -60,6 +62,7 @@ flowchart TD
 | 202606200006 | 001 + promotions |
 | 202606200007 | 006 |
 | 202606200008 | 007, platform_feature_controls |
+| 202606200009 | 008, client_notifications |
 
 ## Parallel-safe (after 018)
 

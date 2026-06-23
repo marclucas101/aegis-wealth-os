@@ -1,5 +1,6 @@
 import "server-only";
 
+import { emitPublishedOutputLifecycleNotification } from "@/lib/communications/lifecycleNotificationService";
 import { writeAuditLog } from "@/lib/supabase/auditLog";
 import {
   dbInsertPublishedOutput,
@@ -255,6 +256,17 @@ export async function publishOutput(
       entityId: current.id,
       metadata: { supersededById: outputId },
     });
+
+    await emitPublishedOutputLifecycleNotification({
+      event: "superseded",
+      outputId: current.id,
+      clientId,
+      outputAudience: current.output_audience,
+      publicationStatus: "superseded",
+      actorUserId: publisherUserId,
+      transitionAt: now,
+      successorOutputId: outputId,
+    });
   }
 
   const mergedPayload = sanitizeFinancialReadinessPayload({
@@ -326,6 +338,16 @@ export async function withdrawOutput(
     entityType: "published_output",
     entityId: outputId,
     metadata: { reason },
+  });
+
+  await emitPublishedOutputLifecycleNotification({
+    event: "withdrawn",
+    outputId,
+    clientId,
+    outputAudience: existing.output_audience,
+    publicationStatus: "withdrawn",
+    actorUserId,
+    transitionAt: now,
   });
 
   return data;

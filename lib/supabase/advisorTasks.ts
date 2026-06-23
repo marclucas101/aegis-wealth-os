@@ -1,5 +1,6 @@
 import "server-only";
 
+import { syncReviewSubmissionOnTaskComplete } from "@/lib/compliance/reviewSubmissionLifecycle";
 import { createAdminSupabaseClient } from "./admin";
 import type { AppClientRow } from "./userProfile";
 
@@ -705,9 +706,19 @@ export async function updateAdvisorTask(
     throw new Error(`Failed to update advisor task: ${error.message}`);
   }
 
+  const task = mapTaskRow(data as AdvisorTaskRow);
+
+  if (input.status === "completed" && oldStatus !== "completed") {
+    await syncReviewSubmissionOnTaskComplete({
+      sourceKey: existing.source_key,
+      clientId: existing.client_id,
+      actorUserId: authUserId,
+    });
+  }
+
   return {
     ok: true,
-    task: mapTaskRow(data as AdvisorTaskRow),
+    task,
     oldStatus,
   };
 }

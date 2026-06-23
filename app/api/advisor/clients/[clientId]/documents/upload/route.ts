@@ -146,12 +146,17 @@ export async function POST(
       );
     }
 
+    const requiresClientAction =
+      formData.get("requires_client_action") === "true" ||
+      formData.get("requires_client_action") === "1";
+
     const result = await uploadAdvisorClientDocument(
       access.authUser.id,
       role,
       clientId,
       fileEntry,
       category,
+      { requiresClientAction },
     );
 
     if (!result.ok) {

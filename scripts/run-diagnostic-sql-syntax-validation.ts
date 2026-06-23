@@ -176,7 +176,7 @@ async function main(): Promise<void> {
     });
 
     const xmlIssues =
-      file.includes("202606200008") || file.includes("phase9f")
+      file.includes("202606200008") || file.includes("phase9f") || file.includes("202606200009") || file.includes("phase9f2")
         ? detectUnguardedXmlPatterns(sql)
         : [];
 

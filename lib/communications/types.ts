@@ -207,6 +207,11 @@ export type ClientNotificationRow = {
   reference_id: string | null;
   read_at: string | null;
   created_at: string;
+  lifecycle_event?: string | null;
+  source_entity_type?: string | null;
+  source_lifecycle_version?: string | null;
+  idempotency_key?: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 export type CommunicationDeliveryRow = {

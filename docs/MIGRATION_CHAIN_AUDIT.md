@@ -211,6 +211,19 @@ Evidence-based inventory of every file under `supabase/migrations/`.
 | **Clean DB** | Safe |
 | **Existing DB** | Safe (IF NOT EXISTS) |
 
+### 202606200009 — phase9f2_lifecycle_notifications.sql
+
+| Attribute | Detail |
+|-----------|--------|
+| **Purpose** | Lifecycle notification columns, metadata, idempotency index on `client_notifications` |
+| **Tables altered** | `client_notifications` (additive columns only) |
+| **Indexes** | `idx_client_notifications_lifecycle_idempotent`, `idx_client_notifications_lifecycle_event` |
+| **RLS** | Unchanged — policies from 006 remain |
+| **Seeds** | None (reuses `document_event_notifications` from 006) |
+| **Depends on** | **202606200008**, `client_notifications` from 006 |
+| **Clean DB** | Safe |
+| **Existing DB** | Safe (IF NOT EXISTS) |
+
 ---
 
 ## Historical migration edit policy
