@@ -211,11 +211,20 @@ const ORIGINAL_TESTS: TestCase[] = [
 
   record(36, "Legacy Promotions are not automatically published", () => {
     assert(!read("lib/communications/insightsFeedService.ts").includes("promotions"), "no promo feed");
-    assert(read("lib/communications/legacyPromotionsMigration.ts").includes("submitted_for_review"), "review only");
+    assert(
+      read("lib/promotions/legacyPromotionTransform.ts").includes('approvalStatus: "draft"'),
+      "draft only",
+    );
   }),
 
   record(37, "Legacy migration creates draft/review items only", () => {
-    assert(read("lib/communications/legacyPromotionsMigration.ts").includes("approvalStatus"), "status control");
+    const transform = read("lib/promotions/legacyPromotionTransform.ts");
+    assert(transform.includes("approvalStatus"), "status control");
+    assert(transform.includes('"draft"'), "draft status");
+    assert(
+      !read("lib/promotions/promotionMigrationReviewService.ts").includes("publishGoverned"),
+      "no auto publish",
+    );
   }),
 
   record(38, "Binder export requires assigned adviser", () => {

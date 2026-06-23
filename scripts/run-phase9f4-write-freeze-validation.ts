@@ -305,19 +305,19 @@ const TESTS: TestCase[] = [
       assert(read(route).includes("rejectForbiddenPromotionFields"), route);
     }
   }),
-  record(50, "admin migration GET requires requireAdminAccess", () => {
+  record(50, "admin migration GET requires promotion migration admin access", () => {
     const route = read("app/api/admin/promotions-migration/route.ts");
-    assert(route.includes("requireAdminAccess"), "admin guard");
-    assert(route.includes("listUnmigratedPromotions"), "list");
+    assert(route.includes("requirePromotionMigrationAdminAccess"), "admin guard");
+    assert(route.includes("listPromotionMigrationRecords"), "list");
   }),
-  record(51, "admin migration POST requires requireAdminAccess", () => {
+  record(51, "admin migration POST requires promotion migration admin access", () => {
     const route = read("app/api/admin/promotions-migration/route.ts");
     const post = route.slice(route.indexOf("export async function POST"));
-    assert(post.includes("requireAdminAccess"), "admin");
+    assert(post.includes("requirePromotionMigrationAdminAccess"), "admin");
   }),
-  record(52, "admin migration POST requires admin_content_approval", () => {
-    const route = read("app/api/admin/promotions-migration/route.ts");
-    assert(route.includes('isFeatureEnabled("admin_content_approval")'), "approval flag");
+  record(52, "promotion migration admin access requires admin_content_approval", () => {
+    const access = read("lib/promotions/promotionMigrationAdminAccess.ts");
+    assert(access.includes('isFeatureEnabled("admin_content_approval")'), "approval flag");
   }),
   record(53, "admin migration POST validates classification enum", () => {
     const route = read("app/api/admin/promotions-migration/route.ts");
@@ -327,21 +327,21 @@ const TESTS: TestCase[] = [
   record(54, "admin migration POST audits migration_started", () => {
     const route = read("app/api/admin/promotions-migration/route.ts");
     assert(route.includes('"legacy_promotion_migration_started"'), "started");
-    assert(route.includes("migratePromotionToDraft"), "migrate call");
+    assert(route.includes("executePromotionMigration"), "migrate call");
   }),
   record(55, "admin migration POST audits migration_failed on error", () => {
     const route = read("app/api/admin/promotions-migration/route.ts");
     assert(route.includes('"legacy_promotion_migration_failed"'), "failed audit");
   }),
-  record(56, "legacyPromotionsMigration idempotent via promotion_migration_reviews", () => {
-    const svc = read("lib/communications/legacyPromotionsMigration.ts");
+  record(56, "promotion migration review service idempotent via promotion_migration_reviews", () => {
+    const svc = read("lib/promotions/promotionMigrationReviewService.ts");
     assert(svc.includes("promotion_migration_reviews"), "reviews table");
     assert(svc.includes("alreadyMigrated: true"), "idempotent return");
     assert(svc.includes("migrated_content_id"), "content link");
   }),
-  record(57, "legacyPromotionsMigration audits migration_completed", () => {
+  record(57, "promotion migration review service audits migration_completed", () => {
     assert(
-      read("lib/communications/legacyPromotionsMigration.ts").includes(
+      read("lib/promotions/promotionMigrationReviewService.ts").includes(
         '"legacy_promotion_migration_completed"',
       ),
       "completed audit",

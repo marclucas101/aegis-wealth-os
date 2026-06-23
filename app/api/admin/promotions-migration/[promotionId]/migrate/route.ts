@@ -2,50 +2,28 @@ import { NextResponse } from "next/server";
 
 import { isValidPromotionId, privatePromotionJson } from "@/lib/promotions/legacyPromotionsAuthorization";
 import { requirePromotionMigrationAdminAccess } from "@/lib/promotions/promotionMigrationAdminAccess";
-import { parsePromotionMigrationListParams } from "@/lib/promotions/promotionMigrationRouteParams";
-import { listPromotionMigrationRecords } from "@/lib/promotions/promotionMigrationReviewService";
+import {
+  parseClassificationBody,
+  parseOperatorNote,
+} from "@/lib/promotions/promotionMigrationRouteParams";
+import { executePromotionMigration } from "@/lib/promotions/promotionMigrationReviewService";
 import {
   getRequestMetadata,
   parseJsonBodySafely,
   rateLimitOrThrow,
   rejectUnexpectedFields,
   toPublicErrorMessage,
-  validateEnum,
 } from "@/lib/security/apiGuards";
 import { writeAuditLog } from "@/lib/supabase/auditLog";
-import {
-  PROMOTION_MIGRATION_CLASSIFICATIONS,
-  type PromotionMigrationClassification,
-} from "@/lib/promotions/promotionMigrationTypes";
-import {
-  executePromotionMigration,
-} from "@/lib/promotions/promotionMigrationReviewService";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request): Promise<NextResponse> {
-  try {
-    const access = await requirePromotionMigrationAdminAccess();
-    if (!access.allowed) {
-      return access.response;
-    }
+type RouteContext = { params: Promise<{ promotionId: string }> };
 
-    const url = new URL(request.url);
-    const filter = parsePromotionMigrationListParams(url.searchParams);
-    const result = await listPromotionMigrationRecords(filter);
-
-    return privatePromotionJson({ ok: true, ...result });
-  } catch (err) {
-    console.error("[api/admin/promotions-migration GET]", err);
-    return privatePromotionJson(
-      { ok: false, error: toPublicErrorMessage(err, "Failed to list promotions") },
-      500,
-    );
-  }
-}
-
-/** Backward-compatible migrate endpoint — prefer POST /[promotionId]/migrate */
-export async function POST(request: Request): Promise<NextResponse> {
+export async function POST(
+  request: Request,
+  context: RouteContext,
+): Promise<NextResponse> {
   const metadata = getRequestMetadata(request);
 
   try {
@@ -57,6 +35,11 @@ export async function POST(request: Request): Promise<NextResponse> {
     const access = await requirePromotionMigrationAdminAccess();
     if (!access.allowed) {
       return access.response;
+    }
+
+    const { promotionId } = await context.params;
+    if (!isValidPromotionId(promotionId)) {
+      return privatePromotionJson({ ok: false, error: "Promotion not found" }, 404);
     }
 
     const parsed = await parseJsonBodySafely(request);
@@ -74,19 +57,14 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     const body = parsed.body as Record<string, unknown>;
-    const promotionId = typeof body.promotionId === "string" ? body.promotionId.trim() : "";
-
-    if (!isValidPromotionId(promotionId)) {
-      return privatePromotionJson({ ok: false, error: "Invalid promotionId" }, 400);
+    const classification = parseClassificationBody(body);
+    if (typeof classification === "object" && "error" in classification) {
+      return privatePromotionJson({ ok: false, error: classification.error }, 400);
     }
 
-    const classificationResult = validateEnum<PromotionMigrationClassification>(
-      body.classification ?? "unsuitable",
-      PROMOTION_MIGRATION_CLASSIFICATIONS,
-      "classification",
-    );
-    if (!classificationResult.ok) {
-      return privatePromotionJson({ ok: false, error: classificationResult.error }, 400);
+    const operatorNote = parseOperatorNote(body);
+    if (operatorNote === undefined && ("operatorNote" in body || "note" in body)) {
+      return privatePromotionJson({ ok: false, error: "Invalid operator note" }, 400);
     }
 
     await writeAuditLog({
@@ -99,7 +77,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         adviser_user_id: access.userId,
         action_type: "migrate_to_draft",
         result_code: "started",
-        classification: classificationResult.value,
+        classification,
       },
       ipAddress: metadata.ip_address,
       userAgent: metadata.user_agent,
@@ -108,7 +86,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     const result = await executePromotionMigration({
       promotionId,
       reviewerUserId: access.userId,
-      classification: classificationResult.value,
+      classification,
+      operatorNote,
     });
 
     if (!result.ok) {
@@ -116,6 +95,22 @@ export async function POST(request: Request): Promise<NextResponse> {
         return privatePromotionJson({ ok: false, error: "Promotion not found" }, 404);
       }
       if (result.reason === "asset_blocked") {
+        await writeAuditLog({
+          userId: access.userId,
+          action: "legacy_promotion_migration_failed",
+          entityType: "promotion",
+          entityId: promotionId,
+          metadata: {
+            promotion_id: promotionId,
+            adviser_user_id: access.userId,
+            action_type: "migrate_to_draft",
+            result_code: "LEGACY_PROMOTION_ASSET_BLOCKED",
+            classification,
+          },
+          ipAddress: metadata.ip_address,
+          userAgent: metadata.user_agent,
+        });
+
         return privatePromotionJson(
           {
             ok: false,
@@ -132,16 +127,17 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     return privatePromotionJson(result);
   } catch (err) {
-    console.error("[api/admin/promotions-migration POST]", err);
+    console.error("[api/admin/promotions-migration/[promotionId]/migrate POST]", err);
 
     try {
       const access = await requirePromotionMigrationAdminAccess();
       if (access.allowed) {
+        const { promotionId } = await context.params;
         await writeAuditLog({
           userId: access.userId,
           action: "legacy_promotion_migration_failed",
           entityType: "promotion",
-          entityId: null,
+          entityId: isValidPromotionId(promotionId) ? promotionId : null,
           metadata: {
             adviser_user_id: access.userId,
             action_type: "migrate_to_draft",
@@ -152,7 +148,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         });
       }
     } catch {
-      // ignore audit failure
+      // ignore
     }
 
     return privatePromotionJson(

@@ -116,22 +116,8 @@ export type DeliveryStatus =
 
 export type BinderExportStatus = "generated" | "published_to_client" | "withdrawn";
 
-export type PromotionMigrationClassification =
-  | "safe_educational"
-  | "market_update_review"
-  | "event"
-  | "product_promotional"
-  | "expired"
-  | "unsuitable";
-
-export const PROMOTION_MIGRATION_CLASSIFICATIONS: readonly PromotionMigrationClassification[] = [
-  "safe_educational",
-  "market_update_review",
-  "event",
-  "product_promotional",
-  "expired",
-  "unsuitable",
-] as const;
+export type { PromotionMigrationClassification } from "@/lib/promotions/promotionMigrationConstants";
+export { PROMOTION_MIGRATION_CLASSIFICATIONS } from "@/lib/promotions/promotionMigrationConstants";
 
 export type GovernedContentRow = {
   id: string;
