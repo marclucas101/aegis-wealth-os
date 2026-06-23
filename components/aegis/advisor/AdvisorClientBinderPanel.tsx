@@ -10,6 +10,15 @@ import {
 import type { BinderPackPurpose } from "@/lib/binder/binderPackPurpose";
 import { BINDER_PACK_PURPOSE_LABELS, BINDER_UI_PACK_PURPOSES } from "@/lib/binder/binderPackPurpose";
 import type { BinderSectionReadiness } from "@/lib/binder/binderContentPreparation";
+import {
+  evaluateBinderGenerationEligibility,
+  type BinderBlockingReason,
+} from "@/lib/binder/binderGenerationEligibility";
+import {
+  buildGenerationSectionList,
+  isSelectableBinderContentSection,
+  selectedContentSectionIds,
+} from "@/lib/binder/binderSectionRegistry";
 
 type BinderListItem = {
   id: string;
@@ -28,6 +37,8 @@ type BinderReadiness = {
   ready: boolean;
   availableSections: string[];
   sections: BinderSectionReadiness[];
+  summaryMessage?: string | null;
+  blockingReasons?: BinderBlockingReason[];
 };
 
 interface AdvisorClientBinderPanelProps {
@@ -45,6 +56,82 @@ const SELECTABLE_SECTIONS = new Set<BinderSection>([
   "document_index",
   "next_review_date",
 ]);
+
+type ReadinessApiError = {
+  code?: string;
+  message?: string;
+};
+
+type ReadinessApiResponse =
+  | { ok: true; readiness: BinderReadiness; message?: string | null }
+  | { ok: false; error?: string | ReadinessApiError; reason?: string };
+
+function isReadinessFailure(
+  data: ReadinessApiResponse | null,
+): data is Extract<ReadinessApiResponse, { ok: false }> {
+  return data !== null && data.ok === false;
+}
+
+function parseReadinessError(
+  response: Response,
+  data: ReadinessApiResponse | null,
+): { message: string; code: string | null } {
+  if (isReadinessFailure(data)) {
+    if (typeof data.error === "object" && data.error !== null) {
+      return {
+        message: data.error.message ?? "Unable to check meeting pack readiness. Please try again.",
+        code: data.error.code ?? null,
+      };
+    }
+    if (typeof data.error === "string") {
+      if (data.error === "Binder export is disabled") {
+        return {
+          message: "Meeting-pack generation is currently unavailable.",
+          code: "BINDER_EXPORT_DISABLED",
+        };
+      }
+      return { message: data.error, code: null };
+    }
+  }
+
+  if (response.status === 401) {
+    return { message: "Authentication required.", code: "UNAUTHENTICATED" };
+  }
+  if (response.status === 403) {
+    return {
+      message: "You no longer have access to this client.",
+      code: "FORBIDDEN",
+    };
+  }
+  if (response.status === 404) {
+    return { message: "Client not found.", code: "NOT_FOUND" };
+  }
+  if (response.status === 400) {
+    return {
+      message: "Choose a valid meeting date.",
+      code: "BINDER_READINESS_INVALID_INPUT",
+    };
+  }
+
+  return {
+    message: "Unable to check meeting pack readiness. Please try again.",
+    code: "BINDER_READINESS_FAILED",
+  };
+}
+
+async function parseReadinessResponse(
+  response: Response,
+): Promise<ReadinessApiResponse | null> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    return null;
+  }
+  try {
+    return (await response.json()) as ReadinessApiResponse;
+  } catch {
+    return null;
+  }
+}
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -96,6 +183,8 @@ export default function AdvisorClientBinderPanel({ clientId }: AdvisorClientBind
   const [message, setMessage] = useState<string | null>(null);
   const [readiness, setReadiness] = useState<BinderReadiness | null>(null);
   const [readinessLoading, setReadinessLoading] = useState(false);
+  const [readinessError, setReadinessError] = useState<string | null>(null);
+  const [readinessErrorCode, setReadinessErrorCode] = useState<string | null>(null);
   const [meetingDate, setMeetingDate] = useState(todayIsoDate);
   const [purpose, setPurpose] = useState<BinderPackPurpose>("meeting_preparation");
   const [selectedSections, setSelectedSections] = useState<string[]>([]);
@@ -103,38 +192,50 @@ export default function AdvisorClientBinderPanel({ clientId }: AdvisorClientBind
   const loadReadiness = useCallback(
     async (date: string, selected: string[]) => {
       setReadinessLoading(true);
+      setReadinessError(null);
+      setReadinessErrorCode(null);
       try {
         const params = new URLSearchParams({
           meetingDate: date,
           purpose,
         });
         if (selected.length > 0) {
-          params.set("selectedSections", selected.join(","));
+          params.set(
+            "selectedSections",
+            selectedContentSectionIds(selected).join(","),
+          );
         }
         const response = await fetch(
           `/api/advisor/clients/${clientId}/binder-export/readiness?${params.toString()}`,
           { cache: "no-store" },
         );
-        const data = (await response.json()) as
-          | { ok: true; readiness: BinderReadiness }
-          | { ok: false; error?: string };
+        const data = await parseReadinessResponse(response);
 
-        if (!response.ok || !data.ok) {
-          throw new Error(!data.ok ? data.error ?? "Failed to check readiness" : "Failed to check readiness");
+        if (!response.ok || !data?.ok) {
+          const parsed = parseReadinessError(response, data);
+          setReadiness(null);
+          setReadinessError(parsed.message);
+          setReadinessErrorCode(parsed.code);
+          return;
         }
 
         setReadiness(data.readiness);
         if (selected.length === 0) {
           setSelectedSections(
             data.readiness.sections
-              .filter((section) => section.selectedByDefault)
+              .filter(
+                (section) =>
+                  section.selectedByDefault &&
+                  section.status === "available" &&
+                  isSelectableBinderContentSection(section.sectionId),
+              )
               .map((section) => section.sectionId),
           );
         }
-      } catch (err) {
+      } catch {
         setReadiness(null);
-        setError(err instanceof Error ? err.message : "Failed to check readiness");
-        setState("error");
+        setReadinessError("Unable to check meeting pack readiness. Please try again.");
+        setReadinessErrorCode("BINDER_READINESS_FAILED");
       } finally {
         setReadinessLoading(false);
       }
@@ -183,32 +284,39 @@ export default function AdvisorClientBinderPanel({ clientId }: AdvisorClientBind
     };
   }, [clientId, loadReadiness, meetingDate]);
 
+  useEffect(() => {
+    if (state !== "ready") return;
+    const timer = window.setTimeout(() => {
+      void loadReadiness(meetingDate, selectedSections);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [selectedSections, meetingDate, purpose, state, loadReadiness]);
+
   const grouped = useMemo(
     () => groupSections(readiness?.sections ?? []),
     [readiness?.sections],
   );
 
-  const selectedAvailableCount = useMemo(() => {
-    if (!readiness) return 0;
-    const selected = new Set(selectedSections);
-    return readiness.sections.filter(
-      (section) => selected.has(section.sectionId) && section.status === "available",
-    ).length;
-  }, [readiness, selectedSections]);
+  const eligibility = useMemo(() => {
+    if (!readiness) {
+      return null;
+    }
+    return evaluateBinderGenerationEligibility({
+      purpose,
+      meetingDate,
+      selectedSectionIds: selectedSections,
+      sectionReadiness: readiness.sections,
+    });
+  }, [readiness, purpose, meetingDate, selectedSections]);
 
   const canGenerate = useMemo(() => {
-    if (!readiness || activeId !== null) return false;
-    return readiness.sections
-      .filter((section) => selectedSections.includes(section.sectionId))
-      .every((section) => section.status === "available" || section.sectionId === "meeting_date")
-      && Boolean(meetingDate.trim())
-      && selectedAvailableCount > 0;
-  }, [readiness, activeId, selectedSections, meetingDate, selectedAvailableCount]);
+    if (!eligibility || activeId !== null) return false;
+    return eligibility.eligible;
+  }, [eligibility, activeId]);
 
-  const generateLabel =
-    selectedAvailableCount > 0
-      ? `Generate pack with ${selectedAvailableCount} section${selectedAvailableCount === 1 ? "" : "s"}`
-      : "Generate meeting pack";
+  const generateLabel = eligibility?.eligible
+    ? `Generate pack with ${eligibility.contentSectionCount} content section${eligibility.contentSectionCount === 1 ? "" : "s"}`
+    : "Generate meeting pack";
 
   function toggleSection(sectionId: string, checked: boolean) {
     setSelectedSections((current) => {
@@ -241,22 +349,21 @@ export default function AdvisorClientBinderPanel({ clientId }: AdvisorClientBind
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           meetingDate,
-          sections: [
-            "cover_page",
-            "client_adviser_info",
-            "meeting_date",
-            ...selectedSections,
-          ],
+          sections: buildGenerationSectionList(selectedSections),
         }),
       });
       const data = (await response.json()) as {
         ok: boolean;
-        error?: string;
+        error?: string | { code?: string; message?: string };
         code?: string;
       };
       if (!response.ok || !data.ok) {
-        setErrorCode(data.code ?? null);
-        throw new Error(data.error ?? "Generation failed");
+        const apiError =
+          typeof data.error === "object" && data.error !== null
+            ? data.error
+            : { message: typeof data.error === "string" ? data.error : "Generation failed" };
+        setErrorCode(apiError.code ?? data.code ?? null);
+        throw new Error(apiError.message ?? "Generation failed");
       }
       setMessage("Meeting pack generated.");
       await reloadBinders();
@@ -497,13 +604,45 @@ export default function AdvisorClientBinderPanel({ clientId }: AdvisorClientBind
 
       {readiness ? (
         <div className="space-y-4 rounded-xl border border-[#10283A]/10 bg-[#F8FAFB] p-4">
-          {!canGenerate && !readiness.ready ? (
-            <p className="text-sm text-amber-900">{BINDER_READINESS_USER_MESSAGE}</p>
-          ) : null}
+          {eligibility?.eligible ? (
+            <p className="text-sm text-[#107A5E]">
+              {eligibility.summaryMessage ??
+                readiness.summaryMessage ??
+                "Ready to generate the selected meeting pack."}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {(eligibility?.blockingReasons ?? readiness.blockingReasons ?? []).map((reason) => (
+                <p key={`${reason.code}-${reason.sectionId ?? "general"}`} className="text-sm text-amber-900">
+                  {reason.message}
+                </p>
+              ))}
+              {(eligibility?.blockingReasons ?? readiness.blockingReasons ?? []).length === 0 ? (
+                <p className="text-sm text-amber-900">{BINDER_READINESS_USER_MESSAGE}</p>
+              ) : null}
+            </div>
+          )}
           {renderSectionGroup("Required before generation", grouped.required)}
           {renderSectionGroup("Optional additions", grouped.optional)}
           {renderSectionGroup("Created after the meeting", grouped.postMeeting)}
         </div>
+      ) : readinessError ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p>{readinessError}</p>
+          {readinessErrorCode ? (
+            <p className="mt-1 text-xs text-red-500/80">Reference: {readinessErrorCode}</p>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => void loadReadiness(meetingDate, selectedSections)}
+            disabled={readinessLoading}
+            className="mt-3 rounded border border-red-300 px-3 py-1.5 text-xs text-red-800 disabled:opacity-50"
+          >
+            {readinessLoading ? "Retrying…" : "Retry readiness check"}
+          </button>
+        </div>
+      ) : readinessLoading ? (
+        <p className="text-sm text-[#10283A]/60">Checking section readiness…</p>
       ) : null}
 
       {message ? (

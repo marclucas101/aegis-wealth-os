@@ -38,8 +38,6 @@ export type BinderSectionReadiness = {
   explanation?: string;
 };
 
-const UUID_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
-
 function planningOutputsHref(clientId: string, focus: string): string {
   return `/advisor/clients/${clientId}/planning-outputs?focus=${encodeURIComponent(focus)}&returnTab=meeting-packs`;
 }
@@ -133,7 +131,7 @@ function resolveCreateLabel(sectionId: BinderSection): string {
     case "agreed_priorities":
       return "Create agreed priorities";
     case "roadmap":
-      return "Create wealth roadmap";
+      return "Add roadmap actions";
     case "meeting_summary":
       return "Create after meeting";
     default:
@@ -144,6 +142,9 @@ function resolveCreateLabel(sectionId: BinderSection): string {
 function resolveCreateHref(sectionId: BinderSection, clientId: string): string {
   if (sectionId === "meeting_summary") {
     return meetingStudioHref(clientId);
+  }
+  if (sectionId === "roadmap") {
+    return `/advisor/clients/${clientId}/roadmap?returnTab=meeting-packs`;
   }
   return planningOutputsHref(clientId, sectionId);
 }
@@ -156,7 +157,7 @@ function resolveOpenSourceHref(sectionId: BinderSection, clientId: string): stri
     case "agreed_priorities":
       return planningOutputsHref(clientId, sectionId);
     case "roadmap":
-      return workspaceTabHref(clientId, "overview");
+      return `/advisor/clients/${clientId}/roadmap?returnTab=meeting-packs`;
     case "meeting_summary":
       return meetingStudioHref(clientId);
     default:
@@ -265,49 +266,62 @@ export function buildBinderSectionReadiness(input: {
   return readiness;
 }
 
-export function canGenerateWithSelectedSections(input: {
-  meetingDate: string | null;
-  sections: BinderSectionReadiness[];
-  selectedSectionIds: string[];
-}): boolean {
-  const selected = new Set(input.selectedSectionIds);
-  if (!input.meetingDate?.trim()) return false;
-
-  const selectedRows = input.sections.filter((entry) => selected.has(entry.sectionId));
-  if (selectedRows.length === 0) return false;
-
-  const allSelectedAvailable = selectedRows.every((entry) => entry.status === "available");
-  if (!allSelectedAvailable) return false;
-
-  const hasPlanning = selectedRows.some(
-    (entry) =>
-      (entry.sectionId === "financial_overview" ||
-        entry.sectionId === "my_plan" ||
-        entry.sectionId === "agreed_priorities" ||
-        entry.sectionId === "roadmap" ||
-        entry.sectionId === "meeting_summary") &&
-      entry.status === "available",
-  );
-
-  return hasPlanning;
-}
+export { canGenerateWithSelectedSections } from "./binderGenerationEligibility";
 
 /** QA helper — readiness payloads must never leak internal identifiers. */
 export function assertReadinessResponseSafe(payload: unknown): void {
-  const serialized = JSON.stringify(payload);
-  if (UUID_PATTERN.test(serialized)) {
-    throw new Error("Readiness response must not include database IDs");
-  }
-  for (const forbidden of [
-    "storage_path",
-    "storagePath",
+  const forbiddenKeys = new Set([
+    "id",
+    "outputId",
+    "output_id",
+    "publicationId",
+    "published_output_id",
     "safe_payload",
     "payload",
-    "internalNotes",
+    "storage_path",
+    "storagePath",
     "signedUrl",
-  ]) {
-    if (serialized.includes(forbidden)) {
-      throw new Error(`Readiness response must not include ${forbidden}`);
+    "internalNotes",
+    "display_name",
+    "full_name",
+    "email",
+  ]);
+
+  function assertAllowlistedHref(href: string): void {
+    if (!href.startsWith("/advisor/clients/")) {
+      throw new Error("Readiness action href must use adviser client routes");
+    }
+    if (href.includes("..") || href.includes("//")) {
+      throw new Error("Readiness action href must not contain traversal segments");
     }
   }
+
+  function walk(value: unknown, path: string): void {
+    if (Array.isArray(value)) {
+      for (let index = 0; index < value.length; index += 1) {
+        walk(value[index], `${path}[${index}]`);
+      }
+      return;
+    }
+
+    if (!value || typeof value !== "object") {
+      if (typeof value === "string" && path.endsWith(".href")) {
+        assertAllowlistedHref(value);
+      }
+      return;
+    }
+
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      if (forbiddenKeys.has(key)) {
+        throw new Error(`Readiness response must not include ${key}`);
+      }
+      if (key === "href" && typeof child === "string") {
+        assertAllowlistedHref(child);
+        continue;
+      }
+      walk(child, path ? `${path}.${key}` : key);
+    }
+  }
+
+  walk(payload, "");
 }

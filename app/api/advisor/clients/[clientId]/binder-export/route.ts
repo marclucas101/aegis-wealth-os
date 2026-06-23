@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 
-import {
-  BINDER_SECTIONS,
-  generateBinderExport,
-  type BinderSection,
-} from "@/lib/communications/binderExport";
-import { BINDER_DEFAULT_GENERATION_SECTIONS } from "@/lib/binder/binderSectionPolicy";
+import { generateBinderExport } from "@/lib/communications/binderExport";
 import { assessBinderReadiness } from "@/lib/binder/binderReadinessService";
+import { evaluateBinderGenerationEligibility } from "@/lib/binder/binderGenerationEligibility";
 import { logBinderGenerationSourceUnavailable } from "@/lib/binder/binderGenerationLogging";
+import {
+  binderInvalidSectionsResponse,
+  parseBinderGenerationSections,
+} from "@/lib/binder/binderSectionParse";
 import { BINDER_READINESS_USER_MESSAGE } from "@/lib/binder/binderSectionPolicy";
-import { BINDER_MAX_SECTION_COUNT } from "@/lib/binder/binderPdfTypes";
 import { BINDER_ERROR_CODES, toBinderPublicError } from "@/lib/binder/binderErrors";
+import type { BinderSection } from "@/lib/binder/binderSectionPolicy";
 import { isFeatureEnabled } from "@/lib/compliance/featureFlags";
 import { createRequestId } from "@/lib/ops/logger";
 import {
@@ -26,26 +26,6 @@ import { resolveAccessibleClient } from "@/lib/supabase/advisorClientAccess";
 export const dynamic = "force-dynamic";
 
 type RouteContext = { params: Promise<{ clientId: string }> };
-
-function parseSections(body: Record<string, unknown>): BinderSection[] | null {
-  if (!("sections" in body)) {
-    return [...BINDER_DEFAULT_GENERATION_SECTIONS];
-  }
-  if (!Array.isArray(body.sections)) {
-    return null;
-  }
-  const sections = body.sections.filter((s): s is string => typeof s === "string");
-  const valid = sections.filter((s): s is BinderSection =>
-    (BINDER_SECTIONS as readonly string[]).includes(s),
-  );
-  if (valid.length !== sections.length) {
-    return null;
-  }
-  if (valid.length === 0 || valid.length > BINDER_MAX_SECTION_COUNT) {
-    return null;
-  }
-  return valid;
-}
 
 export async function POST(
   request: Request,
@@ -134,13 +114,20 @@ export async function POST(
       );
     }
 
-    const sections = parseSections(body);
-    if (!sections) {
-      return NextResponse.json(
-        { ok: false, error: "Invalid sections selection" },
-        { status: 400, headers: privateNoStoreHeaders() },
-      );
+    const parsedSections = parseBinderGenerationSections({
+      body,
+      requestId,
+      clientId,
+      adviserUserId: access.user.id,
+    });
+    if (!parsedSections.ok) {
+      return NextResponse.json(binderInvalidSectionsResponse(), {
+        status: 400,
+        headers: privateNoStoreHeaders(),
+      });
     }
+
+    const sections = parsedSections.sections as BinderSection[];
 
     const meetingDate =
       typeof body.meetingDate === "string" ? body.meetingDate : null;
@@ -152,6 +139,33 @@ export async function POST(
       sections,
       meetingDate,
     };
+
+    const selectedContentSections = parsedSections.contentSectionIds as BinderSection[];
+    const assessment = await assessBinderReadiness({
+      clientId,
+      adviserUserId: access.user.id,
+      userRole: role,
+      meetingDate,
+      purpose: "meeting_preparation",
+      selectedSectionIds: selectedContentSections,
+    });
+    const eligibility = evaluateBinderGenerationEligibility({
+      purpose: "meeting_preparation",
+      meetingDate,
+      selectedSectionIds: selectedContentSections,
+      sectionReadiness: assessment.readiness.sections,
+    });
+    if (!eligibility.eligible) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            eligibility.blockingReasons[0]?.message ?? BINDER_READINESS_USER_MESSAGE,
+          code: BINDER_ERROR_CODES.SOURCE_UNAVAILABLE,
+        },
+        { status: 422, headers: privateNoStoreHeaders() },
+      );
+    }
 
     const binder = await generateBinderExport({
       clientId,

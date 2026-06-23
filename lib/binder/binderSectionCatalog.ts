@@ -5,13 +5,9 @@ import type { AppClientRow } from "@/lib/supabase/userProfile";
 
 import { classifyClientPublicationAvailability } from "./binderPublicationAvailability";
 import type { BinderSectionReasonCode } from "./binderSectionPolicy";
-export const SECTION_OUTPUT_TYPES: Partial<Record<BinderSection, PublishedOutputType[]>> = {
-  financial_overview: ["financial_overview", "financial_readiness_snapshot"],
-  my_plan: ["client_plan_summary", "goal_plan_summary", "wealth_blueprint_summary"],
-  agreed_priorities: ["goal_plan_summary", "client_plan_summary"],
-  roadmap: ["roadmap_summary"],
-  meeting_summary: ["meeting_summary", "annual_review_summary"],
-};
+import { BINDER_SECTION_OUTPUT_TYPES } from "./binderSectionRegistry";
+
+export const SECTION_OUTPUT_TYPES = BINDER_SECTION_OUTPUT_TYPES;
 
 export type BinderSectionContext = {
   client: AppClientRow;

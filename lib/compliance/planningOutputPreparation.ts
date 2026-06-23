@@ -6,7 +6,14 @@ import { loadClientSafeRoadmap } from "@/lib/compliance/clientRoadmapData";
 import {
   sanitizeClientPlanSummary,
 } from "@/lib/compliance/clientSafeDtos";
-import { prepareClientSafeOutput } from "@/lib/compliance/publicationWorkflow";
+import {
+  listPublishedOutputsForClient,
+  prepareClientSafeOutput,
+} from "@/lib/compliance/publicationWorkflow";
+import {
+  PLANNING_OUTPUT_ERROR_CODES,
+  PlanningOutputError,
+} from "@/lib/compliance/planningOutputErrors";
 import { listClientGoals } from "@/lib/supabase/clientGoalsPersistence";
 import { loadDashboardSnapshot } from "@/lib/supabase/dashboardQueries";
 import { dbLoadAdviserDisplayName } from "@/lib/supabase/meetingSessionPersistence";
@@ -26,14 +33,40 @@ export function isPlanningOutputPrepareAllowed(
   return (PLANNING_OUTPUT_PREPARE_ALLOWLIST as readonly string[]).includes(outputType);
 }
 
+function assertNoActiveDraftForType(
+  outputs: Awaited<ReturnType<typeof listPublishedOutputsForClient>>,
+  outputType: PublishedOutputType,
+): void {
+  const active = outputs.find(
+    (row) =>
+      row.output_type === outputType &&
+      (row.publication_status === "draft" ||
+        row.publication_status === "adviser_reviewed"),
+  );
+  if (active) {
+    throw new PlanningOutputError(
+      PLANNING_OUTPUT_ERROR_CODES.ALREADY_EXISTS,
+      "A draft or reviewed output already exists. Review and publish it instead of creating another.",
+      409,
+    );
+  }
+}
+
 export async function preparePlanningOutputFromSources(input: {
   client: AppClientRow;
   outputType: PublishedOutputType;
   actorUserId: string;
 }) {
   if (!isPlanningOutputPrepareAllowed(input.outputType)) {
-    throw new Error("Output type is not supported for adviser preparation");
+    throw new PlanningOutputError(
+      PLANNING_OUTPUT_ERROR_CODES.PREPARATION_FAILED,
+      "This output type is not supported for preparation.",
+      400,
+    );
   }
+
+  const existingOutputs = await listPublishedOutputsForClient(input.client.id);
+  assertNoActiveDraftForType(existingOutputs, input.outputType);
 
   if (
     input.outputType === "financial_readiness_snapshot" ||
@@ -41,7 +74,11 @@ export async function preparePlanningOutputFromSources(input: {
   ) {
     const snapshot = await loadDashboardSnapshot(input.client);
     if (!snapshot) {
-      throw new Error("Client has no analysis to prepare");
+      throw new PlanningOutputError(
+        PLANNING_OUTPUT_ERROR_CODES.SOURCE_UNAVAILABLE,
+        "Complete the client's financial profile before creating this output.",
+        422,
+      );
     }
 
     return prepareClientSafeOutput({
@@ -61,17 +98,23 @@ export async function preparePlanningOutputFromSources(input: {
     });
   }
 
-  const adviserName = await dbLoadAdviserDisplayName(input.client.advisor_user_id ?? input.actorUserId);
+  const adviserName = await dbLoadAdviserDisplayName(
+    input.client.advisor_user_id ?? input.actorUserId,
+  );
 
   if (input.outputType === "roadmap_summary") {
     const roadmap = await loadClientSafeRoadmap(input.client);
     const priorities = [
-      ...roadmap.clientActions.map((item) => item.title),
-      ...roadmap.adviserActions.map((item) => item.title),
+      ...(roadmap.clientActions ?? []).map((item) => item.title),
+      ...(roadmap.adviserActions ?? []).map((item) => item.title),
     ].slice(0, 8);
 
     if (priorities.length === 0) {
-      throw new Error("Client has no roadmap actions to prepare");
+      throw new PlanningOutputError(
+        PLANNING_OUTPUT_ERROR_CODES.SOURCE_UNAVAILABLE,
+        "Create roadmap actions before preparing the wealth roadmap.",
+        422,
+      );
     }
 
     const safePayload = sanitizeClientPlanSummary({
@@ -80,7 +123,7 @@ export async function preparePlanningOutputFromSources(input: {
       agreedPriorities: priorities,
       adviserObservations: [],
       keyAssumptions: [],
-      strategySummary: `Roadmap progress: ${roadmap.progressPercent}% complete.`,
+      strategySummary: `Roadmap progress: ${roadmap.progressPercent ?? 0}% complete.`,
       protectionOverview: "",
       goalDirection: [],
       agreedActions: priorities,
@@ -100,7 +143,7 @@ export async function preparePlanningOutputFromSources(input: {
         rating: null,
         strongestPillar: null,
         weakestPillar: null,
-        informationCompletenessPercent: roadmap.progressPercent,
+        informationCompletenessPercent: roadmap.progressPercent ?? 0,
         dataAsAt: roadmap.dataAsAt ?? new Date().toISOString(),
         hasAssignedAdviser: Boolean(input.client.advisor_user_id),
       },
@@ -112,19 +155,27 @@ export async function preparePlanningOutputFromSources(input: {
 
   const snapshot = await loadDashboardSnapshot(input.client);
   if (!snapshot) {
-    throw new Error("Client has no analysis to prepare");
+    throw new PlanningOutputError(
+      PLANNING_OUTPUT_ERROR_CODES.SOURCE_UNAVAILABLE,
+      "Complete the client's financial profile before creating this output.",
+      422,
+    );
   }
 
   const goals = await listClientGoals(input.client.id).catch(() => []);
-  const roadmapTitles = snapshot.roadmap.slice(0, 5).map((item) => item.title);
+  const roadmapTitles = (snapshot.roadmap ?? []).slice(0, 5).map((item) => item.title);
   const goalTitles = goals.slice(0, 5).map((goal) => goal.title);
 
+  if (input.outputType === "goal_plan_summary" && goalTitles.length === 0) {
+    throw new PlanningOutputError(
+      PLANNING_OUTPUT_ERROR_CODES.SOURCE_UNAVAILABLE,
+      "Add at least one client goal before preparing agreed priorities.",
+      422,
+    );
+  }
+
   const agreedPriorities =
-    input.outputType === "goal_plan_summary"
-      ? goalTitles.length > 0
-        ? goalTitles
-        : roadmapTitles
-      : roadmapTitles;
+    input.outputType === "goal_plan_summary" ? goalTitles : roadmapTitles;
 
   const safePayload = sanitizeClientPlanSummary({
     title:
@@ -135,10 +186,10 @@ export async function preparePlanningOutputFromSources(input: {
     agreedPriorities,
     adviserObservations: [],
     keyAssumptions: [
-      `Shield rating ${snapshot.shield.rating.replace(/_/g, " ")}.`,
+      `Shield rating ${(snapshot.shield?.rating ?? "unknown").replace(/_/g, " ")}.`,
     ],
-    strategySummary: `Planning focus on ${snapshot.insights.weakestPillar.replace(/_/g, " ")}.`,
-    protectionOverview: `Protection core score ${Math.round(snapshot.protectionCore.aggregateScore ?? 0)}.`,
+    strategySummary: `Planning focus on ${(snapshot.insights?.weakestPillar ?? "planning").replace(/_/g, " ")}.`,
+    protectionOverview: `Protection core score ${Math.round(snapshot.protectionCore?.aggregateScore ?? 0)}.`,
     goalDirection: goalTitles,
     agreedActions: agreedPriorities.slice(0, 5),
     nextReviewDate: input.client.next_review_due,
@@ -154,9 +205,9 @@ export async function preparePlanningOutputFromSources(input: {
     actorUserId: input.actorUserId,
     audience: "client_published",
     internalContext: {
-      rating: snapshot.shield.rating,
-      strongestPillar: snapshot.insights.strongestPillar,
-      weakestPillar: snapshot.insights.weakestPillar,
+      rating: snapshot.shield?.rating ?? null,
+      strongestPillar: snapshot.insights?.strongestPillar ?? null,
+      weakestPillar: snapshot.insights?.weakestPillar ?? null,
       informationCompletenessPercent: (snapshot.dataConfidenceFactor ?? 0.5) * 100,
       dataAsAt: snapshot.completedAt,
       hasAssignedAdviser: Boolean(input.client.advisor_user_id),
