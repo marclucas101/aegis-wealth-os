@@ -17,6 +17,7 @@ import {
 
 import {
   buildFinancialReadinessSnapshotFromInternal,
+  sanitizeClientPlanSummary,
   sanitizeFinancialReadinessPayload,
   type ClientSafeFinancialReadinessSnapshot,
 } from "./clientSafeDtos";
@@ -91,6 +92,7 @@ export type PrepareOutputInput = {
   };
   sourceInputVersion?: string;
   algorithmVersion?: string;
+  safePayloadOverride?: Record<string, unknown>;
 };
 
 export async function prepareClientSafeOutput(
@@ -98,7 +100,18 @@ export async function prepareClientSafeOutput(
 ): Promise<PublishedOutputRow> {
   let safePayload: Record<string, unknown>;
 
-  if (
+  if (input.safePayloadOverride) {
+    if (
+      input.outputType === "client_plan_summary" ||
+      input.outputType === "goal_plan_summary" ||
+      input.outputType === "roadmap_summary"
+    ) {
+      const validated = sanitizeClientPlanSummary(input.safePayloadOverride);
+      safePayload = validated as unknown as Record<string, unknown>;
+    } else {
+      throw new Error(`Unsupported output type for prepare: ${input.outputType}`);
+    }
+  } else if (
     input.outputType === "financial_readiness_snapshot" ||
     input.outputType === "financial_overview"
   ) {
@@ -174,6 +187,12 @@ export async function reviewPublishedOutput(
     existing.output_type === "financial_overview"
   ) {
     sanitizeFinancialReadinessPayload(existing.safe_payload);
+  } else if (
+    existing.output_type === "client_plan_summary" ||
+    existing.output_type === "goal_plan_summary" ||
+    existing.output_type === "roadmap_summary"
+  ) {
+    sanitizeClientPlanSummary(existing.safe_payload);
   }
 
   const now = new Date().toISOString();
@@ -235,6 +254,12 @@ export async function publishOutput(
     existing.output_type === "financial_overview"
   ) {
     sanitizeFinancialReadinessPayload(existing.safe_payload);
+  } else if (
+    existing.output_type === "client_plan_summary" ||
+    existing.output_type === "goal_plan_summary" ||
+    existing.output_type === "roadmap_summary"
+  ) {
+    sanitizeClientPlanSummary(existing.safe_payload);
   }
 
   const current = await loadCurrentPublishedOutput(

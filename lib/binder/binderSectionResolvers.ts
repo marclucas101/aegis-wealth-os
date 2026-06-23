@@ -258,7 +258,7 @@ function resolveSectionChapter(
       const titleMap: Record<string, string> = {
         my_plan: "Current planning position",
         agreed_priorities: "Agreed priorities",
-        roadmap: "Roadmap",
+        roadmap: "Wealth roadmap",
         meeting_summary: "Meeting summary",
       };
       return {

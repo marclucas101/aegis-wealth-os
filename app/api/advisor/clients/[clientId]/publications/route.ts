@@ -2,18 +2,20 @@ import { NextResponse } from "next/server";
 
 import { canPublishClientOutput } from "@/lib/compliance/entitlements";
 import {
+  isPlanningOutputPrepareAllowed,
+  preparePlanningOutputFromSources,
+} from "@/lib/compliance/planningOutputPreparation";
+import {
   listPublishedOutputsForClient,
-  prepareClientSafeOutput,
 } from "@/lib/compliance/publicationWorkflow";
+import { requireAdvisorAccess } from "@/lib/supabase/advisorAuth";
+import { resolveAccessibleClient } from "@/lib/supabase/advisorClientAccess";
+import type { PublishedOutputType } from "@/lib/compliance/types";
 import {
   rateLimitOrThrow,
   rejectClientIdInBody,
   toPublicErrorMessage,
 } from "@/lib/security/apiGuards";
-import { loadDashboardSnapshot } from "@/lib/supabase/dashboardQueries";
-import { requireAdvisorAccess } from "@/lib/supabase/advisorAuth";
-import { resolveAccessibleClient } from "@/lib/supabase/advisorClientAccess";
-import type { PublishedOutputType } from "@/lib/compliance/types";
 
 export const dynamic = "force-dynamic";
 
@@ -131,30 +133,17 @@ export async function POST(
     }
 
     const outputType = body.outputType ?? "financial_readiness_snapshot";
-    const snapshot = await loadDashboardSnapshot(resolved.client);
-
-    if (!snapshot) {
+    if (!isPlanningOutputPrepareAllowed(outputType)) {
       return NextResponse.json(
-        { ok: false, reason: "no_profile", error: "Client has no analysis to prepare" },
+        { ok: false, error: "Output type is not supported for preparation" },
         { status: 400 },
       );
     }
 
-    const output = await prepareClientSafeOutput({
-      clientId,
+    const output = await preparePlanningOutputFromSources({
+      client: resolved.client,
       outputType,
       actorUserId: access.authUser.id,
-      internalContext: {
-        rating: snapshot.shield?.rating ?? null,
-        strongestPillar: snapshot.insights?.strongestPillar ?? null,
-        weakestPillar: snapshot.insights?.weakestPillar ?? null,
-        informationCompletenessPercent:
-          (snapshot.dataConfidenceFactor ?? 0.5) * 100,
-        dataAsAt: snapshot.completedAt,
-        hasAssignedAdviser: Boolean(resolved.client.advisor_user_id),
-      },
-      sourceInputVersion: snapshot.completedAt,
-      algorithmVersion: "phase9a-v1",
     });
 
     return NextResponse.json({ ok: true, output });
