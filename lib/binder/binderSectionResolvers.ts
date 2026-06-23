@@ -1,16 +1,11 @@
 import "server-only";
 
-import type { BinderSection } from "@/lib/communications/binderExport";
 import { sanitizeFinancialReadinessPayload } from "@/lib/compliance/clientSafeDtos";
-import { isCurrentPublishedOutput } from "@/lib/compliance/publicationWorkflow";
-import { selectSingleCurrentPublishedOutput } from "@/lib/compliance/publicationSelection";
-import type { PublishedOutputType } from "@/lib/compliance/types";
 import { canClientViewDocument } from "@/lib/compliance/documentVisibility";
-import { resolveAccessibleClient } from "@/lib/supabase/advisorClientAccess";
-import { dbListPublishedOutputsForClient } from "@/lib/supabase/compliancePublication";
-import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { loadAdviserUserAndProfile } from "@/lib/supabase/adviserProfilePersistence";
 import type { AppClientRow } from "@/lib/supabase/userProfile";
+import type { BinderSection } from "@/lib/binder/binderSectionPolicy";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 import { BINDER_ERROR_CODES, BinderServiceError } from "./binderErrors";
 import {
@@ -28,14 +23,29 @@ import {
   type BinderResolvedSection,
   type BinderSourcePublicationRef,
 } from "./binderPdfTypes";
+import {
+  assessRequestedSections,
+  type SectionAvailability,
+} from "./binderSectionCatalog";
+import { loadBinderSectionContext } from "./binderReadinessService";
+import {
+  assertSectionsResolvableForGeneration as assertSectionsResolvablePure,
+  BINDER_SOURCE_UNAVAILABLE_CODE,
+} from "./binderSectionPolicy";
 
-const SECTION_OUTPUT_TYPES: Partial<Record<BinderSection, PublishedOutputType[]>> = {
-  financial_overview: ["financial_overview", "financial_readiness_snapshot"],
-  my_plan: ["client_plan_summary", "goal_plan_summary", "wealth_blueprint_summary"],
-  agreed_priorities: ["goal_plan_summary", "client_plan_summary"],
-  roadmap: ["roadmap_summary"],
-  meeting_summary: ["meeting_summary", "annual_review_summary"],
-};
+function assertSectionsResolvableForGeneration(
+  sections: SectionAvailability[],
+  meetingDate: string | null,
+): SectionAvailability[] {
+  try {
+    return assertSectionsResolvablePure(sections, meetingDate) as SectionAvailability[];
+  } catch (err) {
+    if (err instanceof Error && err.message === BINDER_SOURCE_UNAVAILABLE_CODE) {
+      throw new BinderServiceError(BINDER_ERROR_CODES.SOURCE_UNAVAILABLE);
+    }
+    throw err;
+  }
+}
 
 function formatDisplayDate(value: string | null): string | null {
   if (!value) return null;
@@ -139,6 +149,132 @@ async function loadDocumentIndex(client: AppClientRow): Promise<BinderResolvedSe
   };
 }
 
+function resolveSectionChapter(
+  entry: SectionAvailability,
+  input: {
+    client: AppClientRow;
+    adviserName: string;
+    organisation: string | null;
+    meetingDateLabel: string | null;
+    generatedDateLabel: string;
+  },
+): BinderResolvedSection {
+  const { sectionId, selectedPublication } = entry;
+
+  switch (sectionId) {
+    case "cover_page":
+      return {
+        sectionId,
+        chapter: buildRedactedChapter({
+          id: sectionId,
+          title: "Cover",
+          paragraphs: [
+            `Prepared for ${input.client.display_name}.`,
+            input.meetingDateLabel
+              ? `Meeting date: ${input.meetingDateLabel}.`
+              : "Meeting date to be confirmed.",
+          ],
+          keepTogether: true,
+        }),
+      };
+    case "client_adviser_info": {
+      const cards = [
+        buildRedactedCard("Client", input.client.display_name),
+        buildRedactedCard(
+          "Adviser",
+          input.organisation ? `${input.adviserName} — ${input.organisation}` : input.adviserName,
+        ),
+      ];
+      return {
+        sectionId,
+        chapter: buildRedactedChapter({
+          id: sectionId,
+          title: "Client and adviser information",
+          paragraphs: ["Key contacts for this meeting pack."],
+          cards,
+          keepTogether: true,
+        }),
+      };
+    }
+    case "meeting_date":
+      return {
+        sectionId,
+        chapter: buildRedactedChapter({
+          id: sectionId,
+          title: "Meeting date",
+          paragraphs: [`Scheduled meeting date: ${input.meetingDateLabel}.`],
+          keepTogether: true,
+        }),
+      };
+    case "next_review_date": {
+      const reviewLabel = formatDisplayDate(input.client.next_review_due);
+      return {
+        sectionId,
+        chapter: buildRedactedChapter({
+          id: sectionId,
+          title: "Next review",
+          paragraphs: [`Next recommended review date: ${reviewLabel}.`],
+          keepTogether: true,
+        }),
+      };
+    }
+    case "financial_overview":
+    case "my_plan":
+    case "agreed_priorities":
+    case "roadmap":
+    case "meeting_summary": {
+      if (!selectedPublication) {
+        throw new BinderServiceError(BINDER_ERROR_CODES.SOURCE_UNAVAILABLE);
+      }
+      const payload = redactPublishedPayload(selectedPublication);
+
+      if (
+        sectionId === "financial_overview" &&
+        (selectedPublication.output_type === "financial_readiness_snapshot" ||
+          selectedPublication.output_type === "financial_overview")
+      ) {
+        const snapshot = sanitizeFinancialReadinessPayload(payload);
+        const cards = [
+          buildRedactedCard("Readiness overview", snapshot.educationalExplanation),
+          buildRedactedCard(
+            "Information completeness",
+            `${snapshot.informationCompletenessPercent}% of expected planning information is available.`,
+          ),
+        ];
+        return {
+          sectionId,
+          chapter: buildRedactedChapter({
+            id: sectionId,
+            title: "Financial overview",
+            paragraphs: [
+              `Planning readiness band: ${snapshot.readinessBand.replace(/_/g, " ")}.`,
+              `Data as at ${snapshot.dataAsAt}.`,
+            ],
+            cards,
+          }),
+        };
+      }
+
+      const titleMap: Record<string, string> = {
+        my_plan: "Current planning position",
+        agreed_priorities: "Agreed priorities",
+        roadmap: "Roadmap",
+        meeting_summary: "Meeting summary",
+      };
+      return {
+        sectionId,
+        chapter: buildRedactedChapter({
+          id: sectionId,
+          title: titleMap[sectionId] ?? sectionId,
+          paragraphs: payloadToParagraphs(payload),
+        }),
+      };
+    }
+    default:
+      throw new BinderServiceError(BINDER_ERROR_CODES.SOURCE_UNAVAILABLE);
+  }
+}
+
 export type ResolveBinderSectionsResult = {
   sections: BinderResolvedSection[];
   sourcePublications: BinderSourcePublicationRef[];
@@ -152,18 +288,9 @@ export async function resolveBinderSections(input: {
   meetingDate: string | null;
   sections: BinderSection[];
 }): Promise<ResolveBinderSectionsResult> {
-  const access = await resolveAccessibleClient(
-    input.adviserUserId,
-    input.userRole,
-    input.clientId,
-  );
-  if (access.status !== "ok") {
-    throw new BinderServiceError(BINDER_ERROR_CODES.ACCESS_DENIED);
-  }
-
-  const client = access.client;
-  const publications = await dbListPublishedOutputsForClient(input.clientId);
-  const currentPublications = publications.filter(isCurrentPublishedOutput);
+  const context = await loadBinderSectionContext(input);
+  const assessed = assessRequestedSections(input.sections, context);
+  const included = assertSectionsResolvableForGeneration(assessed, input.meetingDate);
 
   const { user: adviserUser, profile: adviserProfile } =
     await loadAdviserUserAndProfile(input.adviserUserId);
@@ -178,7 +305,7 @@ export async function resolveBinderSections(input: {
   const meetingDateLabel = formatDisplayDate(input.meetingDate);
 
   const cover: BinderPdfCover = {
-    clientDisplayName: client.display_name,
+    clientDisplayName: context.client.display_name,
     adviserDisplayName: adviserName,
     meetingDateLabel,
     generatedDateLabel,
@@ -188,148 +315,27 @@ export async function resolveBinderSections(input: {
   const resolved: BinderResolvedSection[] = [];
   const sourceRefs: BinderSourcePublicationRef[] = [];
 
-  for (const sectionId of input.sections) {
-    switch (sectionId) {
-      case "cover_page": {
-        resolved.push({
-          sectionId,
-          chapter: buildRedactedChapter({
-            id: sectionId,
-            title: "Cover",
-            paragraphs: [
-              `Prepared for ${client.display_name}.`,
-              meetingDateLabel
-                ? `Meeting date: ${meetingDateLabel}.`
-                : "Meeting date to be confirmed.",
-            ],
-            keepTogether: true,
-          }),
-        });
-        break;
-      }
-      case "client_adviser_info": {
-        const cards = [
-          buildRedactedCard("Client", client.display_name),
-          buildRedactedCard(
-            "Adviser",
-            organisation ? `${adviserName} — ${organisation}` : adviserName,
-          ),
-        ];
-        resolved.push({
-          sectionId,
-          chapter: buildRedactedChapter({
-            id: sectionId,
-            title: "Client and adviser information",
-            paragraphs: ["Key contacts for this meeting pack."],
-            cards,
-            keepTogether: true,
-          }),
-        });
-        break;
-      }
-      case "meeting_date": {
-        if (!meetingDateLabel) {
-          throw new BinderServiceError(BINDER_ERROR_CODES.SOURCE_UNAVAILABLE);
-        }
-        resolved.push({
-          sectionId,
-          chapter: buildRedactedChapter({
-            id: sectionId,
-            title: "Meeting date",
-            paragraphs: [`Scheduled meeting date: ${meetingDateLabel}.`],
-            keepTogether: true,
-          }),
-        });
-        break;
-      }
-      case "next_review_date": {
-        const reviewLabel = formatDisplayDate(client.next_review_due);
-        if (!reviewLabel) {
-          throw new BinderServiceError(BINDER_ERROR_CODES.SOURCE_UNAVAILABLE);
-        }
-        resolved.push({
-          sectionId,
-          chapter: buildRedactedChapter({
-            id: sectionId,
-            title: "Next review",
-            paragraphs: [`Next recommended review date: ${reviewLabel}.`],
-            keepTogether: true,
-          }),
-        });
-        break;
-      }
-      case "document_index": {
-        resolved.push(await loadDocumentIndex(client));
-        break;
-      }
-      case "financial_overview":
-      case "my_plan":
-      case "agreed_priorities":
-      case "roadmap":
-      case "meeting_summary": {
-        const types = SECTION_OUTPUT_TYPES[sectionId] ?? [];
-        const candidates = currentPublications.filter((p) =>
-          types.includes(p.output_type),
-        );
-        const selected = selectSingleCurrentPublishedOutput(candidates);
-        if (!selected) {
-          throw new BinderServiceError(BINDER_ERROR_CODES.SOURCE_UNAVAILABLE);
-        }
-        const payload = redactPublishedPayload(selected);
-        sourceRefs.push(publicationRef(selected));
+  for (const entry of included) {
+    if (entry.sectionId === "document_index") {
+      resolved.push(await loadDocumentIndex(context.client));
+      continue;
+    }
 
-        if (
-          sectionId === "financial_overview" &&
-          (selected.output_type === "financial_readiness_snapshot" ||
-            selected.output_type === "financial_overview")
-        ) {
-          const snapshot = sanitizeFinancialReadinessPayload(payload);
-          const cards = [
-            buildRedactedCard(
-              "Readiness overview",
-              snapshot.educationalExplanation,
-            ),
-            buildRedactedCard(
-              "Information completeness",
-              `${snapshot.informationCompletenessPercent}% of expected planning information is available.`,
-            ),
-          ];
-          resolved.push({
-            sectionId,
-            chapter: buildRedactedChapter({
-              id: sectionId,
-              title: "Financial overview",
-              paragraphs: [
-                `Planning readiness band: ${snapshot.readinessBand.replace(/_/g, " ")}.`,
-                `Data as at ${snapshot.dataAsAt}.`,
-              ],
-              cards,
-            }),
-          });
-        } else {
-          const titleMap: Record<string, string> = {
-            my_plan: "Current planning position",
-            agreed_priorities: "Agreed priorities",
-            roadmap: "Roadmap",
-            meeting_summary: "Meeting summary",
-          };
-          resolved.push({
-            sectionId,
-            chapter: buildRedactedChapter({
-              id: sectionId,
-              title: titleMap[sectionId] ?? sectionId,
-              paragraphs: payloadToParagraphs(payload),
-            }),
-          });
-        }
-        break;
-      }
-      default:
-        throw new BinderServiceError(BINDER_ERROR_CODES.SOURCE_UNAVAILABLE);
+    const section = resolveSectionChapter(entry, {
+      client: context.client,
+      adviserName,
+      organisation,
+      meetingDateLabel,
+      generatedDateLabel,
+    });
+    resolved.push(section);
+
+    if (entry.selectedPublication) {
+      sourceRefs.push(publicationRef(entry.selectedPublication));
     }
   }
 
-  const chapters = resolved.map((entry) => entry.chapter);
+  const chapters = resolved.map((item) => item.chapter);
   chapters.push(
     buildRedactedChapter({
       id: "report_notes",

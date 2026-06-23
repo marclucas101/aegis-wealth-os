@@ -134,7 +134,7 @@ No real `supabase db push` executed.
 
 ## 12. Branch push result
 
-_Pending push after NAP report commit._
+**Pushed** to `origin/phase-9f3-binder-client-vault` at `6dcd2be` (includes NAP report; implementation at `9afe34e`).
 
 ---
 

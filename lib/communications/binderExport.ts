@@ -2,22 +2,13 @@ import "server-only";
 
 import { generateBinderMeetingPack } from "@/lib/binder/binderGenerationService";
 import type { BinderPublicMetadata } from "@/lib/binder/binderPdfTypes";
+import {
+  BINDER_SECTIONS,
+  type BinderSection,
+} from "@/lib/binder/binderSectionPolicy";
 import { isFeatureEnabled } from "@/lib/compliance/featureFlags";
 
-export const BINDER_SECTIONS = [
-  "cover_page",
-  "client_adviser_info",
-  "meeting_date",
-  "financial_overview",
-  "my_plan",
-  "agreed_priorities",
-  "roadmap",
-  "meeting_summary",
-  "document_index",
-  "next_review_date",
-] as const;
-
-export type BinderSection = (typeof BINDER_SECTIONS)[number];
+export { BINDER_SECTIONS, type BinderSection };
 
 export async function generateBinderExport(input: {
   clientId: string;

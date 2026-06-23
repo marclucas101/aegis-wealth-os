@@ -5,9 +5,14 @@ import {
   generateBinderExport,
   type BinderSection,
 } from "@/lib/communications/binderExport";
+import { BINDER_DEFAULT_GENERATION_SECTIONS } from "@/lib/binder/binderSectionPolicy";
+import { assessBinderReadiness } from "@/lib/binder/binderReadinessService";
+import { logBinderGenerationSourceUnavailable } from "@/lib/binder/binderGenerationLogging";
+import { BINDER_READINESS_USER_MESSAGE } from "@/lib/binder/binderSectionPolicy";
 import { BINDER_MAX_SECTION_COUNT } from "@/lib/binder/binderPdfTypes";
-import { toBinderPublicError } from "@/lib/binder/binderErrors";
+import { BINDER_ERROR_CODES, toBinderPublicError } from "@/lib/binder/binderErrors";
 import { isFeatureEnabled } from "@/lib/compliance/featureFlags";
+import { createRequestId } from "@/lib/ops/logger";
 import {
   parseJsonBodySafely,
   privateNoStoreHeaders,
@@ -24,7 +29,7 @@ type RouteContext = { params: Promise<{ clientId: string }> };
 
 function parseSections(body: Record<string, unknown>): BinderSection[] | null {
   if (!("sections" in body)) {
-    return [...BINDER_SECTIONS];
+    return [...BINDER_DEFAULT_GENERATION_SECTIONS];
   }
   if (!Array.isArray(body.sections)) {
     return null;
@@ -46,6 +51,17 @@ export async function POST(
   request: Request,
   context: RouteContext,
 ): Promise<NextResponse> {
+  const requestId = createRequestId();
+  let logContext:
+    | {
+        clientId: string;
+        adviserUserId: string;
+        userRole: "advisor" | "admin";
+        sections: BinderSection[];
+        meetingDate: string | null;
+      }
+    | null = null;
+
   try {
     const rateLimit = rateLimitOrThrow(request, { bucket: "writeHeavy" });
     if (!rateLimit.ok) {
@@ -129,6 +145,14 @@ export async function POST(
     const meetingDate =
       typeof body.meetingDate === "string" ? body.meetingDate : null;
 
+    logContext = {
+      clientId,
+      adviserUserId: access.user.id,
+      userRole: role,
+      sections,
+      meetingDate,
+    };
+
     const binder = await generateBinderExport({
       clientId,
       adviserUserId: access.user.id,
@@ -156,10 +180,41 @@ export async function POST(
     );
   } catch (err) {
     const pub = toBinderPublicError(err, "Failed to generate binder");
+
+    if (pub.code === BINDER_ERROR_CODES.SOURCE_UNAVAILABLE && logContext) {
+      try {
+        const assessment = await assessBinderReadiness({
+          clientId: logContext.clientId,
+          adviserUserId: logContext.adviserUserId,
+          userRole: logContext.userRole,
+          meetingDate: logContext.meetingDate,
+          sections: logContext.sections,
+        });
+        logBinderGenerationSourceUnavailable({
+          clientId: logContext.clientId,
+          adviserUserId: logContext.adviserUserId,
+          requestedSectionIds: logContext.sections,
+          unavailableSections: assessment.readiness.unavailableSections,
+          requestId,
+        });
+      } catch {
+        // Best-effort structured logging only.
+      }
+
+      return NextResponse.json(
+        {
+          ok: false,
+          error: BINDER_READINESS_USER_MESSAGE,
+          code: pub.code,
+        },
+        { status: 422, headers: privateNoStoreHeaders() },
+      );
+    }
+
     console.error("[api/advisor/clients/[clientId]/binder-export POST]", err);
     const status = pub.code === "BINDER_ACCESS_DENIED" ? 403 : 500;
     return NextResponse.json(
-      { ok: false, error: pub.error },
+      { ok: false, error: pub.error, code: pub.code },
       { status, headers: privateNoStoreHeaders() },
     );
   }

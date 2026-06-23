@@ -361,8 +361,9 @@ const TESTS: TestCase[] = [
   record(68, "orphan risk audit on finalize failure", () => {
     assert(read("lib/binder/binderGenerationService.ts").includes("binder_storage_orphan_risk"), "orphan");
   }),
-  record(69, "section resolver uses isCurrentPublishedOutput", () => {
-    assert(read("lib/binder/binderSectionResolvers.ts").includes("isCurrentPublishedOutput"), "current");
+  record(69, "section catalog uses client publication availability", () => {
+    assert(read("lib/binder/binderSectionCatalog.ts").includes("classifyClientPublicationAvailability"), "catalog");
+    assert(read("lib/binder/binderPublicationAvailability.ts").includes("isCurrentClientPublishedOutput"), "current");
   }),
   record(70, "section resolver blocks adviser_internal", () => {
     assert(read("lib/binder/binderPdfRedaction.ts").includes("adviser_internal"), "internal");
