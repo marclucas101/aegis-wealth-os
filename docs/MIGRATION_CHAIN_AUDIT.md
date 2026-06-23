@@ -224,6 +224,20 @@ Evidence-based inventory of every file under `supabase/migrations/`.
 | **Clean DB** | Safe |
 | **Existing DB** | Safe (IF NOT EXISTS) |
 
+### 202606200010 — phase9f3_binder_pdf_client_vault.sql
+
+| Attribute | Detail |
+|-----------|--------|
+| **Purpose** | Binder PDF generation metadata, publication linkage, private `binder-exports` storage bucket |
+| **Tables altered** | `binder_exports` (additive columns, CHECK constraints, indexes) |
+| **Storage** | Bucket `binder-exports` (private, PDF-only); no authenticated storage policies |
+| **Indexes** | `idx_binder_exports_generation_idempotent`, `idx_binder_exports_lineage_version`, `idx_binder_exports_client_status`, `idx_binder_exports_client_lineage`, `idx_binder_exports_published_document`, `idx_binder_exports_client_published_current` |
+| **RLS** | Unchanged — `binder_exports` service-role only from 006 |
+| **Seeds** | None (reuses `binder_export`, `binder_client_publication` from 006) |
+| **Depends on** | **202606200009**, `binder_exports`, `documents` |
+| **Clean DB** | Safe |
+| **Existing DB** | Safe (IF NOT EXISTS); legacy rows backfill `binder_lineage_id = id`, `generation_status = legacy_manifest` |
+
 ---
 
 ## Historical migration edit policy

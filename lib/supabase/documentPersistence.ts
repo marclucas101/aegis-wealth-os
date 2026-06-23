@@ -1,6 +1,7 @@
 import "server-only";
 
 import { canClientViewDocument } from "@/lib/compliance/documentVisibility";
+import { assertBinderDocumentClientAccessible, isBinderDocumentTags, loadBinderByPublishedDocumentId } from "@/lib/binder/binderClientAccess";
 import { emitLifecycleNotificationSafe } from "@/lib/communications/lifecycleNotificationService";
 import { createAdminSupabaseClient } from "./admin";
 import type { AppClientRow } from "./userProfile";
@@ -25,6 +26,9 @@ export type DocumentCategory = (typeof DOCUMENT_CATEGORIES)[number];
 
 export const PROTECTION_PORTFOLIO_SUMMARY_TAG = "protection_portfolio_summary";
 export const ADVISOR_PROTECTION_REPORT_SOURCE = "advisor_protection_report";
+export const ADVISOR_BINDER_EXPORT_SOURCE = "advisor_binder_export";
+export const BINDER_PUBLISHED_TAG = "binder_published";
+export const BINDER_CLIENT_VISIBLE_TAG = "client_visible";
 
 export type VaultDocumentRecord = {
   id: string;
@@ -228,6 +232,9 @@ function resolveSourceFeature(tags: string[] | null | undefined): string | null 
   if (tags.includes(ADVISOR_PROTECTION_REPORT_SOURCE)) {
     return ADVISOR_PROTECTION_REPORT_SOURCE;
   }
+  if (tags.includes(BINDER_PUBLISHED_TAG)) {
+    return ADVISOR_BINDER_EXPORT_SOURCE;
+  }
   return null;
 }
 
@@ -295,7 +302,16 @@ export async function listClientDocuments(
 
   const rows = (data ?? []) as DocumentRow[];
 
-  return rows
+  const visibility = await Promise.all(
+    rows.map(async (row) => ({
+      row,
+      visible: await isBinderDocumentListedForClient(client.id, row),
+    })),
+  );
+
+  return visibility
+    .filter(({ visible }) => visible)
+    .map(({ row }) => row)
     .filter((row) => {
       if (options?.prospectMode && options.clientUserId) {
         return canClientViewDocument({
@@ -308,6 +324,23 @@ export async function listClientDocuments(
     })
     .filter((row) => !category || resolveUiCategory(row) === category)
     .map(mapRowToRecord);
+}
+
+async function isBinderDocumentListedForClient(
+  clientId: string,
+  row: DocumentRow,
+): Promise<boolean> {
+  if (!isBinderDocumentTags(row.tags)) {
+    return true;
+  }
+
+  const binder = await loadBinderByPublishedDocumentId(row.id, clientId);
+  return (
+    binder !== null &&
+    binder.status === "published_to_client" &&
+    !binder.withdrawn_at &&
+    binder.generation_status === "ready"
+  );
 }
 
 export async function uploadClientDocument(
@@ -371,6 +404,47 @@ export async function uploadClientDocument(
   return mapRowToRecord(inserted as DocumentRow);
 }
 
+/** Metadata-only vault row for an immutable binder PDF in binder-exports. */
+export async function insertPublishedBinderDocument(input: {
+  clientId: string;
+  uploadedByUserId: string;
+  storageBucket: string;
+  storagePath: string;
+  mimeType: string;
+  fileSizeBytes: number;
+  version: number;
+}): Promise<{ id: string }> {
+  const admin = createAdminSupabaseClient();
+  const title = "Client meeting pack";
+  const fileName = "meeting-pack.pdf";
+  const tags = [BINDER_PUBLISHED_TAG, BINDER_CLIENT_VISIBLE_TAG, "other"];
+
+  const { data, error } = await admin
+    .from("documents")
+    .insert({
+      client_id: input.clientId,
+      uploaded_by_user_id: input.uploadedByUserId,
+      category: "other",
+      title,
+      description: `Published meeting pack (version ${input.version})`,
+      file_name: fileName,
+      mime_type: input.mimeType,
+      file_size_bytes: input.fileSizeBytes,
+      storage_bucket: input.storageBucket,
+      storage_path: input.storagePath,
+      tags,
+      is_archived: true,
+    } as never)
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create binder document row: ${error.message}`);
+  }
+
+  return { id: (data as { id: string }).id };
+}
+
 export async function deleteClientDocument(
   client: AppClientRow,
   documentId: string,
@@ -383,12 +457,16 @@ export async function deleteClientDocument(
 
   const admin = createAdminSupabaseClient();
 
-  const { error: storageError } = await admin.storage
-    .from(document.storage_bucket)
-    .remove([document.storage_path]);
+  const isBinderDocument = isBinderDocumentTags(document.tags);
 
-  if (storageError) {
-    throw new Error(`Failed to delete file: ${storageError.message}`);
+  if (!isBinderDocument) {
+    const { error: storageError } = await admin.storage
+      .from(document.storage_bucket)
+      .remove([document.storage_path]);
+
+    if (storageError) {
+      throw new Error(`Failed to delete file: ${storageError.message}`);
+    }
   }
 
   const { error: archiveError } = await admin
@@ -457,6 +535,32 @@ export async function createDocumentSignedUrl(
     })
   ) {
     throw new Error("Document not found");
+  }
+
+  await assertBinderDocumentClientAccessible({
+    documentId,
+    clientId: client.id,
+    tags: document.tags,
+  });
+
+  if (isBinderDocumentTags(document.tags)) {
+    const { loadBinderByPublishedDocumentId } = await import(
+      "@/lib/binder/binderClientAccess"
+    );
+    const binder = await loadBinderByPublishedDocumentId(documentId, client.id);
+    if (binder) {
+      const { auditBinderEvent } = await import("@/lib/binder/binderAudit");
+      await auditBinderEvent({
+        action: "binder_client_downloaded",
+        clientId: client.id,
+        userId: clientUserId,
+        binderExportId: binder.id,
+        metadata: {
+          version: binder.version,
+          outcome: "downloaded",
+        },
+      });
+    }
   }
 
   const downloadDate = new Date().toISOString().slice(0, 10);

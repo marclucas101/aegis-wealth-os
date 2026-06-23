@@ -1,6 +1,17 @@
 # Phase 9F.2 Event Catalog
 
-All six implemented lifecycle events. Event names are fixed in `LIFECYCLE_EVENT_NAMES` and cannot be supplied by API clients.
+All implemented lifecycle events. Event names are fixed in `LIFECYCLE_EVENT_NAMES` and cannot be supplied by API clients.
+
+## 0. `available` (Phase 9F.3 binder)
+
+| Field | Value |
+|-------|-------|
+| Source entities | `document` |
+| Recipients | Active client |
+| In-app | Yes (`document_uploaded`) |
+| Email | No |
+| Trigger | `publishBinderToClient` — first binder vault publication |
+| Idempotency | `available:document:{docId}:{clientId}:{version}:in_app` |
 
 ## 1. `replaced`
 

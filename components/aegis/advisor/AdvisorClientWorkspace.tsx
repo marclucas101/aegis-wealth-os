@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AdvisorClientCommandCenterResponse } from "@/app/api/advisor/clients/[clientId]/command-center/route";
 import type { AdvisorClientCommandCenterHeavyResponse } from "@/app/api/advisor/clients/[clientId]/command-center/heavy/route";
 import AdvisorClientAppointmentsPanel from "@/components/aegis/advisor/AdvisorClientAppointmentsPanel";
+import AdvisorClientBinderPanel from "@/components/aegis/advisor/AdvisorClientBinderPanel";
 import AdvisorClientBudgetPanel from "@/components/aegis/advisor/AdvisorClientBudgetPanel";
 import AdvisorClientDashboardPanel from "@/components/aegis/advisor/AdvisorClientDashboardPanel";
 import AdvisorClientFeedbackPanel from "@/components/aegis/advisor/AdvisorClientFeedbackPanel";
@@ -52,6 +53,7 @@ type WorkspaceTab =
   | "financial-profile"
   | "budget"
   | "protection-reports"
+  | "meeting-packs"
   | "document-vault"
   | "appointments"
   | "feedback"
@@ -65,6 +67,7 @@ const WORKSPACE_TABS: Array<{ id: WorkspaceTab; label: string }> = [
   { id: "financial-profile", label: "Financial Profile" },
   { id: "budget", label: "Budget" },
   { id: "protection-reports", label: "Protection Reports" },
+  { id: "meeting-packs", label: "Meeting Packs" },
   { id: "document-vault", label: "Document Vault" },
   { id: "appointments", label: "Appointments" },
   { id: "feedback", label: "Feedback" },
@@ -532,6 +535,10 @@ export default function AdvisorClientWorkspace({
           metadataError={commandCenter.reportsError}
           onRetry={() => void refreshCommandCenter()}
         />
+      )}
+
+      {activeTab === "meeting-packs" && (
+        <AdvisorClientBinderPanel clientId={clientId} />
       )}
 
       {activeTab === "document-vault" && (

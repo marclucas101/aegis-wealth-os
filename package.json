@@ -33,6 +33,10 @@
     "qa:phase9e-communications": "npx tsx scripts/run-phase9e-communications-validation.ts",
     "qa:phase9f-scheduled-publishing": "npx tsx scripts/run-phase9f-scheduled-publishing-validation.ts",
     "qa:phase9f2-lifecycle-notifications": "npx tsx scripts/run-phase9f2-lifecycle-notifications-validation.ts",
+    "qa:phase9f3-binder-client-vault": "npx tsx scripts/run-phase9f3-binder-client-vault-validation.ts",
+    "qa:phase9f3-local-acceptance": "npx tsx scripts/run-phase9f3-local-acceptance.ts",
+    "qa:phase9f3-binder-readiness": "npx tsx scripts/run-phase9f3-binder-readiness-validation.ts",
+    "qa:a4-summary-report": "npx tsx scripts/run-a4-summary-report-validation.ts",
     "qa:migration-readiness": "npx tsx scripts/run-migration-readiness-validation.ts",
     "qa:phase9-migration-readiness": "npx tsx scripts/run-phase9-migration-readiness-validation.ts",
     "qa:phase9-column-canonicalization": "npx tsx scripts/run-phase9-column-canonicalization-validation.ts",
@@ -51,7 +55,8 @@
     "jspdf": "^4.2.1",
     "next": "16.2.7",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

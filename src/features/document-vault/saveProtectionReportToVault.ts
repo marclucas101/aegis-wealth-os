@@ -1,3 +1,4 @@
+import { sanitizeReportFilenameBase } from "@/lib/reports/a4Print";
 import { generateProtectionReportPdf } from "./generateProtectionReportPdf";
 import type { ProtectionReportVaultMetadata } from "./types";
 
@@ -19,7 +20,7 @@ export async function saveProtectionReportToVault(params: {
   metadata: ProtectionReportVaultMetadata;
 }): Promise<SaveProtectionReportResult> {
   const pdfBlob = await generateProtectionReportPdf(params.reportRootElement);
-  const fileName = `${params.metadata.householdName.replace(/[^\w.\-()+ ]/g, "_").slice(0, 80)}-protection-summary.pdf`;
+  const fileName = `${sanitizeReportFilenameBase(params.metadata.householdName)}-protection-summary.pdf`;
   const pdfFile = new File([pdfBlob], fileName, { type: "application/pdf" });
 
   const formData = new FormData();

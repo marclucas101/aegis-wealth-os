@@ -177,7 +177,11 @@ export default function DocumentVaultClient() {
       const data = (await response.json()) as DocumentsSignedUrlResponse;
 
       if (!data.ok) {
-        throw new Error(data.error);
+        const safeMessage =
+          response.status === 404
+            ? "This document is no longer available."
+            : data.error;
+        throw new Error(safeMessage);
       }
 
       window.open(data.signedUrl, "_blank", "noopener,noreferrer");

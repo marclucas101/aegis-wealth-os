@@ -1,6 +1,6 @@
 # Migration Dependency Graph
 
-Pending migrations `202606100019`–`202606200009` and their prerequisites.
+Pending migrations `202606100019`–`202606200010` and their prerequisites.
 
 ```mermaid
 flowchart TD
@@ -27,6 +27,7 @@ flowchart TD
   M9E2[202606200007 comms_hardening]
   M9F1[202606200008 scheduled_publishing]
   M9F2[202606200009 lifecycle_notifications]
+  M9F3[202606200010 binder_pdf_client_vault]
 
   M018 --> M019
   M003 --> M019
@@ -47,6 +48,7 @@ flowchart TD
   M9E1 --> M9E2
   M9E2 --> M9F1
   M9F1 --> M9F2
+  M9F2 --> M9F3
 ```
 
 ## Blocking relationships
@@ -63,6 +65,7 @@ flowchart TD
 | 202606200007 | 006 |
 | 202606200008 | 007, platform_feature_controls |
 | 202606200009 | 008, client_notifications |
+| 202606200010 | 009, binder_exports, documents |
 
 ## Parallel-safe (after 018)
 
@@ -96,3 +99,4 @@ These can apply independently **once push resumes**, but 021 and 150001 do not d
 | Converted client portal | 9A1, 9D |
 | Communications governance | 9A1, 9E1, 9E2 |
 | Scheduled publishing automation | 9E2, 9F1 |
+| Binder PDF + client vault | 9F2, 9E1 (binder_exports), 008 (documents) |

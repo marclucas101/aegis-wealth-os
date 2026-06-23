@@ -105,15 +105,16 @@ export default function ProtectionReportPreview({ data }: ProtectionReportPrevie
   );
 
   const portfolioPageIndex = 3;
-  const policyStartPage = 4;
+  const portfolioDetailPageIndex = 4;
+  const policyStartPage = 5;
 
   return (
     <div
       id="protection-report-print-root"
-      className="protection-report-preview report-print-root bg-white text-[#10283A]"
+      className="protection-report-preview report-print-root report-a4-document bg-white text-[#10283A]"
     >
       {/* Page 1 — Cover */}
-      <ReportPrintPage footerLabel="COVER" footerIndex={1}>
+      <ReportPrintPage footerLabel="COVER" footerIndex={1} variant="cover">
         <div className="flex items-start justify-between gap-4">
           <Image
             src={BRAND.assets.logo}
@@ -335,6 +336,14 @@ export default function ProtectionReportPreview({ data }: ProtectionReportPrevie
             ))}
           </div>
         </div>
+      </ReportPrintPage>
+
+      <ReportPrintPage
+        footerLabel="PORTFOLIO DETAIL"
+        footerIndex={portfolioDetailPageIndex}
+      >
+        <p className="report-section-label text-[#D1A866]">Section Two (continued)</p>
+        <h2 className="report-title-lg mt-1.5 text-[#10283A]">Policy Summaries.</h2>
 
         <div className="mt-5 space-y-3">
           {sortedPolicies.map((policy) => {

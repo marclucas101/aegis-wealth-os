@@ -1,0 +1,332 @@
+/* AEGIS — dedicated A4 portrait report layout (screen preview + print) */
+
+:root {
+  --report-a4-width: 210mm;
+  --report-a4-height: 297mm;
+  --report-a4-margin: 16mm;
+  --report-a4-content-width: 178mm;
+  --report-a4-ink: #10283a;
+  --report-a4-gold: #d1a866;
+  --report-a4-paper: #ffffff;
+  --report-a4-muted: #10283a99;
+}
+
+/* Screen — document preview centred on page */
+.report-a4-document {
+  box-sizing: border-box;
+  margin-inline: auto;
+  width: var(--report-a4-width);
+  max-width: 100%;
+}
+
+.report-a4-document .report-page,
+.report-a4-document .print-page,
+.report-a4-document .protection-print-page {
+  background: var(--report-a4-paper);
+  box-sizing: border-box;
+  color: var(--report-a4-ink);
+  margin-inline: auto;
+  max-width: var(--report-a4-width);
+  padding: var(--report-a4-margin);
+  width: var(--report-a4-width);
+}
+
+.protection-report-preview.report-a4-document .report-page,
+.protection-report-preview.report-a4-document .print-page,
+.protection-report-preview.report-a4-document .protection-print-page {
+  border: 1px solid rgb(16 40 58 / 0.12);
+  box-shadow: 0 1px 0 rgb(209 168 102 / 0.08);
+  margin-bottom: 1.25rem;
+}
+
+.protection-report-preview .protection-print-page-inner {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(var(--report-a4-height) - (var(--report-a4-margin) * 2));
+  padding: 0;
+  width: 100%;
+}
+
+.report-page--cover .protection-print-page-inner,
+.report-cover-page .protection-print-page-inner {
+  justify-content: space-between;
+  min-height: calc(var(--report-a4-height) - (var(--report-a4-margin) * 2));
+}
+
+/* Typography hierarchy */
+.report-a4-document .report-type-label {
+  font-size: 9pt;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.report-a4-document .report-section-label {
+  font-size: 8.5pt;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.report-a4-document .report-title-xl {
+  font-size: 24pt;
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+}
+
+.report-a4-document .report-title-lg {
+  font-size: 18pt;
+  font-weight: 300;
+  line-height: 1.2;
+}
+
+.report-a4-document .report-title-md {
+  font-size: 13pt;
+  font-weight: 300;
+  line-height: 1.25;
+}
+
+.report-a4-document .report-body {
+  font-size: 10pt;
+  font-weight: 300;
+  line-height: 1.55;
+}
+
+.report-a4-document .report-caption {
+  font-size: 8pt;
+  font-weight: 300;
+  line-height: 1.4;
+}
+
+/* Tables */
+.report-a4-table {
+  border-collapse: collapse;
+  font-size: 9.5pt;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.report-a4-table th,
+.report-a4-table td {
+  border-bottom: 1px solid rgb(16 40 58 / 0.1);
+  overflow-wrap: anywhere;
+  padding: 0.45rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+  word-break: break-word;
+}
+
+.report-a4-table th {
+  color: var(--report-a4-muted);
+  font-size: 8pt;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.report-a4-table .report-a4-table-num {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.report-a4-table thead {
+  display: table-header-group;
+}
+
+.report-a4-table tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Charts / visuals */
+.report-print-chart,
+.report-a4-document svg {
+  break-inside: avoid;
+  max-width: 100%;
+  page-break-inside: avoid;
+}
+
+.report-print-chart {
+  height: 128px;
+  width: 100%;
+}
+
+/* Break control utilities */
+.report-print-keep-with-next {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+.report-print-section-heading {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+.report-print-page-break {
+  break-before: page;
+  page-break-before: always;
+}
+
+.report-print-avoid-break {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.report-print-allow-break {
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
+/* Cover */
+.report-cover-page {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: calc(var(--report-a4-height) - (var(--report-a4-margin) * 2));
+  width: 100%;
+}
+
+@media print {
+  @page {
+    margin: 0;
+    size: A4 portrait;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: var(--report-a4-ink) !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body.report-print-active {
+    background: #ffffff !important;
+  }
+
+  .report-no-print,
+  .consent-banner,
+  [data-consent-banner] {
+    display: none !important;
+  }
+
+  .report-print-root,
+  .report-print-body,
+  .report-a4-document,
+  .protection-report-preview {
+    background: #ffffff !important;
+    box-shadow: none !important;
+    color: var(--report-a4-ink) !important;
+    float: none !important;
+    margin: 0 !important;
+    max-width: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    width: auto !important;
+  }
+
+  .report-a4-document .report-page,
+  .report-a4-document .print-page,
+  .report-a4-document .protection-print-page,
+  .print-page,
+  .protection-print-page {
+    border: none !important;
+    box-shadow: none !important;
+    box-sizing: border-box;
+    margin: 0 !important;
+    max-width: none !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    padding: var(--report-a4-margin) !important;
+    width: auto !important;
+  }
+
+  .report-page--chapter,
+  .print-page,
+  .protection-print-page {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .report-a4-document > .report-page--chapter:first-child,
+  .report-a4-document > .print-page:first-child,
+  .report-a4-document > .protection-print-page:first-child,
+  .protection-report-preview > .print-page:first-child,
+  .protection-report-preview > .protection-print-page:first-child {
+    break-before: auto;
+    page-break-before: auto;
+  }
+
+  .protection-print-page-inner {
+    min-height: auto !important;
+    padding: 0 !important;
+  }
+
+  .report-cover-page {
+    break-after: page;
+    min-height: calc(var(--report-a4-height) - (var(--report-a4-margin) * 2));
+    page-break-after: always;
+  }
+
+  .report-print-body a[href]::after {
+    content: none !important;
+  }
+
+  .report-print-body a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+
+  main .mx-auto.max-w-7xl,
+  main .mx-auto.max-w-4xl {
+    margin: 0 !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .protection-report-print-area {
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .protection-report-preview .protection-print-page {
+    margin-bottom: 0 !important;
+  }
+
+  .protection-report-page-footer {
+    break-inside: avoid;
+    margin-top: 8mm;
+    page-break-inside: avoid;
+  }
+
+  .print-color-bar,
+  .protection-report-preview svg circle {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body.report-print-active .min-h-screen {
+    background: #ffffff !important;
+  }
+
+  .report-a4-table {
+    font-size: 9pt;
+  }
+
+  .lg\:grid-cols-2,
+  .sm\:grid-cols-2,
+  .sm\:grid-cols-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .lg\:col-span-2 {
+    grid-column: span 2 / span 2 !important;
+  }
+}

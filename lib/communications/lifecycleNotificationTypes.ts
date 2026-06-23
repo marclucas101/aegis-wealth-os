@@ -2,6 +2,7 @@ import "server-only";
 
 /** Approved lifecycle event names — not accepted from API requests. */
 export const LIFECYCLE_EVENT_NAMES = [
+  "available",
   "replaced",
   "superseded",
   "withdrawn",

@@ -13,11 +13,16 @@ export type SqlAnalysisIssue = {
     | "invalid_cte_scope"
     | "unsafe_write"
     | "direct_optional_reference"
+    | "unsafe_optional_column_reference"
+    | "preflight_untyped_probes_cte"
+    | "preflight_union_column_mismatch"
+    | "preflight_final_select_mismatch"
     | "unqualified_column"
     | "empty_statement"
     | "unguarded_xpath"
     | "unguarded_xml_cast"
-    | "unguarded_xmlparse";
+    | "unguarded_xmlparse"
+    | "invalid_btrim_arity";
   message: string;
   position?: number;
 };
@@ -316,10 +321,239 @@ function stripSqlComments(sql: string): string {
   return sql.replace(/--[^\n]*/g, "");
 }
 
+/** Migration 010 columns on binder_exports that must not be referenced directly in pre-apply diagnostics. */
+export const PHASE9F3_OPTIONAL_BINDER_COLUMNS = [
+  "binder_lineage_id",
+  "generation_status",
+  "generation_idempotency_key",
+  "storage_bucket",
+  "file_size_bytes",
+  "mime_type",
+  "content_hash",
+  "generation_error_code",
+  "generation_completed_at",
+  "published_document_id",
+  "supersedes_binder_id",
+  "withdrawn_at",
+  "withdrawal_reason",
+] as const;
+
+function isInsideSingleQuotedLiteral(sql: string, index: number): boolean {
+  let inLiteral = false;
+  for (let i = 0; i < index; i += 1) {
+    if (sql[i] === "'") {
+      if (sql[i + 1] === "'") {
+        i += 1;
+        continue;
+      }
+      inLiteral = !inLiteral;
+    }
+  }
+  return inLiteral;
+}
+
 /**
- * Detects diagnostic SQL patterns that call xpath/XML parsers without runtime guards.
- * query_to_xml on zero rows returns an empty document and crashes xpath() at runtime.
+ * Flags direct binder_exports column references that PostgreSQL resolves at plan time
+ * even when wrapped in CASE/EXISTS guards. Approved: information_schema/pg catalogs,
+ * to_jsonb(row) ->> 'column', or column names only inside string literals.
  */
+export function detectUnsafeOptionalBinderColumnReferences(
+  sql: string,
+  columns: readonly string[] = PHASE9F3_OPTIONAL_BINDER_COLUMNS,
+): SqlAnalysisIssue[] {
+  const issues: SqlAnalysisIssue[] = [];
+  const executable = stripSqlComments(sql);
+  if (!/\bbinder_exports\b/i.test(executable)) {
+    return issues;
+  }
+
+  for (const column of columns) {
+    const pattern = new RegExp(`\\b${column}\\b`, "gi");
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(executable)) !== null) {
+      const index = match.index;
+      if (isInsideSingleQuotedLiteral(executable, index)) {
+        continue;
+      }
+
+      const windowStart = Math.max(0, index - 8);
+      const windowEnd = Math.min(executable.length, index + column.length + 8);
+      const window = executable.slice(windowStart, windowEnd);
+
+      if (/->>\s*'$/i.test(executable.slice(Math.max(0, index - 5), index))) {
+        continue;
+      }
+      if (/information_schema\.columns/i.test(window) || /column_name\s*=/i.test(window)) {
+        continue;
+      }
+      if (/pg_attribute/i.test(window) || /pg_get_constraintdef/i.test(window)) {
+        continue;
+      }
+      if (/constraint_def\s+ILIKE/i.test(window) || /key_columns_ordered\s*=/i.test(window)) {
+        continue;
+      }
+      if (/predicate_canonical\s+ILIKE/i.test(window) || /expected_detail/i.test(window)) {
+        continue;
+      }
+
+      issues.push({
+        kind: "unsafe_optional_column_reference",
+        message: `Direct reference to migration-owned column "${column}" on binder_exports; use to_jsonb(row) ->> '${column}' or catalog probes`,
+        position: index,
+      });
+    }
+  }
+
+  return issues;
+}
+
+export const PREFLIGHT_RESULT_COLUMNS = ["probe_id", "classification", "detail"] as const;
+
+const PREFLIGHT_FINAL_SELECT_PATTERN =
+  /select\s+probe_id\s*,\s*classification\s*,\s*detail\s+from\s+probes\b/i;
+
+const TYPED_PROBES_CTE_PATTERN =
+  /probes\s*\(\s*probe_id\s*,\s*classification\s*,\s*detail\s*\)\s*as\s*\(/i;
+
+const IMPLICIT_PROBES_CTE_PATTERN = /\bprobes\s+as\s*\(/i;
+
+function countSelectListColumns(selectList: string): number {
+  let depth = 0;
+  let commas = 0;
+  let inString = false;
+  for (let i = 0; i < selectList.length; i += 1) {
+    const ch = selectList[i];
+    if (ch === "'") {
+      if (inString && selectList[i + 1] === "'") {
+        i += 1;
+        continue;
+      }
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === "(") depth += 1;
+    else if (ch === ")") depth -= 1;
+    else if (ch === "," && depth === 0) commas += 1;
+  }
+  return commas + 1;
+}
+
+function extractProbesCteBody(sql: string): string | null {
+  const match = sql.match(
+    /\bprobes\s*(?:\(\s*probe_id\s*,\s*classification\s*,\s*detail\s*\))?\s*as\s*\(/i,
+  );
+  if (!match || match.index === undefined) return null;
+  const start = match.index + match[0].length;
+  let depth = 1;
+  let i = start;
+  while (i < sql.length && depth > 0) {
+    if (sql[i] === "(") depth += 1;
+    else if (sql[i] === ")") depth -= 1;
+    i += 1;
+  }
+  return depth === 0 ? sql.slice(start, i - 1) : null;
+}
+
+/**
+ * Validates preflight diagnostics that expose probe_id, classification, detail from a probes CTE.
+ */
+export function detectPreflightProbeCteIssues(sql: string): SqlAnalysisIssue[] {
+  const issues: SqlAnalysisIssue[] = [];
+  const executable = stripSqlComments(sql);
+
+  if (!/\bfrom\s+probes\b/i.test(executable)) {
+    return issues;
+  }
+
+  if (!PREFLIGHT_FINAL_SELECT_PATTERN.test(executable)) {
+    issues.push({
+      kind: "preflight_final_select_mismatch",
+      message:
+        "Preflight final SELECT must be exactly: SELECT probe_id, classification, detail FROM probes",
+    });
+  }
+
+  if (IMPLICIT_PROBES_CTE_PATTERN.test(executable) && !TYPED_PROBES_CTE_PATTERN.test(executable)) {
+    const body = extractProbesCteBody(executable);
+    const firstBranch = body?.split(/\bunion\s+all\b/i)[0] ?? "";
+    const firstBranchFullyAliased =
+      /\bas\s+probe_id\b/i.test(firstBranch) &&
+      /\bas\s+classification\b/i.test(firstBranch) &&
+      /\bas\s+detail\b/i.test(firstBranch);
+    if (!firstBranchFullyAliased) {
+      issues.push({
+        kind: "preflight_untyped_probes_cte",
+        message:
+          "probes CTE must declare explicit output columns: probes (probe_id, classification, detail) AS (",
+      });
+    }
+  }
+
+  const body = extractProbesCteBody(executable);
+  if (body) {
+    const branches = body.split(/\bunion\s+all\b/i);
+    branches.forEach((branch, index) => {
+      const selectMatch = branch.match(/\bselect\s+([\s\S]*?)$/i);
+      if (!selectMatch) {
+        issues.push({
+          kind: "preflight_union_column_mismatch",
+          message: `probes UNION ALL branch ${index + 1} is missing a SELECT list`,
+        });
+        return;
+      }
+      const columnCount = countSelectListColumns(selectMatch[1].trim());
+      if (columnCount !== PREFLIGHT_RESULT_COLUMNS.length) {
+        issues.push({
+          kind: "preflight_union_column_mismatch",
+          message: `probes UNION ALL branch ${index + 1} has ${columnCount} columns; expected ${PREFLIGHT_RESULT_COLUMNS.length} (probe_id, classification, detail)`,
+        });
+      }
+    });
+  }
+
+  return issues;
+}
+
+/**
+ * PostgreSQL btrim(text) and btrim(text, characters) only — flag 3+ argument calls.
+ */
+export function detectInvalidBtrimArity(sql: string): SqlAnalysisIssue[] {
+  const issues: SqlAnalysisIssue[] = [];
+  const executable = stripSqlComments(sql);
+  const lower = executable.toLowerCase();
+  let searchFrom = 0;
+
+  while (searchFrom < lower.length) {
+    const idx = lower.indexOf("btrim(", searchFrom);
+    if (idx < 0) break;
+
+    let depth = 1;
+    let i = idx + 6;
+    let commasAtDepthOne = 0;
+
+    while (i < executable.length && depth > 0) {
+      const ch = executable[i];
+      if (ch === "(") depth += 1;
+      else if (ch === ")") depth -= 1;
+      else if (ch === "," && depth === 1) commasAtDepthOne += 1;
+      i += 1;
+    }
+
+    if (commasAtDepthOne >= 2) {
+      issues.push({
+        kind: "invalid_btrim_arity",
+        message: `btrim() invoked with ${commasAtDepthOne + 1} arguments — PostgreSQL supports at most 2`,
+        position: idx,
+      });
+    }
+
+    searchFrom = idx + 6;
+  }
+
+  return issues;
+}
+
 export function detectUnguardedXmlPatterns(sql: string): SqlAnalysisIssue[] {
   const issues: SqlAnalysisIssue[] = [];
   const executable = stripSqlComments(sql);

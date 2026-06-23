@@ -50,3 +50,12 @@ Lifecycle failures write sanitized audit actions. Provider errors and recipient 
 ## Stale destinations
 
 Notifications remain in history. Opening reauthorizes via portal routes; UI shows safe unavailable copy when destination cannot be resolved.
+
+## Phase 9F.3 binder publications (Checkpoint 3)
+
+- Client binder access flows through linked `documents` rows and authorized APIs — not direct `binder_exports` RLS
+- Published binder PDFs remain in private `binder-exports`; bytes are not copied on publication
+- Lifecycle event `available` uses generic copy and `/document-vault` destination only
+- `superseded` and `withdrawn` events apply on same-lineage replacement and adviser withdrawal
+- `downloaded` remains audit-only (`binder_client_downloaded`); no client notification
+- Signed URLs are short-lived, server-issued, and never persisted in notifications or audit metadata

@@ -10,7 +10,7 @@ interface ScoreMetricProps {
 
 function ScoreMetric({ label, value, sublabel, highlight = false }: ScoreMetricProps) {
   return (
-    <div className="border border-[#10283A]/10 bg-white px-4 py-4">
+    <div className="report-print-avoid-break border border-[#10283A]/10 bg-white px-4 py-4">
       <p className="text-[9px] uppercase tracking-[0.14em] text-[#10283A]/45">
         {label}
       </p>

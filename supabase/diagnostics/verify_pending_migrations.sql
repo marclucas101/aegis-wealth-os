@@ -1,4 +1,4 @@
--- Read-only verification for pending migrations 202606100019..202606200009.
+-- Read-only verification for pending migrations 202606100019..202606200010.
 -- Safe when expected post-018 relations are absent.
 -- No writes. No schema changes. No migration-history modification.
 
@@ -10,7 +10,7 @@ WITH pending(version) AS (
     ('202606100019'), ('202606100020'), ('202606100021'), ('202606150001'),
     ('202606180001'), ('202606180002'), ('202606200001'), ('202606200002'),
     ('202606200003'), ('202606200004'), ('202606200005'), ('202606200006'),
-    ('202606200007'), ('202606200008'), ('202606200009')
+    ('202606200007'), ('202606200008'), ('202606200009'), ('202606200010')
 ),
 history_table AS (
   SELECT EXISTS (
@@ -146,7 +146,17 @@ WITH expected_checks AS (
     ('202606200009','column','public','client_notifications','idempotency_key'),
     ('202606200009','column','public','client_notifications','metadata'),
     ('202606200009','index','public','client_notifications','idx_client_notifications_lifecycle_idempotent'),
-    ('202606200009','index','public','client_notifications','idx_client_notifications_lifecycle_event')
+    ('202606200009','index','public','client_notifications','idx_client_notifications_lifecycle_event'),
+
+    -- 9F.3 binder PDF and client vault
+    ('202606200010','column','public','binder_exports','binder_lineage_id'),
+    ('202606200010','column','public','binder_exports','generation_status'),
+    ('202606200010','column','public','binder_exports','generation_idempotency_key'),
+    ('202606200010','column','public','binder_exports','published_document_id'),
+    ('202606200010','index','public','binder_exports','idx_binder_exports_generation_idempotent'),
+    ('202606200010','index','public','binder_exports','idx_binder_exports_lineage_version'),
+    ('202606200010','index','public','binder_exports','idx_binder_exports_client_status'),
+    ('202606200010','seed_row','storage','buckets','binder-exports')
   ) AS expected(
     expected_migration,
     expected_check_kind,
@@ -371,6 +381,16 @@ FROM (
           'product_related_content','client_in_app_notifications','client_email_notifications',
           'document_event_notifications','communication_preferences','binder_export','binder_client_publication')
         ORDER BY feature_key;$$
+    ),
+    (
+      '202606200010',
+      'seed_row:binder-exports',
+      EXISTS (
+        SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'storage' AND c.relname = 'buckets' AND c.relkind IN ('r','p')
+      ),
+      $$SELECT id, name, public, file_size_limit, allowed_mime_types
+        FROM storage.buckets WHERE id = 'binder-exports';$$
     )
 ) AS probes(migration, check_id, relation_exists, probe_sql)
 ORDER BY migration;
@@ -383,7 +403,7 @@ WITH expected_migrations(version) AS (
     ('202606100019'), ('202606100020'), ('202606100021'), ('202606150001'),
     ('202606180001'), ('202606180002'), ('202606200001'), ('202606200002'),
     ('202606200003'), ('202606200004'), ('202606200005'), ('202606200006'),
-    ('202606200007'), ('202606200008'), ('202606200009')
+    ('202606200007'), ('202606200008'), ('202606200009'), ('202606200010')
 ),
 rollup_checks AS (
   SELECT * FROM (VALUES
@@ -413,7 +433,12 @@ rollup_checks AS (
     ('202606200008','index', EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_automation_job_runs_single_active')),
     ('202606200008','seed_row', NULL::boolean),
     ('202606200009','column', EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='client_notifications' AND column_name='idempotency_key')),
-    ('202606200009','index', EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_client_notifications_lifecycle_idempotent'))
+    ('202606200009','index', EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_client_notifications_lifecycle_idempotent')),
+    ('202606200010','column', EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='binder_exports' AND column_name='binder_lineage_id')),
+    ('202606200010','column', EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='binder_exports' AND column_name='generation_status')),
+    ('202606200010','index', EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_binder_exports_lineage_version')),
+    ('202606200010','index', EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_binder_exports_generation_idempotent')),
+    ('202606200010','seed_row', NULL::boolean)
   ) AS rollup_input(rollup_migration, rollup_check_kind, rollup_is_present)
 ),
 checks AS (

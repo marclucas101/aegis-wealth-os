@@ -8,7 +8,13 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { analyzePostgresSql, detectUnguardedXmlPatterns } from "./diagnostic-sql-analyzer";
+import {
+  analyzePostgresSql,
+  detectInvalidBtrimArity,
+  detectUnguardedXmlPatterns,
+  detectUnsafeOptionalBinderColumnReferences,
+  detectPreflightProbeCteIssues,
+} from "./diagnostic-sql-analyzer";
 
 const ROOT = resolve(process.cwd());
 const DIAGNOSTICS_DIR = join(ROOT, "supabase/diagnostics");
@@ -126,6 +132,76 @@ const SELF_TESTS: SelfTest[] = [
     options: { requireSelectOnly: true },
     expectIssueKinds: ["unguarded_xmlparse"],
   },
+  {
+    name: "flags direct optional binder_exports column reference",
+    sql: "SELECT generation_idempotency_key FROM binder_exports;",
+    expectIssueKinds: ["unsafe_optional_column_reference"],
+  },
+  {
+    name: "accepts to_jsonb projection for optional binder_exports column",
+    sql: `
+      SELECT NULLIF(to_jsonb(be) ->> 'generation_idempotency_key', '')
+      FROM public.binder_exports be;
+    `,
+    expectIssueKinds: [],
+  },
+  {
+    name: "accepts information_schema catalog probe for optional column",
+    sql: `
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'binder_exports'
+          AND column_name = 'generation_idempotency_key'
+      );
+    `,
+    expectIssueKinds: [],
+  },
+  {
+    name: "flags implicit probes CTE without typed output columns",
+    sql: `
+      WITH probes AS (
+        SELECT 'a'::text AS probe_id, 'READY', 'detail text'
+        UNION ALL
+        SELECT 'b', 'WARNING', 'more detail'
+      )
+      SELECT probe_id, classification, detail FROM probes;
+    `,
+    expectIssueKinds: ["preflight_untyped_probes_cte"],
+  },
+  {
+    name: "accepts typed probes CTE with explicit output column names",
+    sql: `
+      WITH probes (probe_id, classification, detail) AS (
+        SELECT 'a'::text, 'READY', 'detail text'
+        UNION ALL
+        SELECT 'b', 'WARNING', 'more detail'
+      )
+      SELECT probe_id, classification, detail FROM probes;
+    `,
+    expectIssueKinds: [],
+  },
+  {
+    name: "flags probes UNION branch with wrong column count",
+    sql: `
+      WITH probes (probe_id, classification, detail) AS (
+        SELECT 'a'::text, 'READY'
+        UNION ALL
+        SELECT 'b', 'WARNING', 'ok'
+      )
+      SELECT probe_id, classification, detail FROM probes;
+    `,
+    expectIssueKinds: ["preflight_union_column_mismatch"],
+  },
+  {
+    name: "flags invalid btrim arity",
+    sql: "SELECT btrim(a, '::text', '', 'gi') FROM t;",
+    expectIssueKinds: ["invalid_btrim_arity"],
+  },
+  {
+    name: "accepts valid single-argument btrim",
+    sql: "SELECT btrim(term) FROM t WHERE btrim(term) <> '';",
+    expectIssueKinds: [],
+  },
 ];
 
 async function runSelfTests(): Promise<void> {
@@ -138,7 +214,19 @@ async function runSelfTests(): Promise<void> {
       test.expectIssueKinds.some((k) => xmlKinds.has(k)) ||
       (test.options?.requireSelectOnly && /\bxpath\s*\(|\bxmlparse\s*\(|::xml\b/i.test(test.sql));
     const xmlIssues = needsXmlScan ? detectUnguardedXmlPatterns(test.sql) : [];
-    const kinds = [...result.issues, ...xmlIssues].map((i) => i.kind).sort();
+    const needsOptionalColumnScan =
+      test.expectIssueKinds.includes("unsafe_optional_column_reference") ||
+      /\bbinder_exports\b/i.test(test.sql);
+    const optionalColumnIssues = needsOptionalColumnScan
+      ? detectUnsafeOptionalBinderColumnReferences(test.sql)
+      : [];
+    const preflightIssues = /\bfrom\s+probes\b/i.test(test.sql)
+      ? detectPreflightProbeCteIssues(test.sql)
+      : [];
+    const btrimIssues = /\bbtrim\s*\(/i.test(test.sql)
+      ? detectInvalidBtrimArity(test.sql)
+      : [];
+    const kinds = [...result.issues, ...xmlIssues, ...optionalColumnIssues, ...preflightIssues, ...btrimIssues].map((i) => i.kind).sort();
     const expected = [...test.expectIssueKinds].sort();
     const ok =
       kinds.length === expected.length && kinds.every((kind, idx) => kind === expected[idx]);
@@ -177,10 +265,25 @@ async function main(): Promise<void> {
 
     const xmlIssues =
       file.includes("202606200008") || file.includes("phase9f") || file.includes("202606200009") || file.includes("phase9f2")
+        || file.includes("202606200010") || file.includes("phase9f3")
         ? detectUnguardedXmlPatterns(sql)
         : [];
 
-    const allIssues = [...result.issues, ...xmlIssues];
+    const optionalColumnIssues =
+      file.includes("202606200010") || file.includes("phase9f3")
+        ? detectUnsafeOptionalBinderColumnReferences(sql)
+        : [];
+
+    const preflightIssues = file.startsWith("preflight_")
+      ? detectPreflightProbeCteIssues(sql)
+      : [];
+
+    const btrimIssues =
+      file.includes("202606200010") || file.includes("phase9f3")
+        ? detectInvalidBtrimArity(sql)
+        : [];
+
+    const allIssues = [...result.issues, ...xmlIssues, ...optionalColumnIssues, ...preflightIssues, ...btrimIssues];
 
     if (allIssues.length === 0) {
       passed++;

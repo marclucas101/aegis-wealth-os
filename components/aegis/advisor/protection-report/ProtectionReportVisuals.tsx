@@ -34,6 +34,7 @@ interface ReportPrintPageProps {
   footerLabel: string;
   footerIndex: number | "FINAL";
   className?: string;
+  variant?: "cover" | "chapter";
 }
 
 export function ReportPrintPage({
@@ -41,20 +42,25 @@ export function ReportPrintPage({
   footerLabel,
   footerIndex,
   className = "",
+  variant = "chapter",
 }: ReportPrintPageProps) {
   const footerText =
     footerIndex === "FINAL"
       ? `— FINAL — ${footerLabel}`
       : `— ${footerIndex} — ${footerLabel}`;
 
+  const variantClass =
+    variant === "cover" ? "report-page--cover report-cover-page" : "report-page--chapter";
+
   return (
     <section
-      className={`print-page protection-print-page report-print-avoid-break ${className}`}
+      className={`report-page print-page protection-print-page report-print-allow-break ${variantClass} ${className}`}
     >
-      <div className="protection-print-page-inner flex min-h-full flex-col">
+      <div className="protection-print-page-inner flex flex-col">
         <div className="flex-1">{children}</div>
         <footer className="protection-report-page-footer mt-auto pt-6 text-center text-[9px] uppercase tracking-[0.22em] text-[#10283A]/35">
-          {footerText}
+          <span className="report-caption">{footerText}</span>
+          <span className="report-no-print"> · AEGIS Confidential</span>
         </footer>
       </div>
     </section>
@@ -302,7 +308,7 @@ export function IlpAllocationVisual({
       <div className="mx-auto flex flex-col items-center">
         <svg
           viewBox="0 0 100 100"
-          className="h-32 w-32 shrink-0"
+          className="report-print-chart h-32 w-32 shrink-0"
           aria-hidden
         >
           <circle
