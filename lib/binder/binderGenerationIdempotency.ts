@@ -42,7 +42,10 @@ export function buildBinderGenerationIdempotencyKey(
     adviser_user_id: input.adviserUserId,
     binder_lineage_id: input.binderLineageId,
     meeting_date: normalizeMeetingDate(input.meetingDate),
-    sections: [...input.sectionIds].sort(),
+    sections: [...input.sectionIds]
+      .map((sectionId) => sectionId.trim())
+      .filter(Boolean)
+      .sort(),
     source_publications: [...input.sourcePublications]
       .map(publicationMarker)
       .sort(),

@@ -21,6 +21,10 @@ import {
   sanitizeFinancialReadinessPayload,
   type ClientSafeFinancialReadinessSnapshot,
 } from "./clientSafeDtos";
+import {
+  PLANNING_OUTPUT_ERROR_CODES,
+  PlanningOutputError,
+} from "./planningOutputErrors";
 import type {
   OutputAudience,
   PublicationStatus,
@@ -159,13 +163,49 @@ export async function prepareClientSafeOutput(
 
 function assertOutputMutable(existing: PublishedOutputRow): void {
   if (TERMINAL_STATUSES.includes(existing.publication_status)) {
-    throw new Error(
-      `Cannot modify output in terminal status: ${existing.publication_status}`,
+    throw new PlanningOutputError(
+      PLANNING_OUTPUT_ERROR_CODES.NOT_PUBLISHABLE,
+      "This output can no longer be published.",
+      409,
     );
   }
   if (existing.withdrawn_at) {
-    throw new Error("Cannot modify withdrawn output");
+    throw new PlanningOutputError(
+      PLANNING_OUTPUT_ERROR_CODES.NOT_PUBLISHABLE,
+      "This output can no longer be published.",
+      409,
+    );
   }
+}
+
+function buildPublishedSafePayload(
+  outputType: PublishedOutputType,
+  existingPayload: Record<string, unknown>,
+  now: string,
+): Record<string, unknown> {
+  if (
+    outputType === "financial_readiness_snapshot" ||
+    outputType === "financial_overview"
+  ) {
+    return sanitizeFinancialReadinessPayload({
+      ...existingPayload,
+      adviserReviewStatus: "published",
+      lastReviewedDate: now,
+    } as Record<string, unknown>) as unknown as Record<string, unknown>;
+  }
+
+  if (
+    outputType === "client_plan_summary" ||
+    outputType === "goal_plan_summary" ||
+    outputType === "roadmap_summary"
+  ) {
+    return sanitizeClientPlanSummary({
+      ...existingPayload,
+      publicationStatus: "current",
+    } as Record<string, unknown>) as unknown as Record<string, unknown>;
+  }
+
+  return existingPayload;
 }
 
 export async function reviewPublishedOutput(
@@ -226,7 +266,11 @@ export async function publishOutput(
 ): Promise<PublishedOutputRow> {
   const existing = await loadPublishedOutputById(outputId);
   if (!existing || existing.client_id !== clientId) {
-    throw new Error("Published output not found");
+    throw new PlanningOutputError(
+      PLANNING_OUTPUT_ERROR_CODES.NOT_FOUND,
+      "Planning output not found.",
+      404,
+    );
   }
 
   if (
@@ -237,7 +281,11 @@ export async function publishOutput(
   }
 
   if (existing.publication_status !== "adviser_reviewed") {
-    throw new Error("Output must be adviser_reviewed before publishing");
+    throw new PlanningOutputError(
+      PLANNING_OUTPUT_ERROR_CODES.NOT_PUBLISHABLE,
+      "This output must be reviewed before it can be published.",
+      409,
+    );
   }
 
   assertOutputMutable(existing);
@@ -245,7 +293,11 @@ export async function publishOutput(
   if (options?.requireAssignment) {
     const assignedAdviser = await dbLoadClientAdvisorAssignment(clientId);
     if (assignedAdviser !== publisherUserId) {
-      throw new Error("Adviser assignment required to publish for this client");
+      throw new PlanningOutputError(
+        PLANNING_OUTPUT_ERROR_CODES.ACCESS_DENIED,
+        "You no longer have access to prepare outputs for this client.",
+        403,
+      );
     }
   }
 
@@ -294,17 +346,18 @@ export async function publishOutput(
     });
   }
 
-  const mergedPayload = sanitizeFinancialReadinessPayload({
-    ...existing.safe_payload,
-    adviserReviewStatus: "published",
-    lastReviewedDate: now,
-  } as Record<string, unknown>);
+  const mergedPayload = buildPublishedSafePayload(
+    existing.output_type,
+    existing.safe_payload,
+    now,
+  );
 
   const data = await dbUpdatePublishedOutput(
     outputId,
     {
       publication_status: "published",
-      safe_payload: mergedPayload as unknown as Record<string, unknown>,
+      output_audience: "client_published",
+      safe_payload: mergedPayload,
       published_by_user_id: publisherUserId,
       published_at: now,
       expires_at: expiresAt ?? null,

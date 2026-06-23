@@ -2,9 +2,9 @@ import "server-only";
 
 import {
   buildBinderSectionReadiness,
-  canGenerateWithSelectedSections,
   type BinderSectionReadiness,
 } from "@/lib/binder/binderContentPreparation";
+import { evaluateBinderGenerationEligibility } from "@/lib/binder/binderGenerationEligibility";
 import {
   defaultSectionsForPurpose,
   type BinderPackPurpose,
@@ -35,6 +35,12 @@ export type BinderReadinessResult = {
     reasonCode: BinderSectionReasonCode;
   }>;
   sections: BinderSectionReadiness[];
+  summaryMessage: string | null;
+  blockingReasons: Array<{
+    code: string;
+    message: string;
+    sectionId?: BinderSection;
+  }>;
 };
 
 export type BinderReadinessAssessment = {
@@ -100,11 +106,13 @@ export function buildBinderReadinessResult(input: {
   );
 
   const defaultSelected = input.selectedSectionIds ?? defaultSectionsForPurpose(input.purpose);
-  const ready = canGenerateWithSelectedSections({
+  const eligibility = evaluateBinderGenerationEligibility({
+    purpose: input.purpose,
     meetingDate: input.meetingDate,
-    sections: readinessSections,
     selectedSectionIds: defaultSelected,
+    sectionReadiness: readinessSections,
   });
+  const ready = eligibility.eligible;
 
   return {
     purpose: input.purpose,
@@ -112,6 +120,8 @@ export function buildBinderReadinessResult(input: {
     availableSections,
     unavailableSections,
     sections: readinessSections,
+    summaryMessage: eligibility.summaryMessage,
+    blockingReasons: eligibility.blockingReasons,
   };
 }
 

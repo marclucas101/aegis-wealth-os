@@ -384,7 +384,8 @@ const TESTS: TestCase[] = [
   }),
   record(74, "POST binder-export strict section validation", () => {
     const route = read("app/api/advisor/clients/[clientId]/binder-export/route.ts");
-    assert(route.includes("BINDER_SECTIONS"), "sections");
+    assert(route.includes("parseBinderGenerationSections"), "section parser");
+    assert(route.includes("binderInvalidSectionsResponse"), "invalid sections envelope");
     assert(route.includes("rejectClientIdInBody"), "client id reject");
     assert(route.includes("privateNoStoreHeaders"), "no-store");
   }),

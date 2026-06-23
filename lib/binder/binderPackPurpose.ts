@@ -75,6 +75,7 @@ export function isSelectedByDefault(
   if (purpose === "meeting_preparation") {
     if (isPostMeetingSection(sectionId)) return false;
     if (sectionId === "next_review_date") return false;
+    if (sectionId === "roadmap") return false;
     if (isPlanningSection(sectionId)) return true;
     if (sectionId === "document_index") return true;
     return false;

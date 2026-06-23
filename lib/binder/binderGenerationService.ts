@@ -3,9 +3,9 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import {
-  BINDER_SECTIONS,
-  type BinderSection,
-} from "@/lib/communications/binderExport";
+  normalizeBinderSectionIds,
+  type BinderSectionId,
+} from "@/lib/binder/binderSectionRegistry";
 import { isFeatureEnabled } from "@/lib/compliance/featureFlags";
 import { resolveAccessibleClient } from "@/lib/supabase/advisorClientAccess";
 import {
@@ -50,16 +50,17 @@ import {
 } from "./binderPdfTypes";
 import { resolveBinderSections } from "./binderSectionResolvers";
 
+type BinderSection = BinderSectionId;
+
 function validateSections(sections: BinderSection[]): BinderSection[] {
-  const unique = Array.from(new Set(sections));
-  const valid = unique.filter((section) => BINDER_SECTIONS.includes(section));
-  if (valid.length === 0) {
-    throw new BinderServiceError(BINDER_ERROR_CODES.SOURCE_UNAVAILABLE);
+  const { canonical, rejected } = normalizeBinderSectionIds(sections);
+  if (rejected.length > 0 || canonical.length === 0) {
+    throw new BinderServiceError(BINDER_ERROR_CODES.INVALID_SECTIONS);
   }
-  if (valid.length > BINDER_MAX_SECTION_COUNT) {
-    throw new BinderServiceError(BINDER_ERROR_CODES.SOURCE_UNAVAILABLE);
+  if (canonical.length > BINDER_MAX_SECTION_COUNT) {
+    throw new BinderServiceError(BINDER_ERROR_CODES.INVALID_SECTIONS);
   }
-  return valid;
+  return canonical;
 }
 
 function toPublicMetadata(
