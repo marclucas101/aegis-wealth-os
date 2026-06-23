@@ -36,6 +36,7 @@ import {
   type ProtectionReportDraft,
 } from "@/src/features/advisor-console/protection-report";
 import { saveProtectionReportToVault } from "@/src/features/document-vault";
+import { runBrowserPrint, sanitizeReportFilenameBase } from "@/lib/reports/a4Print";
 
 const labelClass =
   "text-[10px] font-medium uppercase tracking-[0.15em] text-[#D1A866]/70";
@@ -72,6 +73,7 @@ function ProtectionReportClientLoaded() {
   const [savedVaultDocumentId, setSavedVaultDocumentId] = useState<string | null>(
     null,
   );
+  const [printing, setPrinting] = useState(false);
 
   useEffect(() => {
     saveDraftToStorage(draft);
@@ -181,18 +183,25 @@ function ProtectionReportClientLoaded() {
     setActionMessage("Report preview ready. Use Print / Save as PDF when satisfied.");
   }
 
-  function handlePrint() {
+  async function handlePrint() {
     if (!reportInput) {
       handleGeneratePreview();
       return;
     }
-    const previousTitle = document.title;
+    if (printing) return;
+
+    setPrinting(true);
     const householdName = reportInput.household.householdName || "Household";
-    document.title = `AEGIS Protection Portfolio — ${householdName}`;
-    window.print();
-    window.setTimeout(() => {
-      document.title = previousTitle;
-    }, 500);
+    const safeName = sanitizeReportFilenameBase(householdName);
+
+    try {
+      await runBrowserPrint({
+        documentTitle: `AEGIS Protection Portfolio — ${safeName}`,
+        onError: (message) => setActionMessage(message),
+      });
+    } finally {
+      setPrinting(false);
+    }
   }
 
   async function handleSaveToVault() {
@@ -1185,8 +1194,13 @@ function ProtectionReportClientLoaded() {
                 </button>
                 {showPreview && reportInput ? (
                   <>
-                    <button type="button" onClick={handlePrint} className={buttonPrimary}>
-                      Print / Save as PDF
+                    <button
+                      type="button"
+                      onClick={() => void handlePrint()}
+                      disabled={printing}
+                      className={`${buttonPrimary} disabled:cursor-wait disabled:opacity-60`}
+                    >
+                      {printing ? "Preparing Print…" : "Print / Save as PDF"}
                     </button>
                     <button
                       type="button"
@@ -1276,8 +1290,13 @@ function ProtectionReportClientLoaded() {
                     ? "Saving…"
                     : "Save to Document Vault"}
                 </button>
-                <button type="button" onClick={handlePrint} className={buttonPrimary}>
-                  Print / Save as PDF
+                <button
+                  type="button"
+                  onClick={() => void handlePrint()}
+                  disabled={printing}
+                  className={`${buttonPrimary} disabled:cursor-wait disabled:opacity-60`}
+                >
+                  {printing ? "Preparing Print…" : "Print / Save as PDF"}
                 </button>
               </div>
             </div>

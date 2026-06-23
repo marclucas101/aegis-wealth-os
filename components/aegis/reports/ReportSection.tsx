@@ -19,19 +19,13 @@ export default function ReportSection({
     <section
       className={`report-print-avoid-break mb-10 ${pageBreakBefore ? "report-print-page-break" : ""}`}
     >
-      <div className="mb-5 border-b border-[#10283A]/12 pb-3">
+      <div className="report-print-section-heading report-print-keep-with-next mb-5 border-b border-[#10283A]/12 pb-3">
         {label ? (
-          <p className="text-[9px] font-medium uppercase tracking-[0.2em] text-[#D1A866]">
-            {label}
-          </p>
+          <p className="report-section-label text-[#D1A866]">{label}</p>
         ) : null}
-        <h2 className="mt-1 text-lg font-light tracking-wide text-[#10283A]">
-          {title}
-        </h2>
+        <h2 className="report-title-lg mt-1 text-[#10283A]">{title}</h2>
         {description ? (
-          <p className="mt-1 text-xs font-light text-[#10283A]/55">
-            {description}
-          </p>
+          <p className="report-body mt-1 text-[#10283A]/55">{description}</p>
         ) : null}
       </div>
       {children}

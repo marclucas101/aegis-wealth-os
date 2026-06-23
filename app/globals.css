@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./report-a4-print.css";
 
 :root {
   --background: #ffffff;
@@ -25,117 +26,9 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Protection report — screen preview page separation */
+/* Protection report — screen preview spacing (A4 layout in report-a4-print.css) */
 .protection-report-preview .protection-print-page {
   margin-bottom: 2rem;
-  border: 1px solid rgb(16 40 58 / 0.12);
-  background: #ffffff;
-  box-shadow: 0 1px 0 rgb(209 168 102 / 0.08);
-}
-
-.protection-report-preview .protection-print-page-inner {
-  padding: 2rem 2rem 1.5rem;
-}
-
-@media (min-width: 640px) {
-  .protection-report-preview .protection-print-page-inner {
-    padding: 2.5rem 2.75rem 1.75rem;
-  }
-}
-
-/* Phase 4U — client-ready report print styles */
-@media print {
-  @page {
-    margin: 0;
-    size: A4;
-  }
-
-  html,
-  body {
-    background: #ffffff !important;
-    color: #171717 !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  .report-no-print {
-    display: none !important;
-  }
-
-  .report-print-page-break {
-    break-before: page;
-    page-break-before: always;
-  }
-
-  .report-print-avoid-break {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  .report-print-root,
-  .report-print-body {
-    background: #ffffff !important;
-    color: #171717 !important;
-  }
-
-  .report-print-body a {
-    color: #171717 !important;
-    text-decoration: none !important;
-  }
-
-  .protection-report-print-area {
-    border: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  .protection-report-preview {
-    background: #ffffff !important;
-  }
-
-  main .mx-auto.max-w-7xl {
-    max-width: none !important;
-    padding: 0 !important;
-  }
-
-  /* Protection report — one designed page per section */
-  .print-page,
-  .protection-print-page {
-    box-sizing: border-box;
-    min-height: 297mm;
-    break-after: page;
-    page-break-after: always;
-    padding: 14mm 16mm 16mm;
-    position: relative;
-  }
-
-  .protection-report-preview .print-page:last-child,
-  .protection-report-preview .protection-print-page:last-child {
-    break-after: auto;
-    page-break-after: auto;
-  }
-
-  .protection-print-page-inner {
-    min-height: calc(297mm - 30mm);
-    padding: 0 !important;
-  }
-
-  .protection-report-preview .protection-print-page {
-    margin-bottom: 0 !important;
-    border: none !important;
-    box-shadow: none !important;
-  }
-
-  .protection-report-page-footer {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  .print-color-bar,
-  .protection-report-preview svg circle {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
 }
 
 @keyframes shieldDetailIn {

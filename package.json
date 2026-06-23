@@ -33,6 +33,7 @@
     "qa:phase9e-communications": "npx tsx scripts/run-phase9e-communications-validation.ts",
     "qa:phase9f-scheduled-publishing": "npx tsx scripts/run-phase9f-scheduled-publishing-validation.ts",
     "qa:phase9f2-lifecycle-notifications": "npx tsx scripts/run-phase9f2-lifecycle-notifications-validation.ts",
+    "qa:a4-summary-report": "npx tsx scripts/run-a4-summary-report-validation.ts",
     "qa:migration-readiness": "npx tsx scripts/run-migration-readiness-validation.ts",
     "qa:phase9-migration-readiness": "npx tsx scripts/run-phase9-migration-readiness-validation.ts",
     "qa:phase9-column-canonicalization": "npx tsx scripts/run-phase9-column-canonicalization-validation.ts",
