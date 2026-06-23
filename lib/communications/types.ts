@@ -124,6 +124,15 @@ export type PromotionMigrationClassification =
   | "expired"
   | "unsuitable";
 
+export const PROMOTION_MIGRATION_CLASSIFICATIONS: readonly PromotionMigrationClassification[] = [
+  "safe_educational",
+  "market_update_review",
+  "event",
+  "product_promotional",
+  "expired",
+  "unsuitable",
+] as const;
+
 export type GovernedContentRow = {
   id: string;
   title: string;

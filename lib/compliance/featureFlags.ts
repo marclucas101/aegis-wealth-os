@@ -123,6 +123,11 @@ export const FEATURE_DEFAULTS: Record<
     client_visible: false,
     adviser_visible: true,
   },
+  legacy_promotions_write: {
+    enabled: false,
+    client_visible: false,
+    adviser_visible: true,
+  },
 };
 
 let cachedControls: Map<PlatformFeatureKey, FeatureControlRow> | null = null;

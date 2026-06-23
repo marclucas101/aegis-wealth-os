@@ -4,10 +4,10 @@ import Link from "next/link";
 
 import CallMyAdviserButton from "@/components/aegis/adviser/CallMyAdviserButton";
 import type { AdviserContact } from "@/lib/aegis/adviserContact";
-import type { PromotionRecord } from "@/lib/aegis/promotions";
+import type { ClientSafePromotionRecord } from "@/lib/aegis/promotions";
 
 type PromotionCardProps = {
-  promotion: PromotionRecord;
+  promotion: ClientSafePromotionRecord;
   preview?: boolean;
   adviserContact?: AdviserContact | null;
 };
@@ -29,7 +29,7 @@ function formatValidUntil(endsAt: string | null): string | null {
   });
 }
 
-function resolveCta(promotion: PromotionRecord): {
+function resolveCta(promotion: ClientSafePromotionRecord): {
   kind: "url" | "call";
   href: string | null;
   label: string;

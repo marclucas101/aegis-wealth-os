@@ -49,9 +49,38 @@ export async function migratePromotionToDraft(input: {
   promotionId: string;
   reviewerUserId: string;
   classification: PromotionMigrationClassification;
-}): Promise<{ contentId: string | null; skipped: boolean }> {
+}): Promise<{ contentId: string | null; skipped: boolean; alreadyMigrated?: boolean }> {
+  const admin = createAdminSupabaseClient();
+
+  const { data: existingReview } = await admin
+    .from("promotion_migration_reviews")
+    .select("promotion_id, migrated_content_id, classification")
+    .eq("promotion_id", input.promotionId)
+    .maybeSingle();
+
+  if (existingReview) {
+    const review = existingReview as {
+      migrated_content_id: string | null;
+      classification: string;
+    };
+
+    if (review.migrated_content_id) {
+      return {
+        contentId: review.migrated_content_id,
+        skipped: false,
+        alreadyMigrated: true,
+      };
+    }
+
+    if (
+      review.classification === input.classification &&
+      (input.classification === "unsuitable" || input.classification === "expired")
+    ) {
+      return { contentId: null, skipped: true, alreadyMigrated: true };
+    }
+  }
+
   if (input.classification === "unsuitable" || input.classification === "expired") {
-    const admin = createAdminSupabaseClient();
     await admin.from("promotion_migration_reviews").upsert({
       promotion_id: input.promotionId,
       classification: input.classification,
@@ -63,7 +92,6 @@ export async function migratePromotionToDraft(input: {
     return { contentId: null, skipped: true };
   }
 
-  const admin = createAdminSupabaseClient();
   const { data: promo, error } = await admin
     .from("promotions")
     .select("*")
@@ -110,10 +138,16 @@ export async function migratePromotionToDraft(input: {
 
   await writeAuditLog({
     userId: input.reviewerUserId,
-    action: "promotion_migration_draft_created",
+    action: "legacy_promotion_migration_completed",
     entityType: "promotion",
     entityId: input.promotionId,
-    metadata: { contentId: content.id, classification: input.classification },
+    metadata: {
+      promotion_id: input.promotionId,
+      adviser_user_id: input.reviewerUserId,
+      action_type: "migrate_to_draft",
+      result_code: "ok",
+      migrated_destination_id: content.id,
+    },
   });
 
   return { contentId: content.id, skipped: false };

@@ -1,4 +1,4 @@
--- Read-only verification for pending migrations 202606100019..202606200010.
+-- Read-only verification for pending migrations 202606100019..202606200011.
 -- Safe when expected post-018 relations are absent.
 -- No writes. No schema changes. No migration-history modification.
 
@@ -10,7 +10,7 @@ WITH pending(version) AS (
     ('202606100019'), ('202606100020'), ('202606100021'), ('202606150001'),
     ('202606180001'), ('202606180002'), ('202606200001'), ('202606200002'),
     ('202606200003'), ('202606200004'), ('202606200005'), ('202606200006'),
-    ('202606200007'), ('202606200008'), ('202606200009'), ('202606200010')
+    ('202606200007'), ('202606200008'), ('202606200009'), ('202606200010'), ('202606200011')
 ),
 history_table AS (
   SELECT EXISTS (
@@ -156,7 +156,10 @@ WITH expected_checks AS (
     ('202606200010','index','public','binder_exports','idx_binder_exports_generation_idempotent'),
     ('202606200010','index','public','binder_exports','idx_binder_exports_lineage_version'),
     ('202606200010','index','public','binder_exports','idx_binder_exports_client_status'),
-    ('202606200010','seed_row','storage','buckets','binder-exports')
+    ('202606200010','seed_row','storage','buckets','binder-exports'),
+
+    -- 9F.4 legacy promotions write freeze
+    ('202606200011','seed_row','public','platform_feature_controls','legacy_promotions_write')
   ) AS expected(
     expected_migration,
     expected_check_kind,
@@ -391,6 +394,17 @@ FROM (
       ),
       $$SELECT id, name, public, file_size_limit, allowed_mime_types
         FROM storage.buckets WHERE id = 'binder-exports';$$
+    ),
+    (
+      '202606200011',
+      'seed_row:legacy_promotions_write',
+      EXISTS (
+        SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'platform_feature_controls' AND c.relkind IN ('r','p')
+      ),
+      $$SELECT feature_key, enabled, client_visible, adviser_visible
+        FROM platform_feature_controls
+        WHERE feature_key = 'legacy_promotions_write';$$
     )
 ) AS probes(migration, check_id, relation_exists, probe_sql)
 ORDER BY migration;
@@ -403,7 +417,7 @@ WITH expected_migrations(version) AS (
     ('202606100019'), ('202606100020'), ('202606100021'), ('202606150001'),
     ('202606180001'), ('202606180002'), ('202606200001'), ('202606200002'),
     ('202606200003'), ('202606200004'), ('202606200005'), ('202606200006'),
-    ('202606200007'), ('202606200008'), ('202606200009'), ('202606200010')
+    ('202606200007'), ('202606200008'), ('202606200009'), ('202606200010'), ('202606200011')
 ),
 rollup_checks AS (
   SELECT * FROM (VALUES
@@ -438,7 +452,8 @@ rollup_checks AS (
     ('202606200010','column', EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='binder_exports' AND column_name='generation_status')),
     ('202606200010','index', EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_binder_exports_lineage_version')),
     ('202606200010','index', EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_binder_exports_generation_idempotent')),
-    ('202606200010','seed_row', NULL::boolean)
+    ('202606200010','seed_row', NULL::boolean),
+    ('202606200011','seed_row', NULL::boolean)
   ) AS rollup_input(rollup_migration, rollup_check_kind, rollup_is_present)
 ),
 checks AS (

@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 
 import {
+  auditLegacyPromotionViewed,
+  isValidPromotionId,
+  privatePromotionJson,
+  requireAdviserPromotionOwnership,
+  requireLegacyPromotionsWriteAccess,
+  resolveLegacyPromotionViewerRole,
+} from "@/lib/promotions/legacyPromotionsAuthorization";
+import {
   getRequestMetadata,
   parseJsonBodySafely,
   rateLimitOrThrow,
@@ -35,14 +43,6 @@ export type AdvisorPromotionUpdateResponse =
 type RouteContext = {
   params: Promise<{ promotionId: string }>;
 };
-
-function advisorRole(role: string): "advisor" | "admin" | null {
-  if (role === "advisor" || role === "admin") {
-    return role;
-  }
-
-  return null;
-}
 
 function parsePartialPromotionBody(
   body: Record<string, unknown>,
@@ -160,14 +160,14 @@ function parsePartialPromotionBody(
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: RouteContext,
 ): Promise<NextResponse<AdvisorPromotionGetResponse>> {
   try {
     const access = await requireAdvisorAccess();
 
     if (!access.allowed) {
-      return NextResponse.json(
+      return privatePromotionJson(
         {
           ok: false,
           reason: access.reason === "unauthenticated" ? "unauthenticated" : "forbidden",
@@ -176,36 +176,60 @@ export async function GET(
               ? undefined
               : "Advisor access required",
         },
-        { status: access.reason === "unauthenticated" ? 401 : 403 },
+        access.reason === "unauthenticated" ? 401 : 403,
       );
     }
 
-    const role = advisorRole(access.user.role);
+    const role = resolveLegacyPromotionViewerRole(access.user.role);
     if (!role) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "forbidden", error: "Advisor access required" },
-        { status: 403 },
+        403,
       );
     }
 
     const { promotionId } = await context.params;
-    const result = await getAdvisorPromotionById(promotionId);
-
-    if (!result.ok) {
-      return NextResponse.json(
+    if (!isValidPromotionId(promotionId)) {
+      return privatePromotionJson(
         { ok: false, reason: "not_found", error: "Promotion not found" },
-        { status: 404 },
+        404,
       );
     }
 
-    return NextResponse.json({ ok: true, promotion: result.promotion });
+    const result = await getAdvisorPromotionById(promotionId);
+
+    if (!result.ok) {
+      return privatePromotionJson(
+        { ok: false, reason: "not_found", error: "Promotion not found" },
+        404,
+      );
+    }
+
+    const ownership = requireAdviserPromotionOwnership({
+      access,
+      promotion: result.promotion,
+    });
+    if (!ownership.allowed) {
+      return ownership.response as NextResponse<AdvisorPromotionGetResponse>;
+    }
+
+    const metadata = getRequestMetadata(request);
+    await auditLegacyPromotionViewed({
+      userId: access.authUser.id,
+      promotionId,
+      role: ownership.role,
+      ipAddress: metadata.ip_address,
+      userAgent: metadata.user_agent,
+    });
+
+    return privatePromotionJson({ ok: true, promotion: result.promotion });
   } catch (err) {
     const message = toPublicErrorMessage(err, "Failed to load promotion");
     console.error("[api/advisor/promotions/[promotionId] GET]", err);
 
-    return NextResponse.json(
+    return privatePromotionJson(
       { ok: false, reason: "error", error: message },
-      { status: 500 },
+      500,
     );
   }
 }
@@ -218,7 +242,7 @@ export async function PATCH(
     const access = await requireAdvisorAccess();
 
     if (!access.allowed) {
-      return NextResponse.json(
+      return privatePromotionJson(
         {
           ok: false,
           reason: access.reason === "unauthenticated" ? "unauthenticated" : "forbidden",
@@ -227,16 +251,52 @@ export async function PATCH(
               ? undefined
               : "Advisor access required",
         },
-        { status: access.reason === "unauthenticated" ? 401 : 403 },
+        access.reason === "unauthenticated" ? 401 : 403,
       );
     }
 
-    const role = advisorRole(access.user.role);
+    const role = resolveLegacyPromotionViewerRole(access.user.role);
     if (!role) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "forbidden", error: "Advisor access required" },
-        { status: 403 },
+        403,
       );
+    }
+
+    const { promotionId } = await context.params;
+    if (!isValidPromotionId(promotionId)) {
+      return privatePromotionJson(
+        { ok: false, reason: "not_found", error: "Promotion not found" },
+        404,
+      );
+    }
+
+    const metadata = getRequestMetadata(request);
+    const writeGuard = await requireLegacyPromotionsWriteAccess({
+      userId: access.authUser.id,
+      promotionId,
+      actionType: "update",
+      ipAddress: metadata.ip_address,
+      userAgent: metadata.user_agent,
+    });
+    if (!writeGuard.allowed) {
+      return writeGuard.response as NextResponse<AdvisorPromotionUpdateResponse>;
+    }
+
+    const existing = await getAdvisorPromotionById(promotionId);
+    if (!existing.ok) {
+      return privatePromotionJson(
+        { ok: false, reason: "not_found", error: "Promotion not found" },
+        404,
+      );
+    }
+
+    const ownership = requireAdviserPromotionOwnership({
+      access,
+      promotion: existing.promotion,
+    });
+    if (!ownership.allowed) {
+      return ownership.response as NextResponse<AdvisorPromotionUpdateResponse>;
     }
 
     const rateLimit = rateLimitOrThrow<AdvisorPromotionUpdateResponse>(request, {
@@ -249,17 +309,17 @@ export async function PATCH(
 
     const parsed = await parseJsonBodySafely(request);
     if (!parsed.ok) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "error", error: parsed.error },
-        { status: 400 },
+        400,
       );
     }
 
     const forbidden = rejectForbiddenPromotionFields(parsed.body);
     if (forbidden.rejected) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "error", error: forbidden.error },
-        { status: 400 },
+        400,
       );
     }
 
@@ -267,39 +327,37 @@ export async function PATCH(
       rejectClientId: true,
     });
     if (sensitiveReject.rejected) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "error", error: sensitiveReject.error },
-        { status: 400 },
+        400,
       );
     }
 
     if (!parsed.body || typeof parsed.body !== "object") {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "error", error: "Request body is required" },
-        { status: 400 },
+        400,
       );
     }
 
     const body = parsed.body as Record<string, unknown>;
     const input = parsePartialPromotionBody(body);
     if ("error" in input) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "error", error: input.error },
-        { status: 400 },
+        400,
       );
     }
 
-    const { promotionId } = await context.params;
     const result = await updatePromotion(promotionId, input);
 
     if (!result.ok) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "not_found", error: "Promotion not found" },
-        { status: 404 },
+        404,
       );
     }
 
-    const metadata = getRequestMetadata(request);
     await writeAuditLog({
       userId: access.authUser.id,
       action: "promotion_updated",
@@ -314,14 +372,14 @@ export async function PATCH(
       userAgent: metadata.user_agent,
     });
 
-    return NextResponse.json({ ok: true, promotion: result.promotion });
+    return privatePromotionJson({ ok: true, promotion: result.promotion });
   } catch (err) {
     const message = toPublicErrorMessage(err, "Failed to update promotion");
     console.error("[api/advisor/promotions/[promotionId] PATCH]", err);
 
-    return NextResponse.json(
+    return privatePromotionJson(
       { ok: false, reason: "error", error: message },
-      { status: 500 },
+      500,
     );
   }
 }

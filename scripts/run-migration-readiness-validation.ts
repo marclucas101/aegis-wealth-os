@@ -906,6 +906,35 @@ const tests: TestCase[] = [
       );
     },
   },
+  {
+    id: 82,
+    name: "Phase 9F.4 write-freeze verify diagnostic exists",
+    run: () => {
+      assert(
+        existsSync(
+          join(ROOT, "supabase/diagnostics/verify_202606200011_phase9f4_legacy_promotions_write_freeze.sql"),
+        ),
+        "verify 011",
+      );
+    },
+  },
+  {
+    id: 83,
+    name: "Phase 9F.4 write-freeze preflight diagnostic exists",
+    run: () => {
+      assert(existsSync(join(ROOT, "supabase/diagnostics/preflight_202606200011_phase9f4.sql")), "preflight 011");
+    },
+  },
+  {
+    id: 84,
+    name: "Phase 9F.4 write-freeze discrepancy diagnostic exists",
+    run: () => {
+      assert(
+        existsSync(join(ROOT, "supabase/diagnostics/verify_202606200011_phase9f4_discrepancies.sql")),
+        "discrepancies 011",
+      );
+    },
+  },
 ];
 
 function main(): void {

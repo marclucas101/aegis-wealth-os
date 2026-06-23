@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 
 import {
+  isLegacyPromotionsWriteEnabled,
+  LEGACY_PROMOTIONS_READ_ONLY_MESSAGE,
+  LEGACY_PROMOTIONS_REPLACEMENT_HREF,
+  privatePromotionJson,
+  requireLegacyPromotionsWriteAccess,
+  resolveLegacyPromotionViewerRole,
+} from "@/lib/promotions/legacyPromotionsAuthorization";
+import {
   getRequestMetadata,
   parseJsonBodySafely,
   rateLimitOrThrow,
@@ -31,20 +39,17 @@ export type AdvisorPromotionsListResponse =
       ok: true;
       promotions: PromotionRecord[];
       viewer: { userId: string; role: "advisor" | "admin" };
+      legacyPromotions: {
+        writeEnabled: boolean;
+        readOnlyMessage: string;
+        replacementHref: string;
+      };
     }
   | { ok: false; reason: "unauthenticated" | "forbidden" | "error"; error?: string };
 
 export type AdvisorPromotionsCreateResponse =
   | { ok: true; promotion: PromotionRecord }
-  | { ok: false; reason: "unauthenticated" | "forbidden" | "error"; error?: string };
-
-function advisorRole(role: string): "advisor" | "admin" | null {
-  if (role === "advisor" || role === "admin") {
-    return role;
-  }
-
-  return null;
-}
+  | { ok: false; reason: "unauthenticated" | "forbidden" | "not_found" | "error"; error?: string };
 
 function parseDetails(body: Record<string, unknown>): PromotionDetails | null | undefined {
   if (!("details" in body) && !("highlights" in body) && !("eligibility" in body)) {
@@ -177,7 +182,7 @@ export async function GET(): Promise<NextResponse<AdvisorPromotionsListResponse>
     const access = await requireAdvisorAccess();
 
     if (!access.allowed) {
-      return NextResponse.json(
+      return privatePromotionJson(
         {
           ok: false,
           reason: access.reason === "unauthenticated" ? "unauthenticated" : "forbidden",
@@ -186,32 +191,38 @@ export async function GET(): Promise<NextResponse<AdvisorPromotionsListResponse>
               ? undefined
               : "Advisor access required",
         },
-        { status: access.reason === "unauthenticated" ? 401 : 403 },
+        access.reason === "unauthenticated" ? 401 : 403,
       );
     }
 
-    const role = advisorRole(access.user.role);
+    const role = resolveLegacyPromotionViewerRole(access.user.role);
     if (!role) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "forbidden", error: "Advisor access required" },
-        { status: 403 },
+        403,
       );
     }
 
-    const promotions = await listAdvisorPromotions();
+    const writeEnabled = await isLegacyPromotionsWriteEnabled();
+    const promotions = await listAdvisorPromotions(access.authUser.id, role);
 
-    return NextResponse.json({
+    return privatePromotionJson({
       ok: true,
       promotions,
       viewer: { userId: access.authUser.id, role },
+      legacyPromotions: {
+        writeEnabled,
+        readOnlyMessage: LEGACY_PROMOTIONS_READ_ONLY_MESSAGE,
+        replacementHref: LEGACY_PROMOTIONS_REPLACEMENT_HREF,
+      },
     });
   } catch (err) {
     const message = toPublicErrorMessage(err, "Failed to load promotions");
     console.error("[api/advisor/promotions GET]", err);
 
-    return NextResponse.json(
+    return privatePromotionJson(
       { ok: false, reason: "error", error: message },
-      { status: 500 },
+      500,
     );
   }
 }
@@ -223,7 +234,7 @@ export async function POST(
     const access = await requireAdvisorAccess();
 
     if (!access.allowed) {
-      return NextResponse.json(
+      return privatePromotionJson(
         {
           ok: false,
           reason: access.reason === "unauthenticated" ? "unauthenticated" : "forbidden",
@@ -232,16 +243,27 @@ export async function POST(
               ? undefined
               : "Advisor access required",
         },
-        { status: access.reason === "unauthenticated" ? 401 : 403 },
+        access.reason === "unauthenticated" ? 401 : 403,
       );
     }
 
-    const role = advisorRole(access.user.role);
+    const role = resolveLegacyPromotionViewerRole(access.user.role);
     if (!role) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "forbidden", error: "Advisor access required" },
-        { status: 403 },
+        403,
       );
+    }
+
+    const metadata = getRequestMetadata(request);
+    const writeGuard = await requireLegacyPromotionsWriteAccess({
+      userId: access.authUser.id,
+      actionType: "create",
+      ipAddress: metadata.ip_address,
+      userAgent: metadata.user_agent,
+    });
+    if (!writeGuard.allowed) {
+      return writeGuard.response as NextResponse<AdvisorPromotionsCreateResponse>;
     }
 
     const rateLimit = rateLimitOrThrow<AdvisorPromotionsCreateResponse>(request, {
@@ -254,17 +276,17 @@ export async function POST(
 
     const parsed = await parseJsonBodySafely(request);
     if (!parsed.ok) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "error", error: parsed.error },
-        { status: 400 },
+        400,
       );
     }
 
     const forbidden = rejectForbiddenPromotionFields(parsed.body);
     if (forbidden.rejected) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "error", error: forbidden.error },
-        { status: 400 },
+        400,
       );
     }
 
@@ -272,31 +294,30 @@ export async function POST(
       rejectClientId: true,
     });
     if (sensitiveReject.rejected) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "error", error: sensitiveReject.error },
-        { status: 400 },
+        400,
       );
     }
 
     if (!parsed.body || typeof parsed.body !== "object") {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "error", error: "Request body is required" },
-        { status: 400 },
+        400,
       );
     }
 
     const body = parsed.body as Record<string, unknown>;
     const input = parsePromotionBody(body);
     if ("error" in input) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "error", error: input.error },
-        { status: 400 },
+        400,
       );
     }
 
     const promotion = await createPromotion(access.authUser.id, input);
 
-    const metadata = getRequestMetadata(request);
     await writeAuditLog({
       userId: access.authUser.id,
       action: "promotion_created",
@@ -311,14 +332,14 @@ export async function POST(
       userAgent: metadata.user_agent,
     });
 
-    return NextResponse.json({ ok: true, promotion }, { status: 201 });
+    return privatePromotionJson({ ok: true, promotion }, 201);
   } catch (err) {
     const message = toPublicErrorMessage(err, "Failed to create promotion");
     console.error("[api/advisor/promotions POST]", err);
 
-    return NextResponse.json(
+    return privatePromotionJson(
       { ok: false, reason: "error", error: message },
-      { status: 500 },
+      500,
     );
   }
 }

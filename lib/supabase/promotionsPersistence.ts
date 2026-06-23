@@ -256,6 +256,7 @@ export function rejectForbiddenPromotionFields(body: unknown): {
     "imageUrl",
     "attachment_url",
     "attachmentUrl",
+    "audience",
   ] as const;
 
   for (const key of forbidden) {
@@ -425,13 +426,22 @@ export async function listPublishedPromotions(): Promise<PromotionRecord[]> {
   );
 }
 
-export async function listAdvisorPromotions(): Promise<PromotionRecord[]> {
+export async function listAdvisorPromotions(
+  viewerUserId: string,
+  role: "advisor" | "admin",
+): Promise<PromotionRecord[]> {
   const admin = createAdminSupabaseClient();
-  const { data, error } = await admin
+  let query = admin
     .from("promotions")
     .select("*")
     .order("priority", { ascending: false })
     .order("created_at", { ascending: false });
+
+  if (role === "advisor") {
+    query = query.eq("created_by", viewerUserId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(`Failed to load promotions: ${error.message}`);
