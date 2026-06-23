@@ -129,7 +129,7 @@ const tests: TestCase[] = [
   },
   {
     id: 8,
-    name: "All 14 pending migrations remain represented",
+    name: "All pending migrations remain represented",
     run: () => {
       const sql = read("supabase/diagnostics/verify_pending_migrations.sql");
       for (const v of PENDING_VERSIONS) {
@@ -667,6 +667,93 @@ const tests: TestCase[] = [
       const dCore = extract(discrepancies);
       assert(vCore === dCore, "resolved core mismatch");
       assert(vCore.includes("predicate_canonical"), "predicate canonicalisation");
+    },
+  },
+  {
+    id: 59,
+    name: "Phase 9F.2 dedicated verify diagnostic exists",
+    run: () => {
+      assert(
+        existsSync(join(ROOT, "supabase/diagnostics/verify_202606200009_phase9f2_lifecycle_notifications.sql")),
+        "missing verify_202606200009",
+      );
+    },
+  },
+  {
+    id: 60,
+    name: "Phase 9F.2 preflight diagnostic exists",
+    run: () => {
+      assert(
+        existsSync(join(ROOT, "supabase/diagnostics/preflight_202606200009_phase9f2.sql")),
+        "missing preflight_202606200009",
+      );
+    },
+  },
+  {
+    id: 61,
+    name: "Phase 9F.2 discrepancy diagnostic exists",
+    run: () => {
+      assert(
+        existsSync(join(ROOT, "supabase/diagnostics/verify_202606200009_phase9f2_discrepancies.sql")),
+        "missing discrepancies_202606200009",
+      );
+    },
+  },
+  {
+    id: 62,
+    name: "Phase 9F.2 diagnostics are SELECT-only",
+    run: () => {
+      for (const file of [
+        "supabase/diagnostics/verify_202606200009_phase9f2_lifecycle_notifications.sql",
+        "supabase/diagnostics/preflight_202606200009_phase9f2.sql",
+        "supabase/diagnostics/verify_202606200009_phase9f2_discrepancies.sql",
+      ]) {
+        const sql = read(file).toLowerCase();
+        assert(!sql.includes("insert into"), file);
+        assert(!sql.includes("update "), file);
+        assert(!sql.includes("delete from"), file);
+      }
+    },
+  },
+  {
+    id: 63,
+    name: "Phase 9F.2 diagnostics use no XML",
+    run: () => {
+      for (const file of [
+        "supabase/diagnostics/verify_202606200009_phase9f2_lifecycle_notifications.sql",
+        "supabase/diagnostics/preflight_202606200009_phase9f2.sql",
+        "supabase/diagnostics/verify_202606200009_phase9f2_discrepancies.sql",
+      ]) {
+        const sql = read(file);
+        assert(!sql.includes("xpath("), file);
+        assert(!sql.includes("query_to_xml"), file);
+      }
+    },
+  },
+  {
+    id: 64,
+    name: "Phase 9F.2 verify and discrepancies share resolved core",
+    run: () => {
+      const verify = read("supabase/diagnostics/verify_202606200009_phase9f2_lifecycle_notifications.sql");
+      const discrepancies = read("supabase/diagnostics/verify_202606200009_phase9f2_discrepancies.sql");
+      const begin = "-- PHASE9F2_RESOLVED_CORE_BEGIN";
+      const end = "-- PHASE9F2_RESOLVED_CORE_END";
+      const extract = (text: string) => text.slice(text.indexOf(begin) + begin.length, text.indexOf(end)).trim();
+      assert(extract(verify) === extract(discrepancies), "core mismatch");
+    },
+  },
+  {
+    id: 65,
+    name: "Phase 9F.2 migration audit document exists",
+    run: () => {
+      assert(existsSync(join(ROOT, "docs/PHASE_9F2_MIGRATION_AUDIT.md")), "audit");
+    },
+  },
+  {
+    id: 66,
+    name: "Phase 9F.2 event wiring audit exists",
+    run: () => {
+      assert(existsSync(join(ROOT, "docs/PHASE_9F2_EVENT_WIRING_AUDIT.md")), "wiring");
     },
   },
 ];

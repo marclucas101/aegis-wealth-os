@@ -1,6 +1,7 @@
 import "server-only";
 
 import { isFeatureEnabled } from "@/lib/compliance/featureFlags";
+import { emitGovernedContentLifecycleNotifications } from "@/lib/communications/lifecycleNotificationService";
 import { writeAuditLog } from "@/lib/supabase/auditLog";
 
 import { sanitizeAuditMetadata } from "./auditMetadata";
@@ -295,6 +296,8 @@ export async function publishContent(input: {
       contentId: row.supersedes_content_id,
       actorUserId: input.actorUserId,
       reason: "Superseded by newer approved version",
+      lifecycleCause: "superseded",
+      successorContentId: row.id,
     }).catch(() => undefined);
   }
 
@@ -313,6 +316,8 @@ export async function withdrawContent(input: {
   contentId: string;
   actorUserId: string;
   reason: string;
+  lifecycleCause?: "withdrawn" | "superseded";
+  successorContentId?: string;
 }): Promise<GovernedContentRow> {
   const row = await dbLoadGovernedContentById(input.contentId);
   if (!row) {
@@ -323,9 +328,10 @@ export async function withdrawContent(input: {
     return row;
   }
 
+  const withdrawnAt = new Date().toISOString();
   const updated = await dbUpdateGovernedContent(input.contentId, {
     approval_status: "withdrawn",
-    withdrawn_at: new Date().toISOString(),
+    withdrawn_at: withdrawnAt,
     withdrawal_reason: input.reason.trim() || null,
   });
 
@@ -336,6 +342,15 @@ export async function withdrawContent(input: {
     entityId: row.id,
     metadata: { reason: (input.reason || "").slice(0, 200) },
   });
+
+  const lifecycleEvent = input.lifecycleCause ?? "withdrawn";
+  await emitGovernedContentLifecycleNotifications({
+    event: lifecycleEvent,
+    content: row,
+    actorUserId: input.actorUserId,
+    transitionAt: withdrawnAt,
+    successorContentId: input.successorContentId,
+  }).catch(() => undefined);
 
   return updated;
 }

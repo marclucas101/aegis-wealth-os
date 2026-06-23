@@ -137,6 +137,12 @@ export const PENDING_MIGRATIONS: MigrationManifest[] = [
     dependsOn: ["202606200007"],
     requiredChecks: ["automation_job_runs_table", "automation_job_items_table"],
   },
+  {
+    version: "202606200009",
+    name: "phase9f2_lifecycle_notifications",
+    dependsOn: ["202606200008"],
+    requiredChecks: ["client_notifications_lifecycle_columns", "lifecycle_idempotency_index"],
+  },
 ];
 
 export { PRE_PHASE9_HISTORY_REPAIR_ORDER };

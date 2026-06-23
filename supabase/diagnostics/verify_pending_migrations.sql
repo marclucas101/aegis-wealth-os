@@ -1,4 +1,4 @@
--- Read-only verification for pending migrations 202606100019..202606200008.
+-- Read-only verification for pending migrations 202606100019..202606200009.
 -- Safe when expected post-018 relations are absent.
 -- No writes. No schema changes. No migration-history modification.
 
@@ -10,7 +10,7 @@ WITH pending(version) AS (
     ('202606100019'), ('202606100020'), ('202606100021'), ('202606150001'),
     ('202606180001'), ('202606180002'), ('202606200001'), ('202606200002'),
     ('202606200003'), ('202606200004'), ('202606200005'), ('202606200006'),
-    ('202606200007'), ('202606200008')
+    ('202606200007'), ('202606200008'), ('202606200009')
 ),
 history_table AS (
   SELECT EXISTS (
@@ -139,7 +139,14 @@ WITH expected_checks AS (
     ('202606200008','index','public','automation_job_runs','idx_automation_job_runs_single_active'),
     ('202606200008','index','public','automation_job_runs','idx_automation_job_runs_job_started'),
     ('202606200008','index','public','automation_job_items','idx_automation_job_items_run'),
-    ('202606200008','seed_row','public','platform_feature_controls','scheduled_content_automation')
+    ('202606200008','seed_row','public','platform_feature_controls','scheduled_content_automation'),
+
+    -- 9F.2 lifecycle notification hardening
+    ('202606200009','column','public','client_notifications','lifecycle_event'),
+    ('202606200009','column','public','client_notifications','idempotency_key'),
+    ('202606200009','column','public','client_notifications','metadata'),
+    ('202606200009','index','public','client_notifications','idx_client_notifications_lifecycle_idempotent'),
+    ('202606200009','index','public','client_notifications','idx_client_notifications_lifecycle_event')
   ) AS expected(
     expected_migration,
     expected_check_kind,
@@ -376,7 +383,7 @@ WITH expected_migrations(version) AS (
     ('202606100019'), ('202606100020'), ('202606100021'), ('202606150001'),
     ('202606180001'), ('202606180002'), ('202606200001'), ('202606200002'),
     ('202606200003'), ('202606200004'), ('202606200005'), ('202606200006'),
-    ('202606200007'), ('202606200008')
+    ('202606200007'), ('202606200008'), ('202606200009')
 ),
 rollup_checks AS (
   SELECT * FROM (VALUES
@@ -404,7 +411,9 @@ rollup_checks AS (
     ('202606200007','index', EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_client_notifications_idempotent')),
     ('202606200008','table', EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='automation_job_runs')),
     ('202606200008','index', EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_automation_job_runs_single_active')),
-    ('202606200008','seed_row', NULL::boolean)
+    ('202606200008','seed_row', NULL::boolean),
+    ('202606200009','column', EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='client_notifications' AND column_name='idempotency_key')),
+    ('202606200009','index', EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_client_notifications_lifecycle_idempotent'))
   ) AS rollup_input(rollup_migration, rollup_check_kind, rollup_is_present)
 ),
 checks AS (

@@ -1,5 +1,8 @@
 import "server-only";
 
+import { isActiveClientStage } from "@/lib/compliance/relationshipStage";
+import { emitLifecycleNotificationSafe } from "@/lib/communications/lifecycleNotificationService";
+
 import {
   ADVISOR_PROTECTION_REPORT_SOURCE,
   buildProtectionReportStoragePath,
@@ -106,6 +109,46 @@ async function loadClientDocumentForAudit(
   return (data as DocumentAuditRow | null) ?? null;
 }
 
+async function archivePreviousProtectionReports(
+  client: AppClientRow,
+  authUserId: string,
+): Promise<string[]> {
+  const admin = createAdminSupabaseClient();
+  const { data } = await admin
+    .from("documents")
+    .select("id")
+    .eq("client_id", client.id)
+    .eq("is_archived", false)
+    .contains("tags", [PROTECTION_PORTFOLIO_SUMMARY_TAG]);
+
+  const archivedIds: string[] = [];
+  const transitionAt = new Date().toISOString();
+
+  for (const row of (data ?? []) as { id: string }[]) {
+    try {
+      await deleteClientDocument(client, row.id);
+      archivedIds.push(row.id);
+
+      if (isActiveClientStage(client.relationship_stage)) {
+        await emitLifecycleNotificationSafe({
+          event: "replaced",
+          sourceEntityType: "document",
+          sourceEntityId: row.id,
+          sourceLifecycleVersion: transitionAt,
+          recipientClientId: client.id,
+          referenceId: row.id,
+          actorUserId: authUserId,
+          isClientVisible: true,
+        });
+      }
+    } catch {
+      // Archive failure must not block new upload.
+    }
+  }
+
+  return archivedIds;
+}
+
 function resolveAuditCategory(row: DocumentAuditRow): string {
   const tagged = row.tags?.[0];
   if (tagged) {
@@ -125,6 +168,7 @@ export async function uploadAdvisorClientDocument(
   clientId: string,
   file: File,
   category: DocumentCategory,
+  options?: { requiresClientAction?: boolean },
 ): Promise<AdvisorDocumentMutationResult> {
   const access = await resolveAccessibleClient(authUserId, userRole, clientId);
 
@@ -142,6 +186,22 @@ export async function uploadAdvisorClientDocument(
     file,
     category,
   );
+
+  if (
+    options?.requiresClientAction &&
+    isActiveClientStage(access.client.relationship_stage)
+  ) {
+    await emitLifecycleNotificationSafe({
+      event: "action_required",
+      sourceEntityType: "document",
+      sourceEntityId: document.id,
+      sourceLifecycleVersion: document.created_at,
+      recipientClientId: access.client.id,
+      referenceId: document.id,
+      actorUserId: authUserId,
+      isClientVisible: true,
+    });
+  }
 
   return { ok: true, document };
 }
@@ -184,6 +244,8 @@ export async function uploadAdvisorProtectionReport(
     metadata.householdName,
     metadata.statementPeriod,
   );
+
+  await archivePreviousProtectionReports(access.client, authUserId);
 
   const document = await uploadClientDocument(
     access.client,
@@ -244,6 +306,20 @@ export async function deleteAdvisorClientDocument(
     }
 
     throw err;
+  }
+
+  const withdrawnAt = new Date().toISOString();
+  if (isActiveClientStage(access.client.relationship_stage)) {
+    await emitLifecycleNotificationSafe({
+      event: "withdrawn",
+      sourceEntityType: "document",
+      sourceEntityId: documentId,
+      sourceLifecycleVersion: withdrawnAt,
+      recipientClientId: access.client.id,
+      referenceId: documentId,
+      actorUserId: authUserId,
+      isClientVisible: true,
+    });
   }
 
   return {
