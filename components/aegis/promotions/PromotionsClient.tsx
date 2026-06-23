@@ -7,13 +7,13 @@ import type { PromotionsListResponse } from "@/app/api/promotions/route";
 import PromotionCard from "@/components/aegis/promotions/PromotionCard";
 import PromotionsEmptyState from "@/components/aegis/promotions/PromotionsEmptyState";
 import type { AdviserContact } from "@/lib/aegis/adviserContact";
-import type { PromotionRecord } from "@/lib/aegis/promotions";
+import type { ClientSafePromotionRecord } from "@/lib/aegis/promotions";
 
 type LoadState = "loading" | "ready" | "error";
 
 export default function PromotionsClient() {
   const [state, setState] = useState<LoadState>("loading");
-  const [promotions, setPromotions] = useState<PromotionRecord[]>([]);
+  const [promotions, setPromotions] = useState<ClientSafePromotionRecord[]>([]);
   const [adviserContact, setAdviserContact] = useState<AdviserContact | null>(
     null,
   );

@@ -238,6 +238,18 @@ Evidence-based inventory of every file under `supabase/migrations/`.
 | **Clean DB** | Safe |
 | **Existing DB** | Safe (IF NOT EXISTS); legacy rows backfill `binder_lineage_id = id`, `generation_status = legacy_manifest` |
 
+### 202606200011 — phase9f4_legacy_promotions_write_freeze.sql
+
+| Attribute | Detail |
+|-----------|--------|
+| **Purpose** | Legacy Promotions write freeze feature control |
+| **Tables** | None |
+| **Seeds** | `legacy_promotions_write` (disabled, adviser-visible) |
+| **Depends on** | **202606200010**, `platform_feature_controls` |
+| **Clean DB** | Safe |
+| **Existing DB** | Safe (`ON CONFLICT DO NOTHING`) |
+| **Destructive** | No |
+
 ---
 
 ## Historical migration edit policy

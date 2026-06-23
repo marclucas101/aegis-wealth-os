@@ -18,6 +18,12 @@ import type {
 type ManagerMode = "loading" | "ready" | "error" | "forbidden";
 type EditorMode = "list" | "create" | "edit";
 
+type LegacyPromotionsMeta = {
+  writeEnabled: boolean;
+  readOnlyMessage: string;
+  replacementHref: string;
+};
+
 export default function PromotionsManagerClient() {
   const [mode, setMode] = useState<ManagerMode>("loading");
   const [editorMode, setEditorMode] = useState<EditorMode>("list");
@@ -26,6 +32,12 @@ export default function PromotionsManagerClient() {
   const [sortKey, setSortKey] = useState<"status" | "date" | "priority">("priority");
   const [statusFilter, setStatusFilter] = useState<PromotionStatus | "all">("all");
   const [error, setError] = useState<string | null>(null);
+  const [legacyMeta, setLegacyMeta] = useState<LegacyPromotionsMeta>({
+    writeEnabled: false,
+    readOnlyMessage:
+      "Legacy Promotions is now read-only. New client communications should be created through Governed Communications.",
+    replacementHref: "/advisor/insights",
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +63,7 @@ export default function PromotionsManagerClient() {
         }
 
         setPromotions(data.promotions);
+        setLegacyMeta(data.legacyPromotions);
         setMode("ready");
       } catch {
         if (!cancelled) {
@@ -91,10 +104,24 @@ export default function PromotionsManagerClient() {
 
     const data = (await response.json()) as
       | { ok: true; promotion: PromotionRecord }
-      | { ok: false; error?: string };
+      | { ok: false; error?: string | { code?: string; message?: string } };
 
     if (!response.ok || !data.ok) {
-      setError(data.ok ? "Failed to update status" : data.error ?? "Failed to update status");
+      const blocked =
+        !data.ok &&
+        data.error &&
+        typeof data.error === "object" &&
+        "code" in data.error &&
+        data.error.code === "LEGACY_PROMOTIONS_WRITE_DISABLED";
+      setError(
+        blocked && typeof data.error === "object"
+          ? (data.error.message ?? "Legacy Promotions is read-only.")
+          : data.ok
+            ? "Failed to update status"
+            : typeof data.error === "string"
+              ? data.error
+              : "Failed to update status",
+      );
       return;
     }
 
@@ -119,15 +146,37 @@ export default function PromotionsManagerClient() {
     );
   }
 
+  const readOnly = !legacyMeta.writeEnabled;
+
   return (
     <div className="space-y-8">
+      {readOnly && (
+        <div
+          className="rounded-sm border border-[#D1A866]/25 bg-[#D1A866]/8 px-5 py-4"
+          role="status"
+        >
+          <p className="text-sm font-light text-[#F3F1EA]/85">{legacyMeta.readOnlyMessage}</p>
+          <p className="mt-3 text-xs font-light text-[#F3F1EA]/50">
+            Historical promotions remain visible below for reference during migration.
+          </p>
+          <Link
+            href={legacyMeta.replacementHref}
+            className="mt-4 inline-flex rounded-sm border border-[#D1A866]/40 bg-[#D1A866]/10 px-4 py-2 text-[10px] font-medium uppercase tracking-[0.14em] text-[#D1A866] transition-colors hover:bg-[#D1A866]/20"
+          >
+            Open Governed Communications
+          </Link>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-[#D1A866]/60">
             Advisor OS
           </p>
           <p className="mt-1 text-sm font-light text-[#F3F1EA]/45">
-            Publish concise opportunities for your client book.
+            {readOnly
+              ? "Review historical client opportunities during migration."
+              : "Publish concise opportunities for your client book."}
           </p>
         </div>
 
@@ -138,18 +187,26 @@ export default function PromotionsManagerClient() {
           >
             Back to Advisor OS
           </Link>
-          <button
-            type="button"
-            onClick={() => {
-              setSelected(null);
-              setEditorMode("create");
-            }}
-            className="inline-flex rounded-sm border border-[#D1A866]/40 bg-[#D1A866]/10 px-4 py-2 text-[10px] font-medium uppercase tracking-[0.14em] text-[#D1A866] transition-colors hover:bg-[#D1A866]/20"
-          >
-            New promotion
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={() => {
+                setSelected(null);
+                setEditorMode("create");
+              }}
+              className="inline-flex rounded-sm border border-[#D1A866]/40 bg-[#D1A866]/10 px-4 py-2 text-[10px] font-medium uppercase tracking-[0.14em] text-[#D1A866] transition-colors hover:bg-[#D1A866]/20"
+            >
+              New promotion
+            </button>
+          )}
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-sm border border-amber-500/25 bg-amber-500/8 px-4 py-3 text-sm font-light text-amber-100/85">
+          {error}
+        </div>
+      )}
 
       {editorMode === "list" && (
         <PromotionListTable
@@ -157,9 +214,10 @@ export default function PromotionsManagerClient() {
           selectedId={selected?.id ?? null}
           sortKey={sortKey}
           statusFilter={statusFilter}
+          readOnly={readOnly}
           onSelect={(promotion) => {
             setSelected(promotion);
-            setEditorMode("edit");
+            setEditorMode(readOnly ? "edit" : "edit");
           }}
           onSortChange={setSortKey}
           onStatusFilterChange={setStatusFilter}
@@ -174,7 +232,7 @@ export default function PromotionsManagerClient() {
           <div className="rounded-sm border border-[#D1A866]/12 bg-[#10283A]/40 p-5 sm:p-6">
             <div className="mb-6 flex items-center justify-between gap-3">
               <h2 className="text-lg font-light text-[#F3F1EA]">
-                {editorMode === "create" ? "Create promotion" : "Edit promotion"}
+                {editorMode === "create" ? "Create promotion" : "View promotion"}
               </h2>
               <button
                 type="button"
@@ -190,6 +248,7 @@ export default function PromotionsManagerClient() {
               initialValues={
                 selected ? promotionToFormValues(selected) : undefined
               }
+              readOnly={readOnly}
               onSaved={handleSaved}
               onCancel={() => setEditorMode("list")}
             />

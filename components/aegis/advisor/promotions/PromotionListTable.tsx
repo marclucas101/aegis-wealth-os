@@ -13,6 +13,7 @@ type PromotionListTableProps = {
   selectedId: string | null;
   sortKey: SortKey;
   statusFilter: PromotionStatus | "all";
+  readOnly?: boolean;
   onSelect: (promotion: PromotionRecord) => void;
   onSortChange: (sortKey: SortKey) => void;
   onStatusFilterChange: (status: PromotionStatus | "all") => void;
@@ -74,6 +75,7 @@ export default function PromotionListTable({
   selectedId,
   sortKey,
   statusFilter,
+  readOnly = false,
   onSelect,
   onSortChange,
   onStatusFilterChange,
@@ -131,7 +133,7 @@ export default function PromotionListTable({
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Priority</th>
                 <th className="px-4 py-3 font-medium">Updated</th>
-                <th className="px-4 py-3 font-medium">Actions</th>
+                <th className="px-4 py-3 font-medium">{readOnly ? "View" : "Actions"}</th>
               </tr>
             </thead>
             <tbody>
@@ -182,35 +184,45 @@ export default function PromotionListTable({
                       {formatDate(promotion.updatedAt)}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        {promotion.status !== "published" && (
-                          <button
-                            type="button"
-                            onClick={() => onStatusUpdate(promotion, "published")}
-                            className="rounded-sm border border-[#D1A866]/25 px-2 py-1 text-[9px] uppercase tracking-wider text-[#D1A866]/80 hover:border-[#D1A866]/40"
-                          >
-                            Publish
-                          </button>
-                        )}
-                        {promotion.status === "published" && (
-                          <button
-                            type="button"
-                            onClick={() => onStatusUpdate(promotion, "draft")}
-                            className="rounded-sm border border-[#F3F1EA]/15 px-2 py-1 text-[9px] uppercase tracking-wider text-[#F3F1EA]/55 hover:border-[#F3F1EA]/25"
-                          >
-                            Unpublish
-                          </button>
-                        )}
-                        {promotion.status !== "archived" && (
-                          <button
-                            type="button"
-                            onClick={() => onStatusUpdate(promotion, "archived")}
-                            className="rounded-sm border border-[#F3F1EA]/15 px-2 py-1 text-[9px] uppercase tracking-wider text-[#F3F1EA]/45 hover:border-[#F3F1EA]/25"
-                          >
-                            Archive
-                          </button>
-                        )}
-                      </div>
+                      {readOnly ? (
+                        <button
+                          type="button"
+                          onClick={() => onSelect(promotion)}
+                          className="rounded-sm border border-[#F3F1EA]/15 px-2 py-1 text-[9px] uppercase tracking-wider text-[#F3F1EA]/55 hover:border-[#F3F1EA]/25"
+                        >
+                          View
+                        </button>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {promotion.status !== "published" && (
+                            <button
+                              type="button"
+                              onClick={() => onStatusUpdate(promotion, "published")}
+                              className="rounded-sm border border-[#D1A866]/25 px-2 py-1 text-[9px] uppercase tracking-wider text-[#D1A866]/80 hover:border-[#D1A866]/40"
+                            >
+                              Publish
+                            </button>
+                          )}
+                          {promotion.status === "published" && (
+                            <button
+                              type="button"
+                              onClick={() => onStatusUpdate(promotion, "draft")}
+                              className="rounded-sm border border-[#F3F1EA]/15 px-2 py-1 text-[9px] uppercase tracking-wider text-[#F3F1EA]/55 hover:border-[#F3F1EA]/25"
+                            >
+                              Unpublish
+                            </button>
+                          )}
+                          {promotion.status !== "archived" && (
+                            <button
+                              type="button"
+                              onClick={() => onStatusUpdate(promotion, "archived")}
+                              className="rounded-sm border border-[#F3F1EA]/15 px-2 py-1 text-[9px] uppercase tracking-wider text-[#F3F1EA]/45 hover:border-[#F3F1EA]/25"
+                            >
+                              Archive
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );

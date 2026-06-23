@@ -28,6 +28,7 @@ export type PromotionFormValues = {
 type PromotionFormProps = {
   initialValues?: Partial<PromotionFormValues>;
   promotionId?: string;
+  readOnly?: boolean;
   onSaved: (promotion: PromotionRecord) => void;
   onCancel?: () => void;
 };
@@ -94,6 +95,7 @@ function buildDetails(values: PromotionFormValues): PromotionDetails | null {
 export default function PromotionForm({
   initialValues,
   promotionId,
+  readOnly = false,
   onSaved,
   onCancel,
 }: PromotionFormProps) {
@@ -200,7 +202,7 @@ export default function PromotionForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={readOnly ? (event) => event.preventDefault() : handleSubmit} className="space-y-6">
       <div className="rounded-sm border border-[#D1A866]/15 bg-[#10283A]/35 p-4 sm:p-5">
         <p className="text-xs font-light leading-relaxed text-[#F3F1EA]/45">
           {CONTENT_GUIDANCE}
@@ -223,6 +225,7 @@ export default function PromotionForm({
             }
             className={INPUT_CLASS}
             required
+            disabled={readOnly}
           />
         </Field>
 
@@ -236,6 +239,7 @@ export default function PromotionForm({
               }))
             }
             className={INPUT_CLASS}
+            disabled={readOnly}
           >
             {PROMOTION_CATEGORIES.map((category) => (
               <option key={category} value={category}>
@@ -254,6 +258,7 @@ export default function PromotionForm({
             setValues((current) => ({ ...current, subtitle: event.target.value }))
           }
           className={INPUT_CLASS}
+          disabled={readOnly}
         />
       </Field>
 
@@ -267,6 +272,7 @@ export default function PromotionForm({
           }
           className={INPUT_CLASS}
           required
+          disabled={readOnly}
         />
       </Field>
 
@@ -291,6 +297,7 @@ export default function PromotionForm({
                 })
               }
               className={INPUT_CLASS}
+              disabled={readOnly}
             />
           </Field>
         ))}
@@ -316,6 +323,7 @@ export default function PromotionForm({
               setValues((current) => ({ ...current, endsAt: event.target.value }))
             }
             className={INPUT_CLASS}
+            disabled={readOnly}
           />
         </Field>
 
@@ -330,6 +338,7 @@ export default function PromotionForm({
               }))
             }
             className={INPUT_CLASS}
+            disabled={readOnly}
           />
         </Field>
       </div>
@@ -369,6 +378,7 @@ export default function PromotionForm({
               }))
             }
             className={INPUT_CLASS}
+            disabled={readOnly}
           >
             {PROMOTION_STATUSES.map((status) => (
               <option key={status} value={status}>
@@ -379,6 +389,7 @@ export default function PromotionForm({
         </Field>
 
         <Field label="Banner image" hint="PNG, JPG, or WebP up to 5MB">
+          {!readOnly && (
           <input
             type="file"
             accept="image/png,image/jpeg,image/webp"
@@ -391,10 +402,15 @@ export default function PromotionForm({
             }}
             className="block w-full text-xs text-[#F3F1EA]/55 file:mr-3 file:rounded-sm file:border file:border-[#D1A866]/25 file:bg-[#071B2A]/80 file:px-3 file:py-2 file:text-[10px] file:uppercase file:tracking-wider file:text-[#D1A866]"
           />
+          )}
+          {readOnly && (
+            <p className="text-xs font-light text-[#F3F1EA]/40">Uploads disabled in read-only mode.</p>
+          )}
         </Field>
       </div>
 
       <Field label="Attachment" hint="PDF or document up to 10MB">
+        {!readOnly && (
         <input
           type="file"
           accept=".pdf,.doc,.docx,image/png,image/jpeg"
@@ -407,9 +423,14 @@ export default function PromotionForm({
           }}
           className="block w-full text-xs text-[#F3F1EA]/55 file:mr-3 file:rounded-sm file:border file:border-[#D1A866]/25 file:bg-[#071B2A]/80 file:px-3 file:py-2 file:text-[10px] file:uppercase file:tracking-wider file:text-[#D1A866]"
         />
+        )}
+        {readOnly && (
+          <p className="text-xs font-light text-[#F3F1EA]/40">Uploads disabled in read-only mode.</p>
+        )}
       </Field>
 
       <div className="flex flex-wrap items-center gap-3">
+        {!readOnly && (
         <button
           type="submit"
           disabled={saving || uploading !== null}
@@ -417,6 +438,7 @@ export default function PromotionForm({
         >
           {saving ? "Saving…" : promotionId ? "Save changes" : "Create promotion"}
         </button>
+        )}
 
         {onCancel && (
           <button

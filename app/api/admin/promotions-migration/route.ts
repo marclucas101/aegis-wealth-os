@@ -1,15 +1,22 @@
 import { NextResponse } from "next/server";
 
 import { classifyPromotion, listUnmigratedPromotions, migratePromotionToDraft } from "@/lib/communications/legacyPromotionsMigration";
-import type { PromotionMigrationClassification } from "@/lib/communications/types";
-import { isFeatureEnabled } from "@/lib/compliance/featureFlags";
 import {
+  PROMOTION_MIGRATION_CLASSIFICATIONS,
+  type PromotionMigrationClassification,
+} from "@/lib/communications/types";
+import { isFeatureEnabled } from "@/lib/compliance/featureFlags";
+import { isValidPromotionId, privatePromotionJson } from "@/lib/promotions/legacyPromotionsAuthorization";
+import {
+  getRequestMetadata,
   parseJsonBodySafely,
   rateLimitOrThrow,
   rejectUnexpectedFields,
   toPublicErrorMessage,
+  validateEnum,
 } from "@/lib/security/apiGuards";
 import { requireAdminAccess } from "@/lib/supabase/adminManagement";
+import { writeAuditLog } from "@/lib/supabase/auditLog";
 
 export const dynamic = "force-dynamic";
 
@@ -17,15 +24,15 @@ export async function GET(): Promise<NextResponse> {
   try {
     const access = await requireAdminAccess();
     if (!access.allowed) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: access.reason },
-        { status: access.reason === "unauthenticated" ? 401 : 403 },
+        access.reason === "unauthenticated" ? 401 : 403,
       );
     }
 
     const promotions = await listUnmigratedPromotions();
 
-    return NextResponse.json({
+    return privatePromotionJson({
       ok: true,
       promotions: promotions.map((p) => ({
         id: p.id,
@@ -37,14 +44,16 @@ export async function GET(): Promise<NextResponse> {
     });
   } catch (err) {
     console.error("[api/admin/promotions-migration GET]", err);
-    return NextResponse.json(
+    return privatePromotionJson(
       { ok: false, error: toPublicErrorMessage(err, "Failed to list promotions") },
-      { status: 500 },
+      500,
     );
   }
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
+  const metadata = getRequestMetadata(request);
+
   try {
     const rateLimit = rateLimitOrThrow(request, { bucket: "writeHeavy" });
     if (!rateLimit.ok) {
@@ -53,46 +62,99 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     const access = await requireAdminAccess();
     if (!access.allowed) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: access.reason },
-        { status: access.reason === "unauthenticated" ? 401 : 403 },
+        access.reason === "unauthenticated" ? 401 : 403,
       );
     }
 
     const enabled = await isFeatureEnabled("admin_content_approval");
     if (!enabled) {
-      return NextResponse.json({ ok: false, error: "Migration requires content approval" }, { status: 403 });
+      return privatePromotionJson(
+        { ok: false, error: "Migration requires content approval" },
+        403,
+      );
     }
 
     const parsed = await parseJsonBodySafely(request);
     if (!parsed.ok) {
-      return NextResponse.json({ ok: false, error: parsed.error }, { status: 400 });
+      return privatePromotionJson({ ok: false, error: parsed.error }, 400);
     }
 
-    rejectUnexpectedFields(parsed.body, { rejectClientId: true });
+    const unexpected = rejectUnexpectedFields(parsed.body, { rejectClientId: true });
+    if (unexpected.rejected) {
+      return privatePromotionJson({ ok: false, error: unexpected.error }, 400);
+    }
 
     if (!parsed.body || typeof parsed.body !== "object") {
-      return NextResponse.json({ ok: false, error: "Request body is required" }, { status: 400 });
+      return privatePromotionJson({ ok: false, error: "Request body is required" }, 400);
     }
 
     const body = parsed.body as Record<string, unknown>;
-    const promotionId = typeof body.promotionId === "string" ? body.promotionId : "";
-    const classification = (
-      typeof body.classification === "string" ? body.classification : "unsuitable"
-    ) as PromotionMigrationClassification;
+    const promotionId = typeof body.promotionId === "string" ? body.promotionId.trim() : "";
+
+    if (!isValidPromotionId(promotionId)) {
+      return privatePromotionJson({ ok: false, error: "Invalid promotionId" }, 400);
+    }
+
+    const classificationResult = validateEnum<PromotionMigrationClassification>(
+      body.classification ?? "unsuitable",
+      PROMOTION_MIGRATION_CLASSIFICATIONS,
+      "classification",
+    );
+    if (!classificationResult.ok) {
+      return privatePromotionJson({ ok: false, error: classificationResult.error }, 400);
+    }
+
+    await writeAuditLog({
+      userId: access.user.id,
+      action: "legacy_promotion_migration_started",
+      entityType: "promotion",
+      entityId: promotionId,
+      metadata: {
+        promotion_id: promotionId,
+        adviser_user_id: access.user.id,
+        action_type: "migrate_to_draft",
+        result_code: "started",
+      },
+      ipAddress: metadata.ip_address,
+      userAgent: metadata.user_agent,
+    });
 
     const result = await migratePromotionToDraft({
       promotionId,
       reviewerUserId: access.user.id,
-      classification,
+      classification: classificationResult.value,
     });
 
-    return NextResponse.json({ ok: true, ...result });
+    return privatePromotionJson({ ok: true, ...result });
   } catch (err) {
     console.error("[api/admin/promotions-migration POST]", err);
-    return NextResponse.json(
+
+    try {
+      const access = await requireAdminAccess();
+      if (access.allowed) {
+        await writeAuditLog({
+          userId: access.user.id,
+          action: "legacy_promotion_migration_failed",
+          entityType: "promotion",
+          entityId: null,
+          metadata: {
+            adviser_user_id: access.user.id,
+            action_type: "migrate_to_draft",
+            result_code: "error",
+          },
+          ipAddress: metadata.ip_address,
+          userAgent: metadata.user_agent,
+        });
+      }
+    } catch {
+      // audit failure must not mask original error
+    }
+
+    return privatePromotionJson(
       { ok: false, error: toPublicErrorMessage(err, "Migration failed") },
-      { status: 500 },
+      500,
     );
   }
 }

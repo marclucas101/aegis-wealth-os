@@ -46,6 +46,25 @@ export type PromotionRecord = {
   updatedAt: string;
 };
 
+/** Client API shape — excludes adviser/internal and storage path fields. */
+export type ClientSafePromotionRecord = Pick<
+  PromotionRecord,
+  | "id"
+  | "title"
+  | "subtitle"
+  | "summary"
+  | "details"
+  | "category"
+  | "ctaLabel"
+  | "ctaUrl"
+  | "imageSignedUrl"
+  | "attachmentSignedUrl"
+  | "status"
+  | "priority"
+  | "startsAt"
+  | "endsAt"
+>;
+
 export function isPromotionCurrentlyActive(promotion: PromotionRecord): boolean {
   if (promotion.status !== "published") {
     return false;

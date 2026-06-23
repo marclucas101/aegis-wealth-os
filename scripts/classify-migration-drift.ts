@@ -153,6 +153,12 @@ export const PENDING_MIGRATIONS: MigrationManifest[] = [
       "binder_exports_bucket",
     ],
   },
+  {
+    version: "202606200011",
+    name: "phase9f4_legacy_promotions_write_freeze",
+    dependsOn: ["202606200010"],
+    requiredChecks: ["legacy_promotions_write_seed"],
+  },
 ];
 
 export { PRE_PHASE9_HISTORY_REPAIR_ORDER };

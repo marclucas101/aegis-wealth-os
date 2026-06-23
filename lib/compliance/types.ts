@@ -109,7 +109,8 @@ export type PlatformFeatureKey =
   | "communication_preferences"
   | "binder_export"
   | "binder_client_publication"
-  | "scheduled_content_automation";
+  | "scheduled_content_automation"
+  | "legacy_promotions_write";
 
 export const PLATFORM_FEATURE_KEYS: readonly PlatformFeatureKey[] = [
   "raw_client_financial_views",
@@ -134,6 +135,7 @@ export const PLATFORM_FEATURE_KEYS: readonly PlatformFeatureKey[] = [
   "binder_export",
   "binder_client_publication",
   "scheduled_content_automation",
+  "legacy_promotions_write",
 ] as const;
 
 /** Entitlement-gated client portal features. */

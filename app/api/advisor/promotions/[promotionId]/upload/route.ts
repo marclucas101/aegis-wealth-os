@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 
 import {
+  isValidPromotionId,
+  privatePromotionJson,
+  requireAdviserPromotionOwnership,
+  requireLegacyPromotionsWriteAccess,
+  resolveLegacyPromotionViewerRole,
+} from "@/lib/promotions/legacyPromotionsAuthorization";
+import {
   getRequestMetadata,
   rateLimitOrThrow,
   rejectClientIdInFormData,
@@ -11,6 +18,7 @@ import {
 import { requireAdvisorAccess } from "@/lib/supabase/advisorAuth";
 import { writeAuditLog } from "@/lib/supabase/auditLog";
 import {
+  getAdvisorPromotionById,
   uploadPromotionAsset,
   type PromotionAssetKind,
   type PromotionRecord,
@@ -22,19 +30,11 @@ const ASSET_KINDS = ["image", "attachment"] as const;
 
 export type PromotionUploadResponse =
   | { ok: true; promotion: PromotionRecord }
-  | { ok: false; reason: "unauthenticated" | "forbidden" | "error"; error?: string };
+  | { ok: false; reason: "unauthenticated" | "forbidden" | "not_found" | "error"; error?: string };
 
 type RouteContext = {
   params: Promise<{ promotionId: string }>;
 };
-
-function advisorRole(role: string): "advisor" | "admin" | null {
-  if (role === "advisor" || role === "admin") {
-    return role;
-  }
-
-  return null;
-}
 
 export async function POST(
   request: Request,
@@ -44,7 +44,7 @@ export async function POST(
     const access = await requireAdvisorAccess();
 
     if (!access.allowed) {
-      return NextResponse.json(
+      return privatePromotionJson(
         {
           ok: false,
           reason: access.reason === "unauthenticated" ? "unauthenticated" : "forbidden",
@@ -53,16 +53,52 @@ export async function POST(
               ? undefined
               : "Advisor access required",
         },
-        { status: access.reason === "unauthenticated" ? 401 : 403 },
+        access.reason === "unauthenticated" ? 401 : 403,
       );
     }
 
-    const role = advisorRole(access.user.role);
+    const role = resolveLegacyPromotionViewerRole(access.user.role);
     if (!role) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "forbidden", error: "Advisor access required" },
-        { status: 403 },
+        403,
       );
+    }
+
+    const { promotionId } = await context.params;
+    if (!isValidPromotionId(promotionId)) {
+      return privatePromotionJson(
+        { ok: false, reason: "not_found", error: "Promotion not found" },
+        404,
+      );
+    }
+
+    const metadata = getRequestMetadata(request);
+    const writeGuard = await requireLegacyPromotionsWriteAccess({
+      userId: access.authUser.id,
+      promotionId,
+      actionType: "upload",
+      ipAddress: metadata.ip_address,
+      userAgent: metadata.user_agent,
+    });
+    if (!writeGuard.allowed) {
+      return writeGuard.response as NextResponse<PromotionUploadResponse>;
+    }
+
+    const existing = await getAdvisorPromotionById(promotionId);
+    if (!existing.ok) {
+      return privatePromotionJson(
+        { ok: false, reason: "not_found", error: "Promotion not found" },
+        404,
+      );
+    }
+
+    const ownership = requireAdviserPromotionOwnership({
+      access,
+      promotion: existing.promotion,
+    });
+    if (!ownership.allowed) {
+      return ownership.response as NextResponse<PromotionUploadResponse>;
     }
 
     const rateLimit = rateLimitOrThrow<PromotionUploadResponse>(request, {
@@ -77,25 +113,25 @@ export async function POST(
     try {
       formData = await request.formData();
     } catch {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "error", error: "Invalid form data" },
-        { status: 400 },
+        400,
       );
     }
 
     const clientIdReject = rejectClientIdInFormData(formData);
     if (clientIdReject.rejected) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "error", error: clientIdReject.error },
-        { status: 400 },
+        400,
       );
     }
 
     const sensitiveReject = rejectUnexpectedFormFields(formData);
     if (sensitiveReject.rejected) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "error", error: sensitiveReject.error },
-        { status: 400 },
+        400,
       );
     }
 
@@ -105,21 +141,20 @@ export async function POST(
       "kind",
     );
     if (!kindResult.ok) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "error", error: kindResult.error },
-        { status: 400 },
+        400,
       );
     }
 
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) {
-      return NextResponse.json(
+      return privatePromotionJson(
         { ok: false, reason: "error", error: "A valid file is required" },
-        { status: 400 },
+        400,
       );
     }
 
-    const { promotionId } = await context.params;
     const promotion = await uploadPromotionAsset(
       access.authUser.id,
       promotionId,
@@ -127,7 +162,6 @@ export async function POST(
       file,
     );
 
-    const metadata = getRequestMetadata(request);
     await writeAuditLog({
       userId: access.authUser.id,
       action: "promotion_asset_uploaded",
@@ -136,20 +170,19 @@ export async function POST(
       metadata: {
         promotion_id: promotion.id,
         kind: kindResult.value,
-        file_name: file.name,
       },
       ipAddress: metadata.ip_address,
       userAgent: metadata.user_agent,
     });
 
-    return NextResponse.json({ ok: true, promotion });
+    return privatePromotionJson({ ok: true, promotion });
   } catch (err) {
     const message = toPublicErrorMessage(err, "Failed to upload promotion asset");
     console.error("[api/advisor/promotions/[promotionId]/upload POST]", err);
 
-    return NextResponse.json(
+    return privatePromotionJson(
       { ok: false, reason: "error", error: message },
-      { status: 500 },
+      500,
     );
   }
 }
