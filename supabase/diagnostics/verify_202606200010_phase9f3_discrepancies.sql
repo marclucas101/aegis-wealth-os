@@ -47,9 +47,9 @@ expected AS (
     ('202606200010','index','idx_binder_exports_published_document','binder_exports|published_document_id'),
     ('202606200010','index_def','idx_binder_exports_published_document','published_document_id IS NOT NULL'),
     ('202606200010','index','idx_binder_exports_client_published_current','binder_exports|client_id, created_at DESC'),
-    ('202606200010','index_def','idx_binder_exports_client_published_current','published_to_client'),
+    ('202606200010','index_def','idx_binder_exports_client_published_current','status = ''published_to_client'' AND published_document_id IS NOT NULL'),
     ('202606200010','index','idx_binder_exports_lineage_current_published','UNIQUE|binder_exports|binder_lineage_id'),
-    ('202606200010','index_def','idx_binder_exports_lineage_current_published','published_to_client'),
+    ('202606200010','index_def','idx_binder_exports_lineage_current_published','status = ''published_to_client'' AND withdrawn_at IS NULL'),
     ('202606200010','comment_col','binder_exports.binder_lineage_id','Phase 9F.3'),
     ('202606200010','comment_col','binder_exports.generation_status','Phase 9F.3'),
     ('202606200010','comment_col','binder_exports.storage_bucket','Phase 9F.3'),
@@ -131,8 +131,11 @@ index_key_cols AS (
     ix.indisunique AS is_unique,
     ix.indisvalid AS is_valid,
     ix.indisready AS is_ready,
+    (ix.indpred IS NOT NULL) AS has_predicate,
     pg_get_indexdef(ix.indexrelid) AS indexdef,
+    pg_get_indexdef(ix.indexrelid, 1, true) AS first_key_col,
     pg_get_expr(ix.indpred, ix.indrelid) AS predicate_raw,
+    pg_get_expr(ix.indpred, ix.indrelid, true) AS predicate_pretty,
     (
       SELECT string_agg(
         a.attname ||
@@ -148,30 +151,313 @@ index_key_cols AS (
   JOIN pg_namespace n ON n.oid = ic.relnamespace
   WHERE n.nspname = 'public' AND ic.relkind = 'i'
 ),
-index_catalog AS (
+index_predicate_prepped AS (
   SELECT ik.*,
     CASE
       WHEN ik.predicate_raw IS NULL THEN NULL::text
-      ELSE regexp_replace(
+      ELSE lower(
         regexp_replace(
-          lower(
+          regexp_replace(
             regexp_replace(
-              regexp_replace(
+              btrim(
                 regexp_replace(
-                  btrim(regexp_replace(ik.predicate_raw, '^\\s*where\\s+', '', 'i')),
-                  '::text\\b', '', 'gi'
-                ),
-                '''([^'']+)''::text', '''\1''', 'gi'
+                  regexp_replace(
+                    regexp_replace(ik.predicate_raw, '^\\s*where\\s+', '', 'i'),
+                    'public\\.binder_exports\\.', '', 'gi'
+                  ),
+                  'binder_exports\\.', '', 'gi'
+                )
               ),
-              '\\s+', ' ', 'g'
-            )
+              '::(?:text|uuid|boolean|timestamp|timestamptz)\\b', '', 'gi'
+            ),
+            '''([^'']+)''::text', '''\\1''', 'gi'
           ),
-          '^\\((.*)\\)$', '\\1'
-        ),
-        '^\\((.*)\\)$', '\\1'
+          '\\s+', ' ', 'g'
+        )
       )
-    END AS predicate_canonical
+    END AS predicate_stage_0
   FROM index_key_cols ik
+),
+index_simple_pred_prepped AS (
+  SELECT ik.*,
+    CASE
+      WHEN ik.predicate_pretty IS NULL THEN NULL::text
+      ELSE lower(
+        regexp_replace(
+          regexp_replace(
+            btrim(
+              regexp_replace(
+                regexp_replace(ik.predicate_pretty, 'public\\.binder_exports\\.', '', 'gi'),
+                'binder_exports\\.', '', 'gi'
+              )
+            ),
+            '\\s+', ' ', 'g'
+          )
+        )
+      )
+    END AS simple_pred_stage_0
+  FROM index_key_cols ik
+),
+index_simple_pred_stage_1 AS (
+  SELECT
+    s.*,
+    CASE
+      WHEN simple_pred_stage_0 IS NULL THEN NULL::text
+      WHEN left(simple_pred_stage_0, 1) = '('
+        AND right(simple_pred_stage_0, 1) = ')'
+        AND char_length(simple_pred_stage_0) >= 2
+      THEN btrim(
+        substring(
+          simple_pred_stage_0
+          FROM 2
+          FOR char_length(simple_pred_stage_0) - 2
+        )
+      )
+      ELSE simple_pred_stage_0
+    END AS index_simple_pred_stage_1
+  FROM index_simple_pred_prepped s
+),
+index_simple_pred_stage_2 AS (
+  SELECT
+    s.*,
+    CASE
+      WHEN index_simple_pred_stage_1 IS NULL THEN NULL::text
+      WHEN left(index_simple_pred_stage_1, 1) = '('
+        AND right(index_simple_pred_stage_1, 1) = ')'
+        AND char_length(index_simple_pred_stage_1) >= 2
+      THEN btrim(
+        substring(
+          index_simple_pred_stage_1
+          FROM 2
+          FOR char_length(index_simple_pred_stage_1) - 2
+        )
+      )
+      ELSE index_simple_pred_stage_1
+    END AS index_simple_pred_stage_2
+  FROM index_simple_pred_stage_1 s
+),
+index_simple_pred_stage_3 AS (
+  SELECT
+    s.*,
+    CASE
+      WHEN index_simple_pred_stage_2 IS NULL THEN NULL::text
+      WHEN left(index_simple_pred_stage_2, 1) = '('
+        AND right(index_simple_pred_stage_2, 1) = ')'
+        AND char_length(index_simple_pred_stage_2) >= 2
+      THEN btrim(
+        substring(
+          index_simple_pred_stage_2
+          FROM 2
+          FOR char_length(index_simple_pred_stage_2) - 2
+        )
+      )
+      ELSE index_simple_pred_stage_2
+    END AS index_simple_pred_stage_3
+  FROM index_simple_pred_stage_2 s
+),
+index_simple_pred_stage_4 AS (
+  SELECT
+    s.*,
+    CASE
+      WHEN index_simple_pred_stage_3 IS NULL THEN NULL::text
+      WHEN left(index_simple_pred_stage_3, 1) = '('
+        AND right(index_simple_pred_stage_3, 1) = ')'
+        AND char_length(index_simple_pred_stage_3) >= 2
+      THEN btrim(
+        substring(
+          index_simple_pred_stage_3
+          FROM 2
+          FOR char_length(index_simple_pred_stage_3) - 2
+        )
+      )
+      ELSE index_simple_pred_stage_3
+    END AS index_simple_pred_stage_4
+  FROM index_simple_pred_stage_3 s
+),
+index_predicate_stage_1 AS (
+  SELECT
+    s.*,
+    CASE
+      WHEN predicate_stage_0 IS NULL THEN NULL::text
+      WHEN left(predicate_stage_0, 1) = '('
+        AND right(predicate_stage_0, 1) = ')'
+        AND char_length(predicate_stage_0) >= 2
+      THEN btrim(
+        substring(
+          predicate_stage_0
+          FROM 2
+          FOR char_length(predicate_stage_0) - 2
+        )
+      )
+      ELSE predicate_stage_0
+    END AS index_predicate_stage_1
+  FROM index_predicate_prepped s
+),
+index_predicate_stage_2 AS (
+  SELECT
+    s.*,
+    CASE
+      WHEN index_predicate_stage_1 IS NULL THEN NULL::text
+      WHEN left(index_predicate_stage_1, 1) = '('
+        AND right(index_predicate_stage_1, 1) = ')'
+        AND char_length(index_predicate_stage_1) >= 2
+      THEN btrim(
+        substring(
+          index_predicate_stage_1
+          FROM 2
+          FOR char_length(index_predicate_stage_1) - 2
+        )
+      )
+      ELSE index_predicate_stage_1
+    END AS index_predicate_stage_2
+  FROM index_predicate_stage_1 s
+),
+index_predicate_stage_3 AS (
+  SELECT
+    s.*,
+    CASE
+      WHEN index_predicate_stage_2 IS NULL THEN NULL::text
+      WHEN left(index_predicate_stage_2, 1) = '('
+        AND right(index_predicate_stage_2, 1) = ')'
+        AND char_length(index_predicate_stage_2) >= 2
+      THEN btrim(
+        substring(
+          index_predicate_stage_2
+          FROM 2
+          FOR char_length(index_predicate_stage_2) - 2
+        )
+      )
+      ELSE index_predicate_stage_2
+    END AS index_predicate_stage_3
+  FROM index_predicate_stage_2 s
+),
+index_predicate_stage_4 AS (
+  SELECT
+    s.*,
+    CASE
+      WHEN index_predicate_stage_3 IS NULL THEN NULL::text
+      WHEN left(index_predicate_stage_3, 1) = '('
+        AND right(index_predicate_stage_3, 1) = ')'
+        AND char_length(index_predicate_stage_3) >= 2
+      THEN btrim(
+        substring(
+          index_predicate_stage_3
+          FROM 2
+          FOR char_length(index_predicate_stage_3) - 2
+        )
+      )
+      ELSE index_predicate_stage_3
+    END AS index_predicate_stage_4
+  FROM index_predicate_stage_3 s
+),
+index_conjunct_raw AS (
+  SELECT
+    p.index_name,
+    btrim(term) AS conjunct_stage_0
+  FROM index_predicate_prepped p
+  CROSS JOIN LATERAL unnest(regexp_split_to_array(p.predicate_stage_0, '\\s+and\\s+')) AS term
+  WHERE p.predicate_stage_0 LIKE '% and %'
+    AND btrim(term) <> ''
+),
+index_conjunct_stage_1 AS (
+  SELECT
+    s.*,
+    CASE
+      WHEN conjunct_stage_0 IS NULL THEN NULL::text
+      WHEN left(conjunct_stage_0, 1) = '('
+        AND right(conjunct_stage_0, 1) = ')'
+        AND char_length(conjunct_stage_0) >= 2
+      THEN btrim(
+        substring(
+          conjunct_stage_0
+          FROM 2
+          FOR char_length(conjunct_stage_0) - 2
+        )
+      )
+      ELSE conjunct_stage_0
+    END AS index_conjunct_stage_1
+  FROM index_conjunct_raw s
+),
+index_conjunct_stage_2 AS (
+  SELECT
+    s.*,
+    CASE
+      WHEN index_conjunct_stage_1 IS NULL THEN NULL::text
+      WHEN left(index_conjunct_stage_1, 1) = '('
+        AND right(index_conjunct_stage_1, 1) = ')'
+        AND char_length(index_conjunct_stage_1) >= 2
+      THEN btrim(
+        substring(
+          index_conjunct_stage_1
+          FROM 2
+          FOR char_length(index_conjunct_stage_1) - 2
+        )
+      )
+      ELSE index_conjunct_stage_1
+    END AS index_conjunct_stage_2
+  FROM index_conjunct_stage_1 s
+),
+index_conjunct_stage_3 AS (
+  SELECT
+    s.*,
+    CASE
+      WHEN index_conjunct_stage_2 IS NULL THEN NULL::text
+      WHEN left(index_conjunct_stage_2, 1) = '('
+        AND right(index_conjunct_stage_2, 1) = ')'
+        AND char_length(index_conjunct_stage_2) >= 2
+      THEN btrim(
+        substring(
+          index_conjunct_stage_2
+          FROM 2
+          FOR char_length(index_conjunct_stage_2) - 2
+        )
+      )
+      ELSE index_conjunct_stage_2
+    END AS index_conjunct_stage_3
+  FROM index_conjunct_stage_2 s
+),
+index_conjunct_stage_4 AS (
+  SELECT
+    s.*,
+    CASE
+      WHEN index_conjunct_stage_3 IS NULL THEN NULL::text
+      WHEN left(index_conjunct_stage_3, 1) = '('
+        AND right(index_conjunct_stage_3, 1) = ')'
+        AND char_length(index_conjunct_stage_3) >= 2
+      THEN btrim(
+        substring(
+          index_conjunct_stage_3
+          FROM 2
+          FOR char_length(index_conjunct_stage_3) - 2
+        )
+      )
+      ELSE index_conjunct_stage_3
+    END AS index_conjunct_stage_4
+  FROM index_conjunct_stage_3 s
+),
+index_catalog AS (
+  SELECT p.*,
+    sp.index_simple_pred_stage_4 AS simple_predicate_normalized,
+    CASE
+      WHEN p.predicate_stage_0 IS NULL THEN NULL::text
+      WHEN p.predicate_stage_0 NOT LIKE '% and %' THEN p.index_predicate_stage_4
+      ELSE (
+        SELECT string_agg(c.index_conjunct_stage_4, ' and ' ORDER BY c.index_conjunct_stage_4)
+        FROM index_conjunct_stage_4 c
+        WHERE c.index_name = p.index_name
+      )
+    END AS predicate_canonical,
+    CASE
+      WHEN p.predicate_stage_0 IS NULL THEN NULL::text[]
+      WHEN p.predicate_stage_0 NOT LIKE '% and %' THEN ARRAY[p.index_predicate_stage_4]::text[]
+      ELSE (
+        SELECT array_agg(c.index_conjunct_stage_4 ORDER BY c.index_conjunct_stage_4)
+        FROM index_conjunct_stage_4 c
+        WHERE c.index_name = p.index_name
+      )
+    END AS predicate_conjuncts_sorted
+  FROM index_predicate_stage_4 p
+  LEFT JOIN index_simple_pred_stage_4 sp ON sp.index_name = p.index_name
 ),
 pol AS (
   SELECT tablename, policyname, cmd, roles::text AS roles_text
@@ -236,8 +522,15 @@ resolved AS (
         CASE WHEN ik.table_name = 'binder_exports' AND ik.is_unique AND ik.is_valid AND ik.is_ready
           AND ik.key_columns_ordered = 'generation_idempotency_key' THEN 'present' WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
       WHEN e.check_kind = 'index_def' AND e.object_name = 'idx_binder_exports_generation_idempotent' THEN
-        CASE WHEN ik.predicate_canonical = lower(regexp_replace(e.expected_detail, '\\s+', ' ', 'g')) THEN 'present'
-          WHEN ik.index_name IS NULL THEN 'absent' WHEN ik.predicate_raw IS NULL THEN 'conflicting' ELSE 'conflicting' END
+        CASE WHEN ik.index_name IS NULL THEN 'absent'
+          WHEN ik.table_name = 'binder_exports'
+            AND ik.is_unique AND ik.is_valid AND ik.is_ready
+            AND ik.first_key_col = 'generation_idempotency_key'
+            AND ik.has_predicate
+            AND ik.simple_predicate_normalized = 'generation_idempotency_key is not null'
+          THEN 'present'
+          WHEN ik.predicate_raw IS NULL THEN 'conflicting'
+          ELSE 'conflicting' END
       WHEN e.check_kind = 'index' AND e.object_name = 'idx_binder_exports_lineage_version' THEN
         CASE WHEN ik.table_name = 'binder_exports' AND ik.is_unique AND ik.is_valid AND ik.is_ready
           AND ik.key_columns_ordered = 'binder_lineage_id, version' THEN 'present' WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
@@ -251,20 +544,28 @@ resolved AS (
         CASE WHEN ik.table_name = 'binder_exports' AND NOT ik.is_unique AND ik.is_valid AND ik.is_ready
           AND ik.key_columns_ordered = 'published_document_id' THEN 'present' WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
       WHEN e.check_kind = 'index_def' AND e.object_name = 'idx_binder_exports_published_document' THEN
-        CASE WHEN ik.predicate_canonical = lower(regexp_replace(e.expected_detail, '\\s+', ' ', 'g')) THEN 'present'
-          WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
+        CASE WHEN ik.index_name IS NULL THEN 'absent'
+          WHEN ik.table_name = 'binder_exports'
+            AND NOT ik.is_unique AND ik.is_valid AND ik.is_ready
+            AND ik.first_key_col = 'published_document_id'
+            AND ik.has_predicate
+            AND ik.simple_predicate_normalized = 'published_document_id is not null'
+          THEN 'present'
+          ELSE 'conflicting' END
       WHEN e.check_kind = 'index' AND e.object_name = 'idx_binder_exports_client_published_current' THEN
         CASE WHEN ik.table_name = 'binder_exports' AND NOT ik.is_unique AND ik.is_valid AND ik.is_ready
           AND ik.key_columns_ordered = 'client_id, created_at DESC' THEN 'present' WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
       WHEN e.check_kind = 'index_def' AND e.object_name = 'idx_binder_exports_client_published_current' THEN
-        CASE WHEN ik.predicate_canonical ILIKE '%published_to_client%' AND ik.predicate_canonical ILIKE '%published_document_id%' THEN 'present'
-          WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
+        CASE WHEN ik.index_name IS NULL THEN 'absent'
+          WHEN ik.predicate_conjuncts_sorted = ARRAY['published_document_id is not null', 'status = ''published_to_client''']::text[] THEN 'present'
+          ELSE 'conflicting' END
       WHEN e.check_kind = 'index' AND e.object_name = 'idx_binder_exports_lineage_current_published' THEN
         CASE WHEN ik.table_name = 'binder_exports' AND ik.is_unique AND ik.is_valid AND ik.is_ready
           AND ik.key_columns_ordered = 'binder_lineage_id' THEN 'present' WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
       WHEN e.check_kind = 'index_def' AND e.object_name = 'idx_binder_exports_lineage_current_published' THEN
-        CASE WHEN ik.predicate_canonical ILIKE '%published_to_client%' AND ik.predicate_canonical ILIKE '%withdrawn_at%' THEN 'present'
-          WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
+        CASE WHEN ik.index_name IS NULL THEN 'absent'
+          WHEN ik.predicate_conjuncts_sorted = ARRAY['status = ''published_to_client''', 'withdrawn_at is null']::text[] THEN 'present'
+          ELSE 'conflicting' END
       WHEN e.check_kind IN ('index','index_def') AND ik.index_name IS NULL THEN 'absent'
       WHEN e.check_kind = 'column' AND to_regclass('public.binder_exports') IS NULL THEN 'absent'
       WHEN e.check_kind = 'column' AND c.column_name IS NULL THEN 'absent'
@@ -340,7 +641,7 @@ resolved AS (
     END AS present,
     CASE
       WHEN e.check_kind = 'column_attr' THEN COALESCE(ca.data_type, '?') || '|' || COALESCE(ca.is_nullable, '?') || '|' || COALESCE(ca.column_default, '')
-      WHEN e.check_kind IN ('index','index_def') THEN 'schema=' || COALESCE(ik.schema_name, '?') || '|table=' || COALESCE(ik.table_name, '?') || '|unique=' || COALESCE(ik.is_unique::text, '?') || '|keys=' || COALESCE(ik.key_columns_ordered, '?') || '|predicate_raw=' || COALESCE(ik.predicate_raw, '')
+      WHEN e.check_kind IN ('index','index_def') THEN 'schema=' || COALESCE(ik.schema_name, '?') || '|table=' || COALESCE(ik.table_name, '?') || '|unique=' || COALESCE(ik.is_unique::text, '?') || '|keys=' || COALESCE(ik.key_columns_ordered, '?') || '|first_key=' || COALESCE(ik.first_key_col, '?') || '|predicate_raw=' || COALESCE(ik.predicate_raw, '') || '|simple_predicate=' || COALESCE(ik.simple_predicate_normalized, '') || '|predicate_canonical=' || COALESCE(ik.predicate_canonical, '')
       WHEN e.check_kind = 'constraint' THEN ccn.constraint_def
       WHEN e.check_kind = 'fk' THEN fk.foreign_table_name
       WHEN e.check_kind = 'rls' THEN CASE WHEN t.relrowsecurity THEN 'enabled' ELSE 'disabled' END
@@ -357,7 +658,8 @@ resolved AS (
       ELSE NULL
     END AS detail,
     e.expected_detail AS expected_canonical_detail,
-    NULL::text AS actual_canonical_detail,
+    CASE WHEN e.check_kind = 'index_def' AND e.object_name IN ('idx_binder_exports_generation_idempotent', 'idx_binder_exports_published_document') THEN ik.simple_predicate_normalized
+      WHEN e.check_kind = 'index_def' THEN ik.predicate_canonical ELSE NULL::text END AS actual_canonical_detail,
     mh.migration_recorded
   FROM expected e
   LEFT JOIN tbl t ON e.check_kind = 'rls' AND t.relname = e.object_name

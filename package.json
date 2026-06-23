@@ -34,6 +34,7 @@
     "qa:phase9f-scheduled-publishing": "npx tsx scripts/run-phase9f-scheduled-publishing-validation.ts",
     "qa:phase9f2-lifecycle-notifications": "npx tsx scripts/run-phase9f2-lifecycle-notifications-validation.ts",
     "qa:phase9f3-binder-client-vault": "npx tsx scripts/run-phase9f3-binder-client-vault-validation.ts",
+    "qa:phase9f3-local-acceptance": "npx tsx scripts/run-phase9f3-local-acceptance.ts",
     "qa:a4-summary-report": "npx tsx scripts/run-a4-summary-report-validation.ts",
     "qa:migration-readiness": "npx tsx scripts/run-migration-readiness-validation.ts",
     "qa:phase9-migration-readiness": "npx tsx scripts/run-phase9-migration-readiness-validation.ts",

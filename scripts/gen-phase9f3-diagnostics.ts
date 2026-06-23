@@ -3,9 +3,74 @@
  * Run: npx tsx scripts/gen-phase9f3-diagnostics.ts
  */
 
-import { writeFileSync } from "node:fs";
+import { readFileSync, statSync, writeFileSync } from "node:fs";
 
 type ExpectedRow = [string, string, string | null];
+
+const PAREN_STRIP_ROUNDS = 4;
+
+/** One bounded outer-paren strip referencing a column by name (no expression inlining). */
+function sqlStripParenCase(inputCol: string): string {
+  return `CASE
+      WHEN ${inputCol} IS NULL THEN NULL::text
+      WHEN left(${inputCol}, 1) = '('
+        AND right(${inputCol}, 1) = ')'
+        AND char_length(${inputCol}) >= 2
+      THEN btrim(
+        substring(
+          ${inputCol}
+          FROM 2
+          FOR char_length(${inputCol}) - 2
+        )
+      )
+      ELSE ${inputCol}
+    END`;
+}
+
+function buildStripStageChain(
+  baseCte: string,
+  initialCol: string,
+  stagePrefix: string,
+  rounds: number,
+): { sql: string; finalCte: string; finalCol: string } {
+  const parts: string[] = [];
+  let prevCte = baseCte;
+  let prevCol = initialCol;
+
+  for (let i = 1; i <= rounds; i++) {
+    const cteName = `${stagePrefix}_stage_${i}`;
+    const outCol = `${stagePrefix}_stage_${i}`;
+    parts.push(`${cteName} AS (
+  SELECT
+    s.*,
+    ${sqlStripParenCase(prevCol)} AS ${outCol}
+  FROM ${prevCte} s
+)`);
+    prevCte = cteName;
+    prevCol = outCol;
+  }
+
+  return { sql: parts.join(",\n"), finalCte: prevCte, finalCol: prevCol };
+}
+
+const predicateStripStages = buildStripStageChain(
+  "index_predicate_prepped",
+  "predicate_stage_0",
+  "index_predicate",
+  PAREN_STRIP_ROUNDS,
+);
+const conjunctStripStages = buildStripStageChain(
+  "index_conjunct_raw",
+  "conjunct_stage_0",
+  "index_conjunct",
+  PAREN_STRIP_ROUNDS,
+);
+const simplePredStripStages = buildStripStageChain(
+  "index_simple_pred_prepped",
+  "simple_pred_stage_0",
+  "index_simple_pred",
+  PAREN_STRIP_ROUNDS,
+);
 
 const EXPECTED_ROWS: ExpectedRow[] = [
   ["column", "binder_exports", "binder_lineage_id"],
@@ -50,9 +115,9 @@ const EXPECTED_ROWS: ExpectedRow[] = [
   ["index", "idx_binder_exports_published_document", "binder_exports|published_document_id"],
   ["index_def", "idx_binder_exports_published_document", "published_document_id IS NOT NULL"],
   ["index", "idx_binder_exports_client_published_current", "binder_exports|client_id, created_at DESC"],
-  ["index_def", "idx_binder_exports_client_published_current", "published_to_client"],
+  ["index_def", "idx_binder_exports_client_published_current", "status = 'published_to_client' AND published_document_id IS NOT NULL"],
   ["index", "idx_binder_exports_lineage_current_published", "UNIQUE|binder_exports|binder_lineage_id"],
-  ["index_def", "idx_binder_exports_lineage_current_published", "published_to_client"],
+  ["index_def", "idx_binder_exports_lineage_current_published", "status = 'published_to_client' AND withdrawn_at IS NULL"],
   ["comment_col", "binder_exports.binder_lineage_id", "Phase 9F.3"],
   ["comment_col", "binder_exports.generation_status", "Phase 9F.3"],
   ["comment_col", "binder_exports.storage_bucket", "Phase 9F.3"],
@@ -144,8 +209,11 @@ index_key_cols AS (
     ix.indisunique AS is_unique,
     ix.indisvalid AS is_valid,
     ix.indisready AS is_ready,
+    (ix.indpred IS NOT NULL) AS has_predicate,
     pg_get_indexdef(ix.indexrelid) AS indexdef,
+    pg_get_indexdef(ix.indexrelid, 1, true) AS first_key_col,
     pg_get_expr(ix.indpred, ix.indrelid) AS predicate_raw,
+    pg_get_expr(ix.indpred, ix.indrelid, true) AS predicate_pretty,
     (
       SELECT string_agg(
         a.attname ||
@@ -161,30 +229,88 @@ index_key_cols AS (
   JOIN pg_namespace n ON n.oid = ic.relnamespace
   WHERE n.nspname = 'public' AND ic.relkind = 'i'
 ),
-index_catalog AS (
+index_predicate_prepped AS (
   SELECT ik.*,
     CASE
       WHEN ik.predicate_raw IS NULL THEN NULL::text
-      ELSE regexp_replace(
+      ELSE lower(
         regexp_replace(
-          lower(
+          regexp_replace(
             regexp_replace(
-              regexp_replace(
+              btrim(
                 regexp_replace(
-                  btrim(regexp_replace(ik.predicate_raw, '^\\\\s*where\\\\s+', '', 'i')),
-                  '::text\\\\b', '', 'gi'
-                ),
-                '''([^'']+)''::text', '''\\1''', 'gi'
+                  regexp_replace(
+                    regexp_replace(ik.predicate_raw, '^\\\\s*where\\\\s+', '', 'i'),
+                    'public\\\\.binder_exports\\\\.', '', 'gi'
+                  ),
+                  'binder_exports\\\\.', '', 'gi'
+                )
               ),
-              '\\\\s+', ' ', 'g'
-            )
+              '::(?:text|uuid|boolean|timestamp|timestamptz)\\\\b', '', 'gi'
+            ),
+            '''([^'']+)''::text', '''\\\\1''', 'gi'
           ),
-          '^\\\\((.*)\\\\)$', '\\\\1'
-        ),
-        '^\\\\((.*)\\\\)$', '\\\\1'
+          '\\\\s+', ' ', 'g'
+        )
       )
-    END AS predicate_canonical
+    END AS predicate_stage_0
   FROM index_key_cols ik
+),
+index_simple_pred_prepped AS (
+  SELECT ik.*,
+    CASE
+      WHEN ik.predicate_pretty IS NULL THEN NULL::text
+      ELSE lower(
+        regexp_replace(
+          regexp_replace(
+            btrim(
+              regexp_replace(
+                regexp_replace(ik.predicate_pretty, 'public\\\\.binder_exports\\\\.', '', 'gi'),
+                'binder_exports\\\\.', '', 'gi'
+              )
+            ),
+            '\\\\s+', ' ', 'g'
+          )
+        )
+      )
+    END AS simple_pred_stage_0
+  FROM index_key_cols ik
+),
+${simplePredStripStages.sql},
+${predicateStripStages.sql},
+index_conjunct_raw AS (
+  SELECT
+    p.index_name,
+    btrim(term) AS conjunct_stage_0
+  FROM index_predicate_prepped p
+  CROSS JOIN LATERAL unnest(regexp_split_to_array(p.predicate_stage_0, '\\\\s+and\\\\s+')) AS term
+  WHERE p.predicate_stage_0 LIKE '% and %'
+    AND btrim(term) <> ''
+),
+${conjunctStripStages.sql},
+index_catalog AS (
+  SELECT p.*,
+    sp.${simplePredStripStages.finalCol} AS simple_predicate_normalized,
+    CASE
+      WHEN p.predicate_stage_0 IS NULL THEN NULL::text
+      WHEN p.predicate_stage_0 NOT LIKE '% and %' THEN p.${predicateStripStages.finalCol}
+      ELSE (
+        SELECT string_agg(c.${conjunctStripStages.finalCol}, ' and ' ORDER BY c.${conjunctStripStages.finalCol})
+        FROM ${conjunctStripStages.finalCte} c
+        WHERE c.index_name = p.index_name
+      )
+    END AS predicate_canonical,
+    CASE
+      WHEN p.predicate_stage_0 IS NULL THEN NULL::text[]
+      WHEN p.predicate_stage_0 NOT LIKE '% and %' THEN ARRAY[p.${predicateStripStages.finalCol}]::text[]
+      ELSE (
+        SELECT array_agg(c.${conjunctStripStages.finalCol} ORDER BY c.${conjunctStripStages.finalCol})
+        FROM ${conjunctStripStages.finalCte} c
+        WHERE c.index_name = p.index_name
+      )
+    END AS predicate_conjuncts_sorted
+  FROM ${predicateStripStages.finalCte} p
+  LEFT JOIN ${simplePredStripStages.finalCte} sp ON sp.index_name = p.index_name
 ),
 pol AS (
   SELECT tablename, policyname, cmd, roles::text AS roles_text
@@ -249,8 +375,15 @@ resolved AS (
         CASE WHEN ik.table_name = 'binder_exports' AND ik.is_unique AND ik.is_valid AND ik.is_ready
           AND ik.key_columns_ordered = 'generation_idempotency_key' THEN 'present' WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
       WHEN e.check_kind = 'index_def' AND e.object_name = 'idx_binder_exports_generation_idempotent' THEN
-        CASE WHEN ik.predicate_canonical = lower(regexp_replace(e.expected_detail, '\\\\s+', ' ', 'g')) THEN 'present'
-          WHEN ik.index_name IS NULL THEN 'absent' WHEN ik.predicate_raw IS NULL THEN 'conflicting' ELSE 'conflicting' END
+        CASE WHEN ik.index_name IS NULL THEN 'absent'
+          WHEN ik.table_name = 'binder_exports'
+            AND ik.is_unique AND ik.is_valid AND ik.is_ready
+            AND ik.first_key_col = 'generation_idempotency_key'
+            AND ik.has_predicate
+            AND ik.simple_predicate_normalized = 'generation_idempotency_key is not null'
+          THEN 'present'
+          WHEN ik.predicate_raw IS NULL THEN 'conflicting'
+          ELSE 'conflicting' END
       WHEN e.check_kind = 'index' AND e.object_name = 'idx_binder_exports_lineage_version' THEN
         CASE WHEN ik.table_name = 'binder_exports' AND ik.is_unique AND ik.is_valid AND ik.is_ready
           AND ik.key_columns_ordered = 'binder_lineage_id, version' THEN 'present' WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
@@ -264,20 +397,28 @@ resolved AS (
         CASE WHEN ik.table_name = 'binder_exports' AND NOT ik.is_unique AND ik.is_valid AND ik.is_ready
           AND ik.key_columns_ordered = 'published_document_id' THEN 'present' WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
       WHEN e.check_kind = 'index_def' AND e.object_name = 'idx_binder_exports_published_document' THEN
-        CASE WHEN ik.predicate_canonical = lower(regexp_replace(e.expected_detail, '\\\\s+', ' ', 'g')) THEN 'present'
-          WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
+        CASE WHEN ik.index_name IS NULL THEN 'absent'
+          WHEN ik.table_name = 'binder_exports'
+            AND NOT ik.is_unique AND ik.is_valid AND ik.is_ready
+            AND ik.first_key_col = 'published_document_id'
+            AND ik.has_predicate
+            AND ik.simple_predicate_normalized = 'published_document_id is not null'
+          THEN 'present'
+          ELSE 'conflicting' END
       WHEN e.check_kind = 'index' AND e.object_name = 'idx_binder_exports_client_published_current' THEN
         CASE WHEN ik.table_name = 'binder_exports' AND NOT ik.is_unique AND ik.is_valid AND ik.is_ready
           AND ik.key_columns_ordered = 'client_id, created_at DESC' THEN 'present' WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
       WHEN e.check_kind = 'index_def' AND e.object_name = 'idx_binder_exports_client_published_current' THEN
-        CASE WHEN ik.predicate_canonical ILIKE '%published_to_client%' AND ik.predicate_canonical ILIKE '%published_document_id%' THEN 'present'
-          WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
+        CASE WHEN ik.index_name IS NULL THEN 'absent'
+          WHEN ik.predicate_conjuncts_sorted = ARRAY['published_document_id is not null', 'status = ''published_to_client''']::text[] THEN 'present'
+          ELSE 'conflicting' END
       WHEN e.check_kind = 'index' AND e.object_name = 'idx_binder_exports_lineage_current_published' THEN
         CASE WHEN ik.table_name = 'binder_exports' AND ik.is_unique AND ik.is_valid AND ik.is_ready
           AND ik.key_columns_ordered = 'binder_lineage_id' THEN 'present' WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
       WHEN e.check_kind = 'index_def' AND e.object_name = 'idx_binder_exports_lineage_current_published' THEN
-        CASE WHEN ik.predicate_canonical ILIKE '%published_to_client%' AND ik.predicate_canonical ILIKE '%withdrawn_at%' THEN 'present'
-          WHEN ik.index_name IS NULL THEN 'absent' ELSE 'conflicting' END
+        CASE WHEN ik.index_name IS NULL THEN 'absent'
+          WHEN ik.predicate_conjuncts_sorted = ARRAY['status = ''published_to_client''', 'withdrawn_at is null']::text[] THEN 'present'
+          ELSE 'conflicting' END
       WHEN e.check_kind IN ('index','index_def') AND ik.index_name IS NULL THEN 'absent'
       WHEN e.check_kind = 'column' AND to_regclass('public.binder_exports') IS NULL THEN 'absent'
       WHEN e.check_kind = 'column' AND c.column_name IS NULL THEN 'absent'
@@ -353,7 +494,7 @@ resolved AS (
     END AS present,
     CASE
       WHEN e.check_kind = 'column_attr' THEN COALESCE(ca.data_type, '?') || '|' || COALESCE(ca.is_nullable, '?') || '|' || COALESCE(ca.column_default, '')
-      WHEN e.check_kind IN ('index','index_def') THEN 'schema=' || COALESCE(ik.schema_name, '?') || '|table=' || COALESCE(ik.table_name, '?') || '|unique=' || COALESCE(ik.is_unique::text, '?') || '|keys=' || COALESCE(ik.key_columns_ordered, '?') || '|predicate_raw=' || COALESCE(ik.predicate_raw, '')
+      WHEN e.check_kind IN ('index','index_def') THEN 'schema=' || COALESCE(ik.schema_name, '?') || '|table=' || COALESCE(ik.table_name, '?') || '|unique=' || COALESCE(ik.is_unique::text, '?') || '|keys=' || COALESCE(ik.key_columns_ordered, '?') || '|first_key=' || COALESCE(ik.first_key_col, '?') || '|predicate_raw=' || COALESCE(ik.predicate_raw, '') || '|simple_predicate=' || COALESCE(ik.simple_predicate_normalized, '') || '|predicate_canonical=' || COALESCE(ik.predicate_canonical, '')
       WHEN e.check_kind = 'constraint' THEN ccn.constraint_def
       WHEN e.check_kind = 'fk' THEN fk.foreign_table_name
       WHEN e.check_kind = 'rls' THEN CASE WHEN t.relrowsecurity THEN 'enabled' ELSE 'disabled' END
@@ -370,7 +511,8 @@ resolved AS (
       ELSE NULL
     END AS detail,
     e.expected_detail AS expected_canonical_detail,
-    NULL::text AS actual_canonical_detail,
+    CASE WHEN e.check_kind = 'index_def' AND e.object_name IN ('idx_binder_exports_generation_idempotent', 'idx_binder_exports_published_document') THEN ik.simple_predicate_normalized
+      WHEN e.check_kind = 'index_def' THEN ik.predicate_canonical ELSE NULL::text END AS actual_canonical_detail,
     mh.migration_recorded
   FROM expected e
   LEFT JOIN tbl t ON e.check_kind = 'rls' AND t.relname = e.object_name
@@ -443,6 +585,21 @@ FROM discrepancies ORDER BY check_id;
 const header = (title: string, extra = "") =>
   `-- Read-only ${title} for 202606200010_phase9f3_binder_pdf_client_vault.sql${extra}\n\nWITH\n-- PHASE9F3_RESOLVED_CORE_BEGIN\n`;
 
+const PHASE9F3_DIAGNOSTIC_MAX_LINES = 2000;
+const PHASE9F3_DIAGNOSTIC_MAX_BYTES = 250 * 1024;
+
+function assertDiagnosticSizeGuard(path: string): void {
+  const content = readFileSync(path, "utf8");
+  const lines = content.split(/\r?\n/).length;
+  const bytes = statSync(path).size;
+  if (lines > PHASE9F3_DIAGNOSTIC_MAX_LINES) {
+    throw new Error(`${path}: ${lines} lines exceeds ${PHASE9F3_DIAGNOSTIC_MAX_LINES} line guard`);
+  }
+  if (bytes > PHASE9F3_DIAGNOSTIC_MAX_BYTES) {
+    throw new Error(`${path}: ${bytes} bytes exceeds ${PHASE9F3_DIAGNOSTIC_MAX_BYTES} byte guard`);
+  }
+}
+
 writeFileSync(
   "supabase/diagnostics/phase9f3_202606200010_resolved_core.sql",
   `-- Shared resolved inventory for Phase 9F.3 diagnostics.\n-- Included verbatim in verify and discrepancy SQL files between PHASE9F3_RESOLVED_CORE markers.\n\n${resolvedCore}`,
@@ -460,5 +617,13 @@ writeFileSync(
     discFooter,
   "utf8",
 );
+
+for (const path of [
+  "supabase/diagnostics/phase9f3_202606200010_resolved_core.sql",
+  "supabase/diagnostics/verify_202606200010_phase9f3_binder_pdf_client_vault.sql",
+  "supabase/diagnostics/verify_202606200010_phase9f3_discrepancies.sql",
+]) {
+  assertDiagnosticSizeGuard(path);
+}
 
 console.log(`Generated Phase 9F.3 diagnostics (${EXPECTED_ROWS.length} expected checks)`);

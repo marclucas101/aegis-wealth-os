@@ -10,6 +10,7 @@ import { join, resolve } from "node:path";
 
 import {
   analyzePostgresSql,
+  detectInvalidBtrimArity,
   detectUnguardedXmlPatterns,
   detectUnsafeOptionalBinderColumnReferences,
   detectPreflightProbeCteIssues,
@@ -191,6 +192,16 @@ const SELF_TESTS: SelfTest[] = [
     `,
     expectIssueKinds: ["preflight_union_column_mismatch"],
   },
+  {
+    name: "flags invalid btrim arity",
+    sql: "SELECT btrim(a, '::text', '', 'gi') FROM t;",
+    expectIssueKinds: ["invalid_btrim_arity"],
+  },
+  {
+    name: "accepts valid single-argument btrim",
+    sql: "SELECT btrim(term) FROM t WHERE btrim(term) <> '';",
+    expectIssueKinds: [],
+  },
 ];
 
 async function runSelfTests(): Promise<void> {
@@ -212,7 +223,10 @@ async function runSelfTests(): Promise<void> {
     const preflightIssues = /\bfrom\s+probes\b/i.test(test.sql)
       ? detectPreflightProbeCteIssues(test.sql)
       : [];
-    const kinds = [...result.issues, ...xmlIssues, ...optionalColumnIssues, ...preflightIssues].map((i) => i.kind).sort();
+    const btrimIssues = /\bbtrim\s*\(/i.test(test.sql)
+      ? detectInvalidBtrimArity(test.sql)
+      : [];
+    const kinds = [...result.issues, ...xmlIssues, ...optionalColumnIssues, ...preflightIssues, ...btrimIssues].map((i) => i.kind).sort();
     const expected = [...test.expectIssueKinds].sort();
     const ok =
       kinds.length === expected.length && kinds.every((kind, idx) => kind === expected[idx]);
@@ -264,7 +278,12 @@ async function main(): Promise<void> {
       ? detectPreflightProbeCteIssues(sql)
       : [];
 
-    const allIssues = [...result.issues, ...xmlIssues, ...optionalColumnIssues, ...preflightIssues];
+    const btrimIssues =
+      file.includes("202606200010") || file.includes("phase9f3")
+        ? detectInvalidBtrimArity(sql)
+        : [];
+
+    const allIssues = [...result.issues, ...xmlIssues, ...optionalColumnIssues, ...preflightIssues, ...btrimIssues];
 
     if (allIssues.length === 0) {
       passed++;

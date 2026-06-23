@@ -9,6 +9,103 @@ import { jsPDF } from "jspdf";
 export const QA_BINDER_RENDERER_SCHEMA_VERSION = "phase9f3-v1";
 export const QA_BINDER_MAX_PDF_BYTES = 26_214_400;
 
+export const QA_BINDER_SECTIONS = [
+  "cover_page",
+  "client_adviser_info",
+  "meeting_date",
+  "financial_overview",
+  "my_plan",
+  "agreed_priorities",
+  "roadmap",
+  "meeting_summary",
+  "document_index",
+  "next_review_date",
+] as const;
+
+export type QaBinderSection = (typeof QA_BINDER_SECTIONS)[number];
+
+export const QA_BINDER_WITHDRAWAL_REASONS = [
+  "client_request",
+  "outdated_content",
+  "compliance_hold",
+  "adviser_withdrawal",
+] as const;
+
+export const QA_STALE_DOCUMENT_MESSAGE = "This document is no longer available.";
+
+const QA_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function qaValidateBinderSections(sections: string[]): QaBinderSection[] {
+  const unique = Array.from(new Set(sections));
+  const valid = unique.filter((section): section is QaBinderSection =>
+    (QA_BINDER_SECTIONS as readonly string[]).includes(section),
+  );
+  if (valid.length === 0) {
+    throw new Error("BINDER_SOURCE_UNAVAILABLE");
+  }
+  return valid;
+}
+
+export function qaIsBinderWithdrawalReason(value: string): boolean {
+  return (QA_BINDER_WITHDRAWAL_REASONS as readonly string[]).includes(value);
+}
+
+export function qaBuildBinderStoragePath(input: {
+  clientId: string;
+  binderExportId: string;
+  version: number;
+}): string {
+  if (!QA_UUID_RE.test(input.clientId)) {
+    throw new Error("Invalid client ID for storage path");
+  }
+  if (!QA_UUID_RE.test(input.binderExportId)) {
+    throw new Error("Invalid binder export ID for storage path");
+  }
+  if (!Number.isInteger(input.version) || input.version < 1) {
+    throw new Error("Invalid binder version for storage path");
+  }
+  return `clients/${input.clientId}/binders/${input.binderExportId}/v${input.version}/meeting-pack.pdf`;
+}
+
+export type QaBinderClientAccessRow = {
+  clientId: string;
+  status: string;
+  generationStatus: string;
+  withdrawnAt: string | null;
+  publishedDocumentId: string | null;
+};
+
+export function qaAssertBinderClientAccessible(input: {
+  binder: QaBinderClientAccessRow;
+  documentClientId: string;
+  documentId: string;
+}): void {
+  if (input.binder.clientId !== input.documentClientId) {
+    throw new Error("BINDER_ACCESS_DENIED");
+  }
+  if (input.binder.publishedDocumentId !== input.documentId) {
+    throw new Error("BINDER_ACCESS_DENIED");
+  }
+  if (input.binder.generationStatus !== "ready") {
+    throw new Error("BINDER_NOT_READY");
+  }
+  if (input.binder.status !== "published_to_client" || input.binder.withdrawnAt) {
+    throw new Error("BINDER_ACCESS_DENIED");
+  }
+}
+
+export function qaSanitizeAuditMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
+  const forbidden = ["storagePath", "storage_path", "signedUrl", "signed_url", "content_hash"];
+  const copy = { ...metadata };
+  for (const key of forbidden) {
+    if (key in copy) {
+      delete copy[key];
+    }
+  }
+  return copy;
+}
+
 export const QA_SENSITIVE_MARKERS = [
   "SENSITIVE_NRIC_S1234567A",
   "SENSITIVE_ACCOUNT_9988776655",

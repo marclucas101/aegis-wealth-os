@@ -1,18 +1,25 @@
 /**
- * Phase 9F.3 binder PDF + client vault final release validation — 180 explicit checks.
+ * Phase 9F.3 binder PDF + client vault final release validation — 198 explicit checks.
  * Run: npm run qa:phase9f3-binder-client-vault
  */
 
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 import {
-  detectUnsafeOptionalBinderColumnReferences,
+  detectInvalidBtrimArity,
   detectPreflightProbeCteIssues,
+  detectUnsafeOptionalBinderColumnReferences,
   PHASE9F3_OPTIONAL_BINDER_COLUMNS,
   PREFLIGHT_RESULT_COLUMNS,
 } from "./diagnostic-sql-analyzer";
 import { runBinderPublicationQaChecks, runBinderQaRuntimeChecks } from "../lib/binder/binderQaRuntime";
+import {
+  canonicalizeBinderIndexPredicate,
+  extractPhase9f3ResolvedCore,
+  matchesAndPredicate,
+  matchesIsNotNullPredicate,
+} from "./phase9f3-index-predicate";
 
 const ROOT = resolve(process.cwd());
 
@@ -748,7 +755,7 @@ const TESTS: TestCase[] = [
   record(159, "lineage current published index resolved in core", () => {
     const core = read("supabase/diagnostics/phase9f3_202606200010_resolved_core.sql");
     assert(core.includes("idx_binder_exports_lineage_current_published"), "index name");
-    assert(core.includes("withdrawn_at"), "predicate");
+    assert(core.includes("withdrawn_at IS NULL"), "predicate");
   }),
   record(160, "publication idempotency runtime checks", () => runBinderPublicationQaChecks()),
   record(161, "PDF determinism boundary documented", () => {
@@ -851,6 +858,116 @@ const TESTS: TestCase[] = [
   }),
   record(180, "final release gate QA count at least 180", () => {
     assert(TESTS.length >= 180, `count ${TESTS.length}`);
+  }),
+  record(181, "predicate canonicalizer strips outer parentheses", () => {
+    const a = canonicalizeBinderIndexPredicate("((generation_idempotency_key IS NOT NULL))");
+    const b = canonicalizeBinderIndexPredicate("generation_idempotency_key IS NOT NULL");
+    assert(a === b && a === "generation_idempotency_key is not null", "paren strip");
+  }),
+  record(182, "predicate canonicalizer strips schema qualification", () => {
+    const c = canonicalizeBinderIndexPredicate(
+      "public.binder_exports.published_document_id IS NOT NULL",
+    );
+    assert(matchesIsNotNullPredicate(c, "published_document_id"), c ?? "null");
+  }),
+  record(183, "wrong column fails predicate match", () => {
+    const c = canonicalizeBinderIndexPredicate("published_document_id IS NULL");
+    assert(!matchesIsNotNullPredicate(c, "published_document_id"), "is null");
+  }),
+  record(184, "extra AND term fails simple is-not-null match", () => {
+    const c = canonicalizeBinderIndexPredicate(
+      "generation_idempotency_key IS NOT NULL AND status = 'ready'",
+    );
+    assert(!matchesIsNotNullPredicate(c, "generation_idempotency_key"), "extra and");
+  }),
+  record(185, "lineage current published requires both conjuncts", () => {
+    const c = canonicalizeBinderIndexPredicate(
+      "status = 'published_to_client' AND withdrawn_at IS NULL",
+    );
+    assert(
+      matchesAndPredicate(c, ["status = 'published_to_client'", "withdrawn_at IS NULL"]),
+      c ?? "null",
+    );
+    assert(
+      !matchesAndPredicate(c, ["status = 'published_to_client'"]),
+      "single conjunct must fail",
+    );
+  }),
+  record(186, "SQL diagnostic uses qualification stripping in predicate canonicalizer", () => {
+    const core = read("supabase/diagnostics/phase9f3_202606200010_resolved_core.sql");
+    assert(core.includes("public.binder_exports"), "qualification strip");
+    assert(core.includes("predicate_conjuncts_sorted"), "conjunct array");
+  }),
+  record(187, "compound index_def expected details are full predicates", () => {
+    const core = read("supabase/diagnostics/phase9f3_202606200010_resolved_core.sql");
+    assert(core.includes("withdrawn_at IS NULL"), "lineage predicate");
+    assert(core.includes("published_document_id IS NOT NULL"), "client published predicate");
+  }),
+  record(188, "index_def exposes actual_canonical_detail", () => {
+    assert(
+      read("supabase/diagnostics/phase9f3_202606200010_resolved_core.sql").includes(
+        "actual_canonical_detail",
+      ),
+      "canonical detail",
+    );
+  }),
+  record(189, "standalone predicate regression script exists", () =>
+    assert(existsSync("scripts/run-phase9f3-index-predicate-validation.ts"), "script")),
+  record(190, "verify uses conjunct array for lineage current published", () => {
+    const core = extractPhase9f3ResolvedCore(
+      read("supabase/diagnostics/verify_202606200010_phase9f3_binder_pdf_client_vault.sql"),
+    );
+    assert(core.includes("idx_binder_exports_lineage_current_published"), "index");
+    assert(core.includes("withdrawn_at is null"), "conjunct literal");
+  }),
+  record(191, "discrepancy inventory matches verify resolved core", () => {
+    const verify = read("supabase/diagnostics/verify_202606200010_phase9f3_binder_pdf_client_vault.sql");
+    const disc = read("supabase/diagnostics/verify_202606200010_phase9f3_discrepancies.sql");
+    assert(extractPhase9f3ResolvedCore(verify) === extractPhase9f3ResolvedCore(disc), "parity");
+  }),
+  record(192, "predicate regression count at least 192", () => {
+    assert(TESTS.length >= 192, `count ${TESTS.length}`);
+  }),
+  record(193, "phase9f3 generated SQL has no invalid btrim arity", () => {
+    for (const file of [
+      "supabase/diagnostics/phase9f3_202606200010_resolved_core.sql",
+      "supabase/diagnostics/verify_202606200010_phase9f3_binder_pdf_client_vault.sql",
+      "supabase/diagnostics/verify_202606200010_phase9f3_discrepancies.sql",
+    ]) {
+      const issues = detectInvalidBtrimArity(read(file));
+      if (issues.length > 0) {
+        throw new Error(`${file}: ${issues[0]?.message ?? "invalid btrim"}`);
+      }
+    }
+  }),
+  record(194, "phase9f3 SQL uses staged substring outer-paren stripping", () => {
+    const core = read("supabase/diagnostics/phase9f3_202606200010_resolved_core.sql");
+    assert(core.includes("index_predicate_stage_1"), "predicate stage cte");
+    assert(core.includes("FOR char_length(predicate_stage_0) - 2"), "substring strip");
+    assert(core.includes("index_conjunct_stage_1"), "conjunct stage cte");
+  }),
+  record(195, "diagnostic analyzer rejects invalid btrim arity", () => {
+    const issues = detectInvalidBtrimArity("SELECT btrim(x, 'a', 'b', 'c');");
+    assert(issues.some((i) => i.kind === "invalid_btrim_arity"), "detected");
+  }),
+  record(196, "predicate regression count at least 196", () => {
+    assert(TESTS.length >= 196, `count ${TESTS.length}`);
+  }),
+  record(197, "phase9f3 verify diagnostic within size guard", () => {
+    const path = "supabase/diagnostics/verify_202606200010_phase9f3_binder_pdf_client_vault.sql";
+    const sql = read(path);
+    const lines = sql.split(/\r?\n/).length;
+    const bytes = statSync(join(ROOT, path)).size;
+    assert(lines <= 2000, `${lines} lines`);
+    assert(bytes <= 250 * 1024, `${bytes} bytes`);
+  }),
+  record(198, "phase9f3 discrepancy diagnostic within size guard", () => {
+    const path = "supabase/diagnostics/verify_202606200010_phase9f3_discrepancies.sql";
+    const sql = read(path);
+    const lines = sql.split(/\r?\n/).length;
+    const bytes = statSync(join(ROOT, path)).size;
+    assert(lines <= 2000, `${lines} lines`);
+    assert(bytes <= 250 * 1024, `${bytes} bytes`);
   }),
 ];
 

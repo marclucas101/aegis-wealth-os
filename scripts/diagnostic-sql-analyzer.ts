@@ -21,7 +21,8 @@ export type SqlAnalysisIssue = {
     | "empty_statement"
     | "unguarded_xpath"
     | "unguarded_xml_cast"
-    | "unguarded_xmlparse";
+    | "unguarded_xmlparse"
+    | "invalid_btrim_arity";
   message: string;
   position?: number;
 };
@@ -515,9 +516,44 @@ export function detectPreflightProbeCteIssues(sql: string): SqlAnalysisIssue[] {
 }
 
 /**
- * Detects diagnostic SQL patterns that call xpath/XML parsers without runtime guards.
- * query_to_xml on zero rows returns an empty document and crashes xpath() at runtime.
+ * PostgreSQL btrim(text) and btrim(text, characters) only — flag 3+ argument calls.
  */
+export function detectInvalidBtrimArity(sql: string): SqlAnalysisIssue[] {
+  const issues: SqlAnalysisIssue[] = [];
+  const executable = stripSqlComments(sql);
+  const lower = executable.toLowerCase();
+  let searchFrom = 0;
+
+  while (searchFrom < lower.length) {
+    const idx = lower.indexOf("btrim(", searchFrom);
+    if (idx < 0) break;
+
+    let depth = 1;
+    let i = idx + 6;
+    let commasAtDepthOne = 0;
+
+    while (i < executable.length && depth > 0) {
+      const ch = executable[i];
+      if (ch === "(") depth += 1;
+      else if (ch === ")") depth -= 1;
+      else if (ch === "," && depth === 1) commasAtDepthOne += 1;
+      i += 1;
+    }
+
+    if (commasAtDepthOne >= 2) {
+      issues.push({
+        kind: "invalid_btrim_arity",
+        message: `btrim() invoked with ${commasAtDepthOne + 1} arguments — PostgreSQL supports at most 2`,
+        position: idx,
+      });
+    }
+
+    searchFrom = idx + 6;
+  }
+
+  return issues;
+}
+
 export function detectUnguardedXmlPatterns(sql: string): SqlAnalysisIssue[] {
   const issues: SqlAnalysisIssue[] = [];
   const executable = stripSqlComments(sql);
