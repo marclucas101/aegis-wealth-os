@@ -43,6 +43,7 @@ type WorkspaceMode =
 
 interface AdvisorClientWorkspaceProps {
   clientId: string;
+  initialTab?: string;
 }
 
 type WorkspaceTab =
@@ -103,8 +104,16 @@ function extractCommandCenterShell(
   return data as AdvisorClientCommandCenterShellPayload;
 }
 
+function parseWorkspaceTab(value: string | undefined): WorkspaceTab {
+  if (value && WORKSPACE_TABS.some((tab) => tab.id === value)) {
+    return value as WorkspaceTab;
+  }
+  return "overview";
+}
+
 export default function AdvisorClientWorkspace({
   clientId,
+  initialTab,
 }: AdvisorClientWorkspaceProps) {
   const [mode, setMode] = useState<WorkspaceMode>("loading");
   const [commandCenter, setCommandCenter] =
@@ -114,7 +123,7 @@ export default function AdvisorClientWorkspace({
   const [openTaskCountOverride, setOpenTaskCountOverride] = useState<
     number | null
   >(null);
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>("overview");
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>(() => parseWorkspaceTab(initialTab));
 
   const loadShell = useCallback(async () => {
     const response = await fetch(

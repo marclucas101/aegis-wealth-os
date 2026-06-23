@@ -55,7 +55,7 @@ export const BINDER_SECTION_ADVISER_LABELS: Record<BinderSection, string> = {
   financial_overview: "Financial overview",
   my_plan: "Current planning position",
   agreed_priorities: "Agreed priorities",
-  roadmap: "Roadmap",
+  roadmap: "Wealth roadmap",
   meeting_summary: "Meeting summary",
   document_index: "Document index",
   next_review_date: "Next review date",

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { BINDER_READINESS_USER_MESSAGE } from "@/lib/binder/binderSectionPolicy";
+import { assertReadinessResponseSafe } from "@/lib/binder/binderContentPreparation";
+import { parseBinderPackPurpose } from "@/lib/binder/binderPackPurpose";
 import { assessBinderReadiness } from "@/lib/binder/binderReadinessService";
 import { toBinderPublicError } from "@/lib/binder/binderErrors";
 import { isFeatureEnabled } from "@/lib/compliance/featureFlags";
@@ -60,22 +62,30 @@ export async function GET(
 
     const url = new URL(request.url);
     const meetingDate = url.searchParams.get("meetingDate");
+    const purpose = parseBinderPackPurpose(url.searchParams.get("purpose"));
+    const selectedParam = url.searchParams.get("selectedSections");
+    const selectedSectionIds = selectedParam
+      ? selectedParam.split(",").map((value) => value.trim()).filter(Boolean)
+      : undefined;
 
     const assessment = await assessBinderReadiness({
       clientId,
       adviserUserId: access.user.id,
       userRole: role,
       meetingDate,
+      purpose,
+      selectedSectionIds,
     });
 
-    return NextResponse.json(
-      {
-        ok: true,
-        readiness: assessment.readiness,
-        message: assessment.readiness.ready ? null : BINDER_READINESS_USER_MESSAGE,
-      },
-      { headers: privateNoStoreHeaders() },
-    );
+    const responseBody = {
+      ok: true as const,
+      readiness: assessment.readiness,
+      message: assessment.readiness.ready ? null : BINDER_READINESS_USER_MESSAGE,
+    };
+
+    assertReadinessResponseSafe(responseBody.readiness);
+
+    return NextResponse.json(responseBody, { headers: privateNoStoreHeaders() });
   } catch (err) {
     const pub = toBinderPublicError(err, "Failed to assess binder readiness");
     const status = pub.code === "BINDER_ACCESS_DENIED" ? 403 : 500;
