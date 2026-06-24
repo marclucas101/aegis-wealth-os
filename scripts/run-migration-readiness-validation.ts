@@ -935,6 +935,104 @@ const tests: TestCase[] = [
       );
     },
   },
+  {
+    id: 85,
+    name: "Phase 9F.4 idempotency preflight diagnostic exists",
+    run: () => {
+      assert(existsSync(join(ROOT, "supabase/diagnostics/preflight_202606200012_phase9f4.sql")), "preflight 012");
+    },
+  },
+  {
+    id: 86,
+    name: "Phase 9F.4 idempotency verify diagnostic exists",
+    run: () => {
+      assert(
+        existsSync(
+          join(ROOT, "supabase/diagnostics/verify_202606200012_phase9f4_promotion_migration_idempotency.sql"),
+        ),
+        "verify 012",
+      );
+    },
+  },
+  {
+    id: 87,
+    name: "Phase 9F.4 idempotency discrepancy diagnostic exists",
+    run: () => {
+      assert(
+        existsSync(join(ROOT, "supabase/diagnostics/verify_202606200012_phase9f4_discrepancies.sql")),
+        "discrepancies 012",
+      );
+    },
+  },
+  {
+    id: 88,
+    name: "Phase 9F.4 idempotency preflight is SELECT-only with probe columns",
+    run: () => {
+      const preflight = read("supabase/diagnostics/preflight_202606200012_phase9f4.sql");
+      assert(preflight.includes("probes (probe_id, classification, detail) AS ("), "typed probes");
+      assert(/SELECT\s+probe_id\s*,\s*classification\s*,\s*detail\s+FROM\s+probes/i.test(preflight), "output");
+      assert(preflight.includes("202606200011"), "prereq 011");
+      assert(preflight.includes("202606200012"), "pending 012");
+    },
+  },
+  {
+    id: 89,
+    name: "Phase 9F.4 idempotency verify includes grant and search_path checks",
+    run: () => {
+      const verify = read("supabase/diagnostics/verify_202606200012_phase9f4_promotion_migration_idempotency.sql");
+      assert(verify.includes("search_path=public"), "search_path");
+      assert(verify.includes("grants.anon_no_execute_migration_rpc"), "anon grant");
+      assert(verify.includes("grants.authenticated_no_execute_migration_rpc"), "authenticated grant");
+      assert(verify.includes("overall.exact_match_verdict"), "verdict");
+    },
+  },
+  {
+    id: 90,
+    name: "Phase 9F.4 idempotency discrepancies filter non-match rows only",
+    run: () => {
+      const disc = read("supabase/diagnostics/verify_202606200012_phase9f4_discrepancies.sql");
+      assert(disc.includes("WHERE COALESCE(classification, 'unknown') <> 'match'"), "filter");
+    },
+  },
+  {
+    id: 91,
+    name: "Phase 9F.4 idempotency migration revokes anon and authenticated",
+    run: () => {
+      const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql");
+      assert(sql.includes("FROM anon"), "revoke anon");
+      assert(sql.includes("FROM authenticated"), "revoke authenticated");
+      assert(sql.includes("SET search_path = public"), "fixed search_path");
+    },
+  },
+  {
+    id: 92,
+    name: "Phase 9F.4 idempotency migration remains pending in drift classifier",
+    run: () => {
+      assert(PENDING_VERSIONS.includes("202606200012"), "pending 012");
+    },
+  },
+  {
+    id: 93,
+    name: "Phase 9F.4 idempotency preflight probes extensions.uuid_generate_v5",
+    run: () => {
+      const preflight = read("supabase/diagnostics/preflight_202606200012_phase9f4.sql");
+      assert(
+        preflight.includes("to_regprocedure('extensions.uuid_generate_v5(uuid,text)')"),
+        "extensions uuid v5 regprocedure",
+      );
+    },
+  },
+  {
+    id: 94,
+    name: "Phase 9F.4 idempotency migration uses qualified extensions.uuid_generate_v5",
+    run: () => {
+      const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql");
+      assert(sql.includes('WITH SCHEMA extensions'), "extension schema");
+      assert(sql.includes("extensions.uuid_generate_v5"), "qualified");
+      const withoutQualified = sql.split("extensions.uuid_generate_v5").join("");
+      assert(!withoutQualified.includes("uuid_generate_v5("), "no unqualified call");
+    },
+  },
 ];
 
 function main(): void {

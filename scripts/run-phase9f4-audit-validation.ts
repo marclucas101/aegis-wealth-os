@@ -350,7 +350,7 @@ const TESTS: TestCase[] = [
     assert(read("scripts/run-migration-readiness-validation.ts").includes("promotion_migration_reviews"), "optional relation");
   }),
 
-  record(59, "migration 202606200011 follows 202606200010 phase9f3", () => {
+  record(59, "migration chain 010 -> 011 -> 012", () => {
     const files = readdirSync(join(ROOT, "supabase/migrations"))
       .filter((f) => f.endsWith(".sql"))
       .sort();
@@ -359,8 +359,12 @@ const TESTS: TestCase[] = [
       stamps.indexOf("202606200011") === stamps.indexOf("202606200010") + 1,
       "011 must follow 010",
     );
+    assert(
+      stamps.indexOf("202606200012") === stamps.indexOf("202606200011") + 1,
+      "012 must follow 011",
+    );
     const last = files.at(-1) ?? "";
-    assert(last.includes("202606200011"), `expected 011 last, got ${last}`);
+    assert(last.includes("202606200012"), `expected 012 last, got ${last}`);
   }),
 
   record(60, "phase9e qa still asserts no promotions in insights", () => {

@@ -122,6 +122,33 @@ export async function POST(
           409,
         );
       }
+      if (result.reason === "conflict") {
+        return privatePromotionJson(
+          {
+            ok: false,
+            error: {
+              code: "LEGACY_PROMOTION_MIGRATION_CONFLICT",
+              message: result.message ?? "Migration linkage conflict",
+            },
+            outcome: result.outcome,
+            contentId: result.contentId ?? null,
+          },
+          409,
+        );
+      }
+      if (result.reason === "failed") {
+        return privatePromotionJson(
+          {
+            ok: false,
+            error: {
+              code: "LEGACY_PROMOTION_MIGRATION_FAILED",
+              message: result.message ?? "Migration failed",
+            },
+            outcome: result.outcome,
+          },
+          500,
+        );
+      }
       return privatePromotionJson({ ok: false, error: "Migration not allowed" }, 400);
     }
 

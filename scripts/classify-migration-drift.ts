@@ -159,6 +159,15 @@ export const PENDING_MIGRATIONS: MigrationManifest[] = [
     dependsOn: ["202606200010"],
     requiredChecks: ["legacy_promotions_write_seed"],
   },
+  {
+    version: "202606200012",
+    name: "phase9f4_promotion_migration_idempotency",
+    dependsOn: ["202606200011"],
+    requiredChecks: [
+      "legacy_promotion_migration_destination_id",
+      "execute_legacy_promotion_migration",
+    ],
+  },
 ];
 
 export { PRE_PHASE9_HISTORY_REPAIR_ORDER };

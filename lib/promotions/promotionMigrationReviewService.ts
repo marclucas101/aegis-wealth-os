@@ -4,7 +4,7 @@ import { classifyPromotion } from "@/lib/communications/legacyPromotionsMigratio
 import type { PromotionMigrationClassification } from "@/lib/communications/types";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { writeAuditLog } from "@/lib/supabase/auditLog";
-import { dbCreateGovernedContent, dbLoadGovernedContentById } from "@/lib/supabase/governedContentPersistence";
+import { dbLoadGovernedContentById } from "@/lib/supabase/governedContentPersistence";
 
 import { assetBlockMessage } from "./promotionAssetPolicy";
 import {
@@ -12,6 +12,8 @@ import {
   toMigrationPreviewDto,
   type LegacyPromotionSourceRecord,
 } from "./legacyPromotionTransform";
+import { executeAtomicLegacyPromotionMigration } from "./promotionMigrationPersistence";
+import type { PromotionMigrationOutcome } from "./promotionMigrationIdempotency";
 import {
   isMigrationDraftClassification,
   PROMOTION_MIGRATION_DEFAULT_PAGE_SIZE,
@@ -348,6 +350,23 @@ export async function updatePromotionMigrationReview(input: {
   return { ok: true as const };
 }
 
+function migrationAuditAction(outcome: PromotionMigrationOutcome): string {
+  if (outcome === "recovered_orphan") {
+    return "legacy_promotion_migration_orphan_recovered";
+  }
+  if (outcome === "already_migrated" || outcome === "reused") {
+    return "legacy_promotion_migration_reused";
+  }
+  if (outcome === "created" || outcome === "review_only") {
+    return "legacy_promotion_migration_completed";
+  }
+  return "legacy_promotion_migration_failed";
+}
+
+function migrationResultCode(outcome: PromotionMigrationOutcome): string {
+  return outcome;
+}
+
 export async function executePromotionMigration(input: {
   promotionId: string;
   reviewerUserId: string;
@@ -358,84 +377,21 @@ export async function executePromotionMigration(input: {
       ok: true;
       contentId: string | null;
       skipped: boolean;
+      outcome: PromotionMigrationOutcome;
       alreadyMigrated?: boolean;
       reused?: boolean;
     }
-  | { ok: false; reason: "not_found" | "asset_blocked" | "invalid_classification"; message?: string }
+  | {
+      ok: false;
+      reason: "not_found" | "asset_blocked" | "invalid_classification" | "conflict" | "failed";
+      outcome?: PromotionMigrationOutcome;
+      message?: string;
+      contentId?: string | null;
+    }
 > {
   const source = await loadLegacyPromotionSource(input.promotionId);
   if (!source) {
     return { ok: false, reason: "not_found" };
-  }
-
-  const admin = createAdminSupabaseClient();
-  const { data: existingReview } = await admin
-    .from("promotion_migration_reviews")
-    .select("*")
-    .eq("promotion_id", input.promotionId)
-    .maybeSingle();
-
-  if (existingReview) {
-    const review = existingReview as ReviewRow;
-    if (review.migrated_content_id) {
-      await writeAuditLog({
-        userId: input.reviewerUserId,
-        action: "legacy_promotion_migration_reused",
-        entityType: "promotion",
-        entityId: input.promotionId,
-        metadata: {
-          promotion_id: input.promotionId,
-          adviser_user_id: input.reviewerUserId,
-          action_type: "migrate_to_draft",
-          result_code: "reused",
-          migrated_destination_id: review.migrated_content_id,
-          classification: review.classification,
-        },
-      });
-
-      return {
-        ok: true,
-        contentId: review.migrated_content_id,
-        skipped: false,
-        alreadyMigrated: true,
-        reused: true,
-      };
-    }
-
-    if (
-      !isMigrationDraftClassification(input.classification) &&
-      review.classification === input.classification &&
-      (input.classification === "unsuitable" || input.classification === "expired")
-    ) {
-      return { ok: true, contentId: null, skipped: true, alreadyMigrated: true, reused: true };
-    }
-  }
-
-  if (!isMigrationDraftClassification(input.classification)) {
-    const notes = sanitizeOperatorNote(input.operatorNote);
-    await admin.from("promotion_migration_reviews").upsert({
-      promotion_id: input.promotionId,
-      classification: input.classification,
-      reviewed_by_user_id: input.reviewerUserId,
-      reviewed_at: new Date().toISOString(),
-      notes: notes ?? "Review recorded — no governed draft created",
-    } as never);
-
-    await writeAuditLog({
-      userId: input.reviewerUserId,
-      action: "legacy_promotion_migration_completed",
-      entityType: "promotion",
-      entityId: input.promotionId,
-      metadata: {
-        promotion_id: input.promotionId,
-        adviser_user_id: input.reviewerUserId,
-        action_type: "review_only",
-        result_code: "skipped",
-        classification: input.classification,
-      },
-    });
-
-    return { ok: true, contentId: null, skipped: true };
   }
 
   const transform = transformLegacyPromotionToGovernedDraft({
@@ -443,7 +399,10 @@ export async function executePromotionMigration(input: {
     classification: input.classification,
   });
 
-  if (transform.migrationBlocked) {
+  if (
+    isMigrationDraftClassification(input.classification) &&
+    transform.migrationBlocked
+  ) {
     return {
       ok: false,
       reason: "asset_blocked",
@@ -451,7 +410,11 @@ export async function executePromotionMigration(input: {
     };
   }
 
-  const content = await dbCreateGovernedContent({
+  const atomic = await executeAtomicLegacyPromotionMigration({
+    promotionId: input.promotionId,
+    classification: input.classification,
+    reviewerUserId: input.reviewerUserId,
+    operatorNote: sanitizeOperatorNote(input.operatorNote),
     title: transform.title,
     summary: transform.summary,
     body: transform.body,
@@ -459,42 +422,52 @@ export async function executePromotionMigration(input: {
     contentType: transform.contentType,
     audienceScope: transform.audienceScope,
     externalUrl: transform.externalUrl,
-    authorUserId: input.reviewerUserId,
-    adviserUserId: transform.adviserUserId,
-    approvalStatus: transform.approvalStatus,
     expiresAt: transform.expiresAt,
+    adviserUserId: transform.adviserUserId,
   });
 
-  const notes = sanitizeOperatorNote(input.operatorNote);
-
-  const { error: reviewError } = await admin.from("promotion_migration_reviews").upsert({
-    promotion_id: input.promotionId,
-    classification: input.classification,
-    migrated_content_id: content.id,
-    reviewed_by_user_id: input.reviewerUserId,
-    reviewed_at: new Date().toISOString(),
-    notes,
-  } as never);
-
-  if (reviewError) {
-    throw new Error("Failed to link migration review");
-  }
+  const auditAction = migrationAuditAction(atomic.outcome);
+  const resultCode = migrationResultCode(atomic.outcome);
 
   await writeAuditLog({
     userId: input.reviewerUserId,
-    action: "legacy_promotion_migration_completed",
+    action: auditAction,
     entityType: "promotion",
     entityId: input.promotionId,
     metadata: {
       promotion_id: input.promotionId,
       adviser_user_id: input.reviewerUserId,
-      action_type: "migrate_to_draft",
-      result_code: "ok",
-      migrated_destination_id: content.id,
+      action_type: isMigrationDraftClassification(input.classification)
+        ? "migrate_to_draft"
+        : "review_only",
+      result_code: resultCode,
       classification: input.classification,
-      asset_status: transform.assetStatus,
+      ...(atomic.contentId ? { migrated_destination_id: atomic.contentId } : {}),
+      ...(isMigrationDraftClassification(input.classification)
+        ? { asset_status: transform.assetStatus }
+        : {}),
     },
   });
 
-  return { ok: true, contentId: content.id, skipped: false };
+  if (!atomic.ok) {
+    return {
+      ok: false,
+      reason: atomic.outcome === "conflict" ? "conflict" : "failed",
+      outcome: atomic.outcome,
+      message:
+        atomic.outcome === "conflict"
+          ? "Migration linkage conflict — manual review required"
+          : "Migration failed",
+      contentId: atomic.contentId ?? null,
+    };
+  }
+
+  return {
+    ok: true,
+    contentId: atomic.contentId,
+    skipped: atomic.skipped,
+    outcome: atomic.outcome,
+    alreadyMigrated: atomic.outcome === "already_migrated",
+    reused: atomic.reused,
+  };
 }

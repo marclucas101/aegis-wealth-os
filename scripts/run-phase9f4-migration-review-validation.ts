@@ -6,6 +6,8 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 
+import { legacyPromotionMigrationDestinationId } from "../lib/promotions/promotionMigrationIdempotency";
+
 const ROOT = resolve(process.cwd());
 
 type TestCase = { id: number; name: string; run: () => void };
@@ -263,15 +265,18 @@ const TESTS: TestCase[] = [
     assert(read("lib/promotions/promotionAssetPolicy.ts").includes('"unsupported"'), "unsupported")),
 
   // Migration transaction & idempotency (77-88)
-  record(77, "idempotency via migrated_content_id", () => {
+  record(77, "idempotency via migrated_content_id and atomic RPC", () => {
     const svc = read("lib/promotions/promotionMigrationReviewService.ts");
-    assert(svc.includes("migrated_content_id"), "column");
-    assert(svc.includes("alreadyMigrated"), "flag");
+    assert(svc.includes("migrated_content_id"), "column refs");
+    assert(svc.includes("executeAtomicLegacyPromotionMigration"), "atomic rpc");
   }),
-  record(78, "reused audit action", () =>
-    assert(read("lib/promotions/promotionMigrationReviewService.ts").includes("legacy_promotion_migration_reused"), "reused audit")),
-  record(79, "dbCreateGovernedContent for destination", () =>
-    assert(read("lib/promotions/promotionMigrationReviewService.ts").includes("dbCreateGovernedContent"), "create")),
+  record(78, "reused and orphan recovered audit actions", () => {
+    const svc = read("lib/promotions/promotionMigrationReviewService.ts");
+    assert(svc.includes("legacy_promotion_migration_reused"), "reused audit");
+    assert(svc.includes("legacy_promotion_migration_orphan_recovered"), "orphan audit");
+  }),
+  record(79, "atomic RPC persistence wrapper", () =>
+    assert(read("lib/promotions/promotionMigrationPersistence.ts").includes("execute_legacy_promotion_migration"), "rpc")),
   record(80, "no browser destination id accepted", () => {
     const r = read("app/api/admin/promotions-migration/[promotionId]/migrate/route.ts");
     assert(!r.includes("migratedContentId") || !r.includes("body.migrated"), "no client dest id");
@@ -294,12 +299,15 @@ const TESTS: TestCase[] = [
     assert(!svc.includes("scheduled_publish"), "no schedule");
     assert(!svc.includes("publishGoverned"), "no publish");
   }),
-  record(85, "governed draft approval_status draft in create call", () => {
-    const svc = read("lib/promotions/promotionMigrationReviewService.ts");
-    assert(svc.includes("approvalStatus: transform.approvalStatus"), "approval from transform");
+  record(85, "migration uses transform approvalStatus draft", () => {
+    const transform = read("lib/promotions/legacyPromotionTransform.ts");
+    assert(transform.includes('approvalStatus: "draft"'), "draft");
   }),
-  record(86, "linkage in promotion_migration_reviews upsert", () =>
-    assert(read("lib/promotions/promotionMigrationReviewService.ts").includes("migrated_content_id: content.id"), "link")),
+  record(86, "atomic migration SQL links review in same transaction", () => {
+    const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql");
+    assert(sql.includes("promotion_migration_reviews"), "review table");
+    assert(sql.includes("migrated_content_id"), "linkage");
+  }),
   record(87, "list DTO excludes raw paths", () => {
     const svc = read("lib/promotions/promotionMigrationReviewService.ts");
     assert(!svc.includes("image_url:"), "no image in dto");
@@ -340,12 +348,11 @@ const TESTS: TestCase[] = [
   // Write freeze & phase integrity (99-108)
   record(99, "legacy write freeze migration still exists", () =>
     assert(existsSync("supabase/migrations/202606200011_phase9f4_legacy_promotions_write_freeze.sql"), "011")),
-  record(100, "no migration 202606200012 created", () => {
-    const files = readdirSync(join(ROOT, "supabase/migrations")).filter((f) =>
-      f.startsWith("202606200012"),
-    );
-    assert(files.length === 0, `unexpected 012: ${files.join(",")}`);
-  }),
+  record(100, "migration 202606200012 idempotency exists", () =>
+    assert(
+      existsSync("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql"),
+      "012 migration",
+    )),
   record(101, "legacy_promotions_write default false", () =>
     assert(read("lib/compliance/featureFlags.ts").includes("legacy_promotions_write"), "flag")),
   record(102, "Phase 9F.3 binder files untouched spot check", () => {
@@ -367,8 +374,11 @@ const TESTS: TestCase[] = [
     assert(existsSync("docs/PHASE_9F4_CHECKPOINT3_MANUAL_TESTS.md"), "manual tests")),
   record(107, "migration API audit doc exists", () =>
     assert(existsSync("docs/PHASE_9F4_CHECKPOINT3_MIGRATION_API_AUDIT.md"), "audit doc")),
-  record(108, "audit doc says 012 not required", () =>
-    assert(read("docs/PHASE_9F4_CHECKPOINT3_MIGRATION_API_AUDIT.md").includes("NOT required"), "012 verdict")),
+  record(108, "idempotency migration uses advisory lock", () => {
+    const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql");
+    assert(sql.includes("pg_advisory_xact_lock"), "advisory lock");
+    assert(sql.includes("extensions.uuid_generate_v5"), "qualified uuid v5");
+  }),
 
   // Package & re-exports (109-115)
   record(109, "package.json qa script", () =>
@@ -385,6 +395,270 @@ const TESTS: TestCase[] = [
     assert(read("app/api/admin/promotions-migration/[promotionId]/route.ts").includes("isValidPromotionId"), "valid id")),
   record(115, "operator note parsed in migrate route", () =>
     assert(read("app/api/admin/promotions-migration/[promotionId]/migrate/route.ts").includes("parseOperatorNote"), "note")),
+
+  // Checkpoint 3.1 idempotency (116-140)
+  record(116, "deterministic destination id helper", () =>
+    assert(
+      read("lib/promotions/promotionMigrationIdempotency.ts").includes(
+        "legacyPromotionMigrationDestinationId",
+      ),
+      "helper",
+    )),
+  record(117, "source key uses legacy_promotion prefix", () =>
+    assert(
+      read("lib/promotions/promotionMigrationIdempotency.ts").includes("legacy_promotion:"),
+      "prefix",
+    )),
+  record(118, "stable migration outcomes defined", () => {
+    const t = read("lib/promotions/promotionMigrationIdempotency.ts");
+    assert(t.includes('"recovered_orphan"'), "recovered_orphan");
+    assert(t.includes('"already_migrated"'), "already_migrated");
+    assert(t.includes('"conflict"'), "conflict");
+  }),
+  record(119, "service returns outcome field", () =>
+    assert(read("lib/promotions/promotionMigrationReviewService.ts").includes("outcome:"), "outcome")),
+  record(120, "failed linkage not reported as success", () => {
+    const svc = read("lib/promotions/promotionMigrationReviewService.ts");
+    assert(svc.includes("if (!atomic.ok)"), "atomic failure branch");
+    assert(!svc.includes("throw new Error(\"Failed to link migration review\")"), "no false success");
+  }),
+  record(121, "no dbCreateGovernedContent in migration service", () =>
+    assert(!read("lib/promotions/promotionMigrationReviewService.ts").includes("dbCreateGovernedContent"), "no direct create")),
+  record(122, "RPC grants service_role only", () => {
+    const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql");
+    assert(sql.includes("GRANT EXECUTE"), "grant");
+    assert(sql.includes("service_role"), "service role");
+    assert(sql.includes("REVOKE ALL"), "revoke public");
+  }),
+  record(123, "RPC uses ON CONFLICT for governed_content id", () => {
+    const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql");
+    assert(sql.includes("ON CONFLICT (id) DO NOTHING"), "conflict safe insert");
+  }),
+  record(124, "RPC orphan recovery branch", () => {
+    const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql");
+    assert(sql.includes("recovered_orphan"), "orphan outcome");
+  }),
+  record(125, "RPC linkage_failed outcome", () => {
+    const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql");
+    assert(sql.includes("linkage_failed"), "linkage failed");
+  }),
+  record(126, "cross-promotion id uses promotion_id in v5 name", () => {
+    const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql");
+    assert(sql.includes("'legacy_promotion:' || p_promotion_id::text"), "per-promotion key");
+  }),
+  record(127, "browser cannot pass destination id to RPC wrapper", () => {
+    const p = read("lib/promotions/promotionMigrationPersistence.ts");
+    assert(!p.includes("p_destination_id"), "no client dest param");
+    assert(p.includes("p_promotion_id"), "server promotion id only");
+  }),
+  record(128, "browser cannot pass idempotency key", () => {
+    const routes = [
+      "app/api/admin/promotions-migration/[promotionId]/migrate/route.ts",
+      "lib/promotions/promotionMigrationRouteParams.ts",
+    ];
+    for (const route of routes) {
+      const src = read(route);
+      assert(!src.includes("idempotencyKey"), route);
+      assert(!src.includes("destinationId"), route);
+    }
+  }),
+  record(129, "migrate route handles conflict response", () =>
+    assert(
+      read("app/api/admin/promotions-migration/[promotionId]/migrate/route.ts").includes(
+        "LEGACY_PROMOTION_MIGRATION_CONFLICT",
+      ),
+      "conflict",
+    )),
+  record(130, "migrate route handles failed response", () =>
+    assert(
+      read("app/api/admin/promotions-migration/[promotionId]/migrate/route.ts").includes(
+        "LEGACY_PROMOTION_MIGRATION_FAILED",
+      ),
+      "failed",
+    )),
+  record(131, "deterministic destination id is stable for same promotion", () => {
+    const sample = "11111111-1111-4111-8111-111111111111";
+    const a = legacyPromotionMigrationDestinationId(sample);
+    const b = legacyPromotionMigrationDestinationId(sample);
+    assert(a === b, "stable");
+    assert(
+      a !== legacyPromotionMigrationDestinationId("22222222-2222-4222-8222-222222222222"),
+      "unique per promotion",
+    );
+  }),
+  record(132, "deterministic id differs across promotions", () => {
+    const a = legacyPromotionMigrationDestinationId("11111111-1111-4111-8111-111111111111");
+    const b = legacyPromotionMigrationDestinationId("22222222-2222-4222-8222-222222222222");
+    assert(a !== b, "cross-promotion isolation");
+  }),
+  record(133, "review-only RPC path has review_only outcome", () => {
+    const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql");
+    assert(sql.includes("'outcome', 'review_only'"), "review only outcome");
+  }),
+  record(134, "asset block remains before RPC in service", () => {
+    const svc = read("lib/promotions/promotionMigrationReviewService.ts");
+    const fn = svc.slice(svc.indexOf("export async function executePromotionMigration"));
+    const assetIdx = fn.indexOf("transform.migrationBlocked");
+    const rpcIdx = fn.indexOf("await executeAtomicLegacyPromotionMigration");
+    assert(assetIdx > 0 && rpcIdx > assetIdx, "asset check before rpc");
+  }),
+  record(135, "external_source_name legacy_promotion in RPC insert", () =>
+    assert(
+      read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql").includes(
+        "'legacy_promotion'",
+      ),
+      "source marker",
+    )),
+  record(136, "governed draft approval_status draft in RPC", () =>
+    assert(
+      read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql").includes(
+        "'draft'",
+      ),
+      "draft status",
+    )),
+  record(137, "no notification or schedule in idempotency migration", () => {
+    const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql").toLowerCase();
+    assert(!sql.includes("client_notifications"), "no notifications");
+    assert(!sql.includes("scheduled_at"), "no schedule");
+    assert(!sql.includes("published_at"), "no publish");
+  }),
+  record(138, "012 migration is additive only", () => {
+    const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql").toLowerCase();
+    assert(!sql.includes("drop table"), "no drop");
+    assert(!sql.includes("delete from promotions"), "no delete promotions");
+  }),
+  record(139, "012 follows 011 in chain", () => {
+    const stamps = readdirSync(join(ROOT, "supabase/migrations"))
+      .filter((f) => f.endsWith(".sql"))
+      .map((f) => f.split("_")[0])
+      .sort();
+    assert(stamps.indexOf("202606200012") === stamps.indexOf("202606200011") + 1, "ordering");
+  }),
+  record(140, "checkpoint 3.1 idempotency audit doc exists", () =>
+    assert(existsSync("docs/PHASE_9F4_CHECKPOINT31_IDEMPOTENCY.md"), "doc")),
+
+  // Migration 012 release gate (141-160)
+  record(141, "012 preflight diagnostic exists", () =>
+    assert(existsSync("supabase/diagnostics/preflight_202606200012_phase9f4.sql"), "preflight")),
+  record(142, "012 verify diagnostic exists", () =>
+    assert(
+      existsSync("supabase/diagnostics/verify_202606200012_phase9f4_promotion_migration_idempotency.sql"),
+      "verify",
+    )),
+  record(143, "012 discrepancies diagnostic exists", () =>
+    assert(existsSync("supabase/diagnostics/verify_202606200012_phase9f4_discrepancies.sql"), "discrepancies")),
+  record(144, "012 preflight probes typed output columns", () => {
+    const sql = read("supabase/diagnostics/preflight_202606200012_phase9f4.sql");
+    assert(sql.includes("probes (probe_id, classification, detail) AS ("), "typed probes");
+    assert(/SELECT\s+probe_id\s*,\s*classification\s*,\s*detail\s+FROM\s+probes/i.test(sql), "final select");
+  }),
+  record(145, "012 verify exact-match verdict row", () =>
+    assert(
+      read("supabase/diagnostics/verify_202606200012_phase9f4_promotion_migration_idempotency.sql").includes(
+        "overall.exact_match_verdict",
+      ),
+      "verdict",
+    )),
+  record(146, "012 discrepancies filter non-match only", () =>
+    assert(
+      read("supabase/diagnostics/verify_202606200012_phase9f4_discrepancies.sql").includes(
+        "WHERE COALESCE(classification, 'unknown') <> 'match'",
+      ),
+      "filter",
+    )),
+  record(147, "012 migration fixed search_path on RPC", () =>
+    assert(
+      read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql").includes(
+        "SET search_path = public",
+      ),
+      "search_path",
+    )),
+  record(148, "012 migration revokes anon execute", () => {
+    const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql");
+    assert(sql.includes("FROM anon"), "revoke anon");
+    assert(!sql.includes("GRANT EXECUTE") || sql.includes("TO service_role"), "service_role only grant");
+  }),
+  record(149, "012 migration revokes authenticated execute", () =>
+    assert(
+      read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql").includes(
+        "FROM authenticated",
+      ),
+      "revoke authenticated",
+    )),
+  record(150, "012 migration schema-qualified table references", () => {
+    const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql");
+    assert(sql.includes("public.promotion_migration_reviews"), "reviews");
+    assert(sql.includes("public.governed_content"), "governed");
+    assert(sql.includes("public.legacy_promotion_migration_destination_id"), "destination fn");
+  }),
+  record(151, "012 migration no destructive DDL", () => {
+    const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql").toLowerCase();
+    assert(!sql.includes("drop table"), "no drop table");
+    assert(!sql.includes("truncate "), "no truncate");
+    assert(!sql.includes("delete from promotions"), "no delete promotions");
+  }),
+  record(152, "012 migration no dynamic SQL", () => {
+    const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql").toLowerCase();
+    assert(!sql.includes("execute format"), "no dynamic sql");
+    assert(!sql.includes("execute immediate"), "no execute immediate");
+  }),
+  record(153, "RPC security audit doc exists", () =>
+    assert(existsSync("docs/PHASE_9F4_MIGRATION_012_RPC_SECURITY_AUDIT.md"), "audit doc")),
+  record(154, "persistence uses admin service role client", () => {
+    const p = read("lib/promotions/promotionMigrationPersistence.ts");
+    assert(p.includes("createAdminSupabaseClient"), "admin client");
+    assert(p.includes('import "server-only"'), "server only");
+    assert(p.includes('.rpc("execute_legacy_promotion_migration"'), "rpc name");
+  }),
+  record(155, "admin supabase client uses service role key", () => {
+    const admin = read("lib/supabase/admin.ts");
+    assert(admin.includes("getSupabaseServiceRoleKey"), "service role key helper");
+    assert(admin.includes("createAdminSupabaseClient"), "admin client export");
+  }),
+  record(156, "012 preflight checks 011 applied and 012 pending", () => {
+    const sql = read("supabase/diagnostics/preflight_202606200012_phase9f4.sql");
+    assert(sql.includes("202606200011"), "011");
+    assert(sql.includes("202606200012"), "012");
+    assert(sql.includes("pending"), "pending wording");
+  }),
+  record(157, "012 verify checks service_role grant and denies anon/authenticated", () => {
+    const sql = read("supabase/diagnostics/verify_202606200012_phase9f4_promotion_migration_idempotency.sql");
+    assert(sql.includes("grants.service_role_execute_migration_rpc"), "service_role");
+    assert(sql.includes("grants.anon_no_execute_migration_rpc"), "anon deny");
+    assert(sql.includes("grants.authenticated_no_execute_migration_rpc"), "authenticated deny");
+  }),
+  record(158, "012 preflight avoids promotion body exposure", () => {
+    const sql = read("supabase/diagnostics/preflight_202606200012_phase9f4.sql").toLowerCase();
+    assert(!/\bfrom\s+promotions\b/.test(sql), "no promotions table read");
+    assert(!sql.includes("promotions.body"), "no promotion body column");
+  }),
+  record(159, "012 migration remains pending in drift list", () => {
+    const drift = read("scripts/classify-migration-drift.ts");
+    assert(drift.includes('version: "202606200012"'), "pending version");
+  }),
+  record(160, "012 verify checks write-freeze still disabled", () =>
+    assert(
+      read("supabase/diagnostics/verify_202606200012_phase9f4_promotion_migration_idempotency.sql").includes(
+        "legacy_promotions_write_still_disabled",
+      ),
+      "write freeze",
+    )),
+  record(161, "012 migration uses extensions.uuid_generate_v5 only", () => {
+    const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql");
+    assert(sql.includes('WITH SCHEMA extensions'), "extension schema");
+    assert(sql.includes("extensions.uuid_generate_v5"), "qualified call");
+    const withoutQualified = sql.split("extensions.uuid_generate_v5").join("");
+    assert(!withoutQualified.includes("uuid_generate_v5("), "no unqualified uuid_generate_v5 call");
+  }),
+  record(162, "012 preflight probes extensions.uuid_generate_v5 callable", () => {
+    const sql = read("supabase/diagnostics/preflight_202606200012_phase9f4.sql");
+    assert(sql.includes("to_regprocedure('extensions.uuid_generate_v5(uuid,text)')"), "regprocedure");
+  }),
+  record(163, "012 verify proves qualified uuid v5 in destination function", () => {
+    const sql = read("supabase/diagnostics/verify_202606200012_phase9f4_promotion_migration_idempotency.sql");
+    assert(sql.includes("routine.destination_function_qualified_uuid_v5"), "qualified check");
+    assert(sql.includes("extensions.uuid_generate_v5"), "extensions schema");
+  }),
 ];
 
 function main(): void {
