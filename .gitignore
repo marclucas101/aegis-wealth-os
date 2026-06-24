@@ -40,3 +40,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env.local
+scripts/.phase9f4-migration-fixture-state.json

@@ -49,6 +49,8 @@
     "supabase:confirm-target": "npx tsx scripts/confirm-supabase-target.ts",
     "demo:seed": "npx tsx scripts/seed-demo-data.ts",
     "demo:clear": "npx tsx scripts/clear-demo-data.ts",
+    "phase9f4:migration-fixture": "npx tsx scripts/phase9f4-migration-fixture.ts",
+    "test:phase9f4-migration-idempotency-local": "npx tsx scripts/run-phase9f4-migration-idempotency-local.ts",
     "final:check": "npx tsx scripts/final-readiness-check.ts"
   },
   "dependencies": {

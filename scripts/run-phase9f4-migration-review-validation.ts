@@ -659,6 +659,27 @@ const TESTS: TestCase[] = [
     assert(sql.includes("routine.destination_function_qualified_uuid_v5"), "qualified check");
     assert(sql.includes("extensions.uuid_generate_v5"), "extensions schema");
   }),
+  record(164, "phase9f4 local migration harness module exists", () =>
+    assert(existsSync("lib/promotions/phase9f4MigrationLocalHarness.ts"), "harness")),
+  record(165, "phase9f4 migration fixture script exists", () =>
+    assert(existsSync("scripts/phase9f4-migration-fixture.ts"), "fixture script")),
+  record(166, "phase9f4 migration idempotency local test script exists", () =>
+    assert(existsSync("scripts/run-phase9f4-migration-idempotency-local.ts"), "acceptance")),
+  record(167, "phase9f4 local harness refuses blocked hosts", () => {
+    const harness = read("lib/promotions/phase9f4MigrationLocalHarness.ts");
+    assert(harness.includes("assertPhase9f4HarnessTargetAllowed"), "guard");
+    assert(harness.includes("PHASE9F4_MIGRATION_FIXTURE_ALLOWED_PROJECT_REFS"), "allowlist");
+    assert(harness.includes("legacy_promotions_write"), "write freeze check");
+  }),
+  record(168, "phase9f4 fixture cleanup requires confirm and marker", () => {
+    const fixture = read("scripts/phase9f4-migration-fixture.ts");
+    const harness = read("lib/promotions/phase9f4MigrationLocalHarness.ts");
+    assert(fixture.includes("--confirm"), "confirm flag");
+    assert(harness.includes("PHASE9F4_FIXTURE_MARKER"), "marker");
+    assert(harness.includes("assertFixturePromotionRow"), "marker verify");
+  }),
+  record(169, "npm test phase9f4 migration idempotency local script", () =>
+    assert(read("package.json").includes("test:phase9f4-migration-idempotency-local"), "npm script")),
 ];
 
 function main(): void {
