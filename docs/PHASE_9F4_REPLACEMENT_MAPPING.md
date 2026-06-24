@@ -88,3 +88,23 @@
 | Storage assets | **Unknown / operator decision** |
 
 **Do not remove partially replaced functionality** until asset migration and active row inventory are complete.
+
+---
+
+## Checkpoint 4 — Application retirement mapping
+
+Legacy entry points now redirect or return explicit retirement responses. Governed Communications paths are the sole product surfaces for new work.
+
+| Legacy entry | CP4 behaviour | Replacement |
+|--------------|---------------|-------------|
+| `/advisor/promotions` | Redirect | `/advisor/insights?legacy_promotions_retired=1` |
+| `/promotions` | Redirect | `/insights?legacy_promotions_retired=1` |
+| `GET/POST /api/advisor/promotions` | **410** `LEGACY_PROMOTIONS_RETIRED` | Insights Authoring + admin approval |
+| `GET/PATCH /api/advisor/promotions/[id]` | **410** | Same |
+| `POST …/upload` | **410** | Governed content (no legacy asset upload) |
+| `GET /api/promotions` | `{ ok: true, promotions: [], retired: true, replacement: "insights" }` | `/insights` feed |
+| Admin migration | Retained | `/admin/promotions-migration` |
+
+**Production inventory:** `promotions` row count = **0** — client feed and migration queue operate on governed content and review records only.
+
+**Assets:** `promotion-assets` bucket retained; automatic asset copy remains **partially replaced** (blocked per asset policy).

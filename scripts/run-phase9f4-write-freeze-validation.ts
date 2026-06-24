@@ -146,37 +146,41 @@ const TESTS: TestCase[] = [
     assert(mod.includes("export function toClientSafePromotionRecord"), "mapper");
     assert(!mod.includes("createdBy:"), "no createdBy in safe record");
   }),
-  record(23, "POST advisor promotions uses requireLegacyPromotionsWriteAccess", () => {
+  record(23, "POST advisor promotions returns LEGACY_PROMOTIONS_RETIRED 410", () => {
     const route = read("app/api/advisor/promotions/route.ts");
-    assert(route.includes("requireLegacyPromotionsWriteAccess"), "guard");
-    assert(route.includes('actionType: "create"'), "action type");
+    assert(route.includes("legacyPromotionsRetiredAdvisorResponse"), "410 helper");
+    assert(
+      read("lib/promotions/legacyPromotionsRetirementConstants.ts").includes("LEGACY_PROMOTIONS_RETIRED"),
+      "code",
+    );
   }),
-  record(24, "PATCH advisor promotion uses requireLegacyPromotionsWriteAccess", () => {
+  record(24, "PATCH advisor promotion returns LEGACY_PROMOTIONS_RETIRED 410", () => {
     const route = read("app/api/advisor/promotions/[promotionId]/route.ts");
-    assert(route.includes("requireLegacyPromotionsWriteAccess"), "guard");
-    assert(route.includes('actionType: "update"'), "action type");
+    assert(route.includes("legacyPromotionsRetiredAdvisorResponse"), "410");
+    assert(route.includes("advisor_api_mutation"), "mutation audit");
   }),
-  record(25, "POST upload uses requireLegacyPromotionsWriteAccess", () => {
+  record(25, "POST upload returns 410 before file processing", () => {
     const route = read("app/api/advisor/promotions/[promotionId]/upload/route.ts");
-    assert(route.includes("requireLegacyPromotionsWriteAccess"), "guard");
-    assert(route.includes('actionType: "upload"'), "action type");
+    assert(route.includes("legacyPromotionsRetiredAdvisorResponse"), "410");
+    assert(!route.includes("formData"), "no file read");
   }),
-  record(26, "all mutation routes import central guard module", () => {
+  record(26, "all mutation routes import retirement module", () => {
     for (const route of MUTATION_ROUTES) {
-      assert(read(route).includes("@/lib/promotions/legacyPromotionsAuthorization"), route);
+      assert(read(route).includes("@/lib/promotions/legacyPromotionsRetirement"), route);
     }
   }),
-  record(27, "mutation routes check writeGuard.allowed before proceeding", () => {
+  record(27, "mutation routes audit retirement before 410", () => {
     for (const route of MUTATION_ROUTES) {
       const text = read(route);
-      assert(text.includes("writeGuard") && text.includes("!writeGuard.allowed"), route);
+      assert(text.includes("auditLegacyPromotionsRetirementAccess"), route);
     }
   }),
-  record(28, "advisor GET list does not require write guard", () => {
+  record(28, "advisor GET list also returns retired 410", () => {
     const route = read("app/api/advisor/promotions/route.ts");
     const getBlock = route.slice(route.indexOf("export async function GET"), route.indexOf("export async function POST"));
-    assert(!getBlock.includes("requireLegacyPromotionsWriteAccess"), "read allowed");
-    assert(getBlock.includes("listAdvisorPromotions"), "list");
+    assert(getBlock.includes("retiredAdvisorPromotionsResponse"), "retired handler");
+    assert(!getBlock.includes("listAdvisorPromotions"), "no list");
+    assert(route.includes("legacyPromotionsRetiredAdvisorResponse"), "410 helper");
   }),
   record(29, "LEGACY_PROMOTIONS_WRITE_DISABLED error schema defined", () => {
     const mod = read("lib/promotions/legacyPromotionsAuthorization.ts");
@@ -197,43 +201,42 @@ const TESTS: TestCase[] = [
     assert(doc.includes("LEGACY_PROMOTIONS_WRITE_DISABLED"), "code in doc");
     assert(doc.includes("HTTP 403"), "status");
   }),
-  record(32, "PromotionsManagerClient handles LEGACY_PROMOTIONS_WRITE_DISABLED", () => {
-    const ui = read("components/aegis/advisor/promotions/PromotionsManagerClient.tsx");
-    assert(ui.includes("LEGACY_PROMOTIONS_WRITE_DISABLED"), "error code");
-    assert(ui.includes("data.error.code"), "structured error");
+  record(32, "adviser promotions page redirects instead of manager UI", () => {
+    const page = read("app/advisor/promotions/page.tsx");
+    assert(page.includes("redirect("), "redirect");
+    assert(!page.includes("PromotionsManagerClient"), "no manager");
   }),
-  record(33, "client GET uses evaluateClientPromotionsAccess", () => {
+  record(33, "client GET returns retired empty payload", () => {
     const route = read("app/api/promotions/route.ts");
-    assert(route.includes("evaluateClientPromotionsAccess"), "gate");
+    assert(route.includes("retired: true"), "retired");
+    assert(route.includes("promotions: []"), "empty");
+  }),
+  record(34, "client GET requires authenticated client", () => {
+    const route = read("app/api/promotions/route.ts");
     assert(route.includes("ensureUserClientProfile"), "session");
+    assert(route.includes('role !== "client"'), "client role");
   }),
-  record(34, "client GET returns empty list when entitlement denied", () => {
-    const mod = read("lib/promotions/legacyPromotionsAuthorization.ts");
-    assert(mod.includes('privatePromotionJson({ ok: true, promotions: [] })'), "empty list");
-    assert(mod.includes('canAccessClientFeature(ctx, "promotions"'), "entitlement");
-  }),
-  record(35, "client GET requires product_related_content flag", () => {
-    const mod = read("lib/promotions/legacyPromotionsAuthorization.ts");
-    assert(mod.includes('isFeatureEnabled("product_related_content")'), "product flag");
-    assert(mod.includes('isFeatureVisibleToRole("product_related_content", "client")'), "visibility");
-  }),
-  record(36, "client GET applies CLIENT_PROMOTIONS_MAX_RESULTS slice", () => {
+  record(35, "client GET does not load published promotions", () => {
     const route = read("app/api/promotions/route.ts");
-    assert(route.includes("CLIENT_PROMOTIONS_MAX_RESULTS"), "max");
-    assert(route.includes(".slice(0, CLIENT_PROMOTIONS_MAX_RESULTS)"), "bounded");
+    assert(!route.includes("listPublishedPromotions"), "no list");
+    assert(!route.includes("evaluateClientPromotionsAccess"), "no legacy gate");
   }),
+  record(36, "client GET uses legacyPromotionsRetiredClientListResponse", () =>
+    assert(
+      read("app/api/promotions/route.ts").includes("legacyPromotionsRetiredClientListResponse"),
+      "retired response",
+    )),
   record(37, "client GET uses privatePromotionJson (no-store)", () => {
     const route = read("app/api/promotions/route.ts");
     assert(route.includes("privatePromotionJson"), "private json");
-    assert(!route.includes("NextResponse.json(body)"), "no unguarded json");
   }),
-  record(38, "client GET maps toClientSafePromotionRecord", () => {
-    const route = read("app/api/promotions/route.ts");
-    assert(route.includes("toClientSafePromotionRecord"), "safe mapper");
-    assert(route.includes("listPublishedPromotions"), "published only");
-  }),
-  record(39, "client promotions entitlement hardcoded off in entitlements", () => {
+  record(38, "client promotions entitlement hardcoded off in entitlements", () => {
     assert(read("lib/compliance/entitlements.ts").includes("features.promotions = false"), "off");
+  }),
+  record(39, "listAdvisorPromotions retained in persistence for admin read-only", () => {
+    const persist = read("lib/supabase/promotionsPersistence.ts");
+    assert(persist.includes("export async function listAdvisorPromotions"), "list fn");
+    assert(persist.includes('.eq("created_by", viewerUserId)'), "scoped query");
   }),
   record(40, "listAdvisorPromotions scopes adviser to created_by", () => {
     const persist = read("lib/supabase/promotionsPersistence.ts");
@@ -252,57 +255,64 @@ const TESTS: TestCase[] = [
     );
     assert(!block.includes('role === "admin"') || block.includes('role === "advisor"'), "admin unscoped");
   }),
-  record(42, "advisor list route passes role to listAdvisorPromotions", () => {
+  record(42, "advisor list route does not invoke listAdvisorPromotions", () => {
     const route = read("app/api/advisor/promotions/route.ts");
-    assert(route.includes("listAdvisorPromotions(access.authUser.id, role)"), "scoped list");
+    assert(!route.includes("listAdvisorPromotions"), "no list");
+    assert(route.includes("legacyPromotionsRetiredAdvisorResponse"), "410");
   }),
-  record(43, "GET promotion by id uses requireAdviserPromotionOwnership", () => {
+  record(43, "GET promotion by id returns retired 410 without ownership probe", () => {
     const route = read("app/api/advisor/promotions/[promotionId]/route.ts");
-    assert(route.includes("requireAdviserPromotionOwnership"), "ownership");
-    assert(route.includes("isValidPromotionId(promotionId)"), "uuid check");
+    assert(route.includes("legacyPromotionsRetiredAdvisorResponse"), "410");
+    assert(!route.includes("requireAdviserPromotionOwnership"), "no ownership");
+    assert(!route.includes("isValidPromotionId"), "no id probe");
   }),
-  record(44, "PATCH promotion checks ownership after write guard", () => {
+  record(44, "PATCH promotion returns retired 410 without write guard", () => {
     const route = read("app/api/advisor/promotions/[promotionId]/route.ts");
     const patch = route.slice(route.indexOf("export async function PATCH"));
-    const guardIdx = patch.indexOf("requireLegacyPromotionsWriteAccess");
-    const ownIdx = patch.indexOf("requireAdviserPromotionOwnership");
-    assert(guardIdx >= 0 && ownIdx > guardIdx, "guard before ownership");
+    assert(patch.includes("retiredAdvisorPromotionDetailResponse"), "retired handler");
+    assert(!patch.includes("requireLegacyPromotionsWriteAccess"), "no write guard");
+    assert(route.includes("legacyPromotionsRetiredAdvisorResponse"), "410 helper");
   }),
-  record(45, "upload route checks ownership before asset handling", () => {
+  record(45, "upload route returns 410 before ownership or asset handling", () => {
     const route = read("app/api/advisor/promotions/[promotionId]/upload/route.ts");
-    assert(route.includes("requireAdviserPromotionOwnership"), "ownership");
-    assert(route.includes("getAdvisorPromotionById"), "load first");
+    assert(route.includes("legacyPromotionsRetiredAdvisorResponse"), "410");
+    assert(!route.includes("requireAdviserPromotionOwnership"), "no ownership");
+    assert(!route.includes("getAdvisorPromotionById"), "no load");
   }),
-  record(46, "IDOR: invalid promotion UUID returns 404", () => {
+  record(46, "retired detail routes do not disclose record existence", () => {
     for (const route of [
       "app/api/advisor/promotions/[promotionId]/route.ts",
       "app/api/advisor/promotions/[promotionId]/upload/route.ts",
     ]) {
-      assert(read(route).includes("isValidPromotionId(promotionId)"), route);
-      assert(read(route).includes('"Promotion not found"'), route);
+      assert(!read(route).includes("Promotion not found"), route);
+      assert(read(route).includes("legacyPromotionsRetiredAdvisorResponse"), route);
     }
   }),
-  record(47, "IDOR: rejectClientId in mutation bodies", () => {
-    assert(read("app/api/advisor/promotions/route.ts").includes("rejectClientId: true"), "create");
+  record(47, "retired mutation routes do not parse request bodies", () => {
+    assert(!read("app/api/advisor/promotions/route.ts").includes("rejectClientId"), "create");
     assert(
-      read("app/api/advisor/promotions/[promotionId]/route.ts").includes("rejectClientId: true"),
+      !read("app/api/advisor/promotions/[promotionId]/route.ts").includes("rejectClientId"),
       "patch",
     );
   }),
-  record(48, "IDOR: rejectClientIdInFormData on upload", () => {
+  record(48, "retired upload route does not parse form data", () => {
     assert(
-      read("app/api/advisor/promotions/[promotionId]/upload/route.ts").includes(
+      !read("app/api/advisor/promotions/[promotionId]/upload/route.ts").includes(
         "rejectClientIdInFormData",
       ),
-      "form guard",
+      "no form guard",
+    );
+    assert(
+      !read("app/api/advisor/promotions/[promotionId]/upload/route.ts").includes("formData"),
+      "no formData",
     );
   }),
-  record(49, "IDOR: rejectForbiddenPromotionFields on mutations", () => {
+  record(49, "retired mutation routes do not validate promotion fields", () => {
     for (const route of [
       "app/api/advisor/promotions/route.ts",
       "app/api/advisor/promotions/[promotionId]/route.ts",
     ]) {
-      assert(read(route).includes("rejectForbiddenPromotionFields"), route);
+      assert(!read(route).includes("rejectForbiddenPromotionFields"), route);
     }
   }),
   record(50, "admin migration GET requires promotion migration admin access", () => {
@@ -351,22 +361,19 @@ const TESTS: TestCase[] = [
     const route = read("app/api/admin/promotions-migration/route.ts");
     assert(!route.includes("requireLegacyPromotionsWriteAccess"), "exempt");
   }),
-  record(59, "PromotionsManagerClient read-only notice with role=status", () => {
-    const ui = read("components/aegis/advisor/promotions/PromotionsManagerClient.tsx");
-    assert(ui.includes('role="status"'), "status role");
-    assert(ui.includes("legacyMeta.readOnlyMessage"), "message");
-    assert(ui.includes("readOnly &&"), "conditional banner");
+  record(59, "adviser promotions page does not render PromotionsManagerClient", () => {
+    const page = read("app/advisor/promotions/page.tsx");
+    assert(!page.includes("PromotionsManagerClient"), "no manager");
+    assert(page.includes("redirect("), "redirect");
   }),
-  record(60, "PromotionsManagerClient replacement link to insights", () => {
-    const ui = read("components/aegis/advisor/promotions/PromotionsManagerClient.tsx");
-    assert(ui.includes("legacyMeta.replacementHref"), "href from api");
-    assert(ui.includes("Open Governed Communications"), "link label");
-    assert(ui.includes("LEGACY_PROMOTIONS_REPLACEMENT_HREF") || ui.includes("/advisor/insights"), "insights");
+  record(60, "adviser redirect targets insights with retirement query", () => {
+    const page = read("app/advisor/promotions/page.tsx");
+    assert(page.includes("adviserPromotionsRetiredRedirectTarget"), "redirect target");
   }),
-  record(61, "PromotionsManagerClient hides New promotion when readOnly", () => {
-    const ui = read("components/aegis/advisor/promotions/PromotionsManagerClient.tsx");
-    assert(ui.includes("!readOnly &&"), "conditional create");
-    assert(ui.includes("New promotion"), "button label");
+  record(61, "insights page shows LegacyPromotionsRetiredNotice", () => {
+    const page = read("app/advisor/insights/page.tsx");
+    assert(page.includes("LegacyPromotionsRetiredNotice"), "notice");
+    assert(page.includes("isLegacyPromotionsRetiredNoticeRequested"), "query gate");
   }),
   record(62, "PromotionListTable readOnly shows View not Actions", () => {
     const table = read("components/aegis/advisor/promotions/PromotionListTable.tsx");
@@ -521,11 +528,14 @@ const TESTS: TestCase[] = [
     assert(doc.includes("Phase 9F.3 isolation") || doc.includes("9F.3"), "isolation section");
     assert(!doc.includes("binder depends on legacy_promotions_write"), "no false dep");
   }),
-  record(94, "advisor list returns legacyPromotions metadata", () => {
+  record(94, "advisor list returns LEGACY_PROMOTIONS_RETIRED 410", () => {
     const route = read("app/api/advisor/promotions/route.ts");
-    assert(route.includes("legacyPromotions"), "metadata");
-    assert(route.includes("LEGACY_PROMOTIONS_READ_ONLY_MESSAGE"), "message");
-    assert(route.includes("LEGACY_PROMOTIONS_REPLACEMENT_HREF"), "href");
+    assert(route.includes("legacyPromotionsRetiredAdvisorResponse"), "410");
+    assert(
+      read("lib/promotions/legacyPromotionsRetirementConstants.ts").includes("LEGACY_PROMOTIONS_RETIRED"),
+      "code",
+    );
+    assert(!route.includes("legacyPromotions:"), "no legacy metadata payload");
   }),
   record(95, "admin migration validates promotionId UUID", () => {
     const route = read("app/api/admin/promotions-migration/route.ts");

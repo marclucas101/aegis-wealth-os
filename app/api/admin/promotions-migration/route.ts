@@ -2,8 +2,18 @@ import { NextResponse } from "next/server";
 
 import { isValidPromotionId, privatePromotionJson } from "@/lib/promotions/legacyPromotionsAuthorization";
 import { requirePromotionMigrationAdminAccess } from "@/lib/promotions/promotionMigrationAdminAccess";
+import { buildPromotionMigrationAdminRetirementContext } from "@/lib/promotions/promotionMigrationAdminContext";
+import {
+  isPhase9f4MigrationExecutionRestricted,
+  PHASE9F4_MIGRATION_RUNTIME_GATE_CODE,
+  PHASE9F4_MIGRATION_RUNTIME_GATE_MESSAGE,
+} from "@/lib/promotions/promotionMigrationRuntimeGate";
 import { parsePromotionMigrationListParams } from "@/lib/promotions/promotionMigrationRouteParams";
-import { listPromotionMigrationRecords } from "@/lib/promotions/promotionMigrationReviewService";
+import {
+  executePromotionMigration,
+  getPromotionMigrationQueueOverview,
+  listPromotionMigrationRecords,
+} from "@/lib/promotions/promotionMigrationReviewService";
 import {
   getRequestMetadata,
   parseJsonBodySafely,
@@ -17,9 +27,6 @@ import {
   PROMOTION_MIGRATION_CLASSIFICATIONS,
   type PromotionMigrationClassification,
 } from "@/lib/promotions/promotionMigrationTypes";
-import {
-  executePromotionMigration,
-} from "@/lib/promotions/promotionMigrationReviewService";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +39,16 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     const url = new URL(request.url);
     const filter = parsePromotionMigrationListParams(url.searchParams);
-    const result = await listPromotionMigrationRecords(filter);
+    const [result, overview] = await Promise.all([
+      listPromotionMigrationRecords(filter),
+      getPromotionMigrationQueueOverview(),
+    ]);
 
-    return privatePromotionJson({ ok: true, ...result });
+    return privatePromotionJson({
+      ok: true,
+      ...result,
+      retirement: buildPromotionMigrationAdminRetirementContext(overview),
+    });
   } catch (err) {
     console.error("[api/admin/promotions-migration GET]", err);
     return privatePromotionJson(
@@ -78,6 +92,19 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     if (!isValidPromotionId(promotionId)) {
       return privatePromotionJson({ ok: false, error: "Invalid promotionId" }, 400);
+    }
+
+    if (isPhase9f4MigrationExecutionRestricted()) {
+      return privatePromotionJson(
+        {
+          ok: false,
+          error: {
+            code: PHASE9F4_MIGRATION_RUNTIME_GATE_CODE,
+            message: PHASE9F4_MIGRATION_RUNTIME_GATE_MESSAGE,
+          },
+        },
+        403,
+      );
     }
 
     const classificationResult = validateEnum<PromotionMigrationClassification>(

@@ -169,3 +169,22 @@ Existing flags related to promotions/campaigns:
 3. Decide asset migration scope (body-only vs full file copy).
 4. Decide whether Stage 6 schema drop is ever desired.
 5. Whether to add dedicated `compliance` role (separate audit doc).
+
+---
+
+## Checkpoint 4 — Application retirement (implemented)
+
+**Status:** Stage 4 (remove routes and UI) implemented as **Option B application retirement** — redirects and API retirement without schema deletion.
+
+| Stage | CP4 implementation |
+|-------|-------------------|
+| Stage 2 write freeze | Migrations `202606200011` applied; `legacy_promotions_write = false` |
+| Stage 3 migrate | Admin review UI active; migrate POST gated by runtime concurrency acceptance (**not completed**) |
+| Stage 4 routes/UI | `/advisor/promotions` and `/promotions` redirect; adviser APIs **410**; client API retired payload |
+| Stage 5 observe | **30-day** observation from production deployment — see `docs/PHASE_9F4_OBSERVATION_PLAN.md` |
+
+**Replacements:** Adviser → `/advisor/insights`; Client → `/insights`; Admin migration → `/admin/promotions-migration`.
+
+**Retention:** `promotions`, `promotion_migration_reviews`, and `promotion-assets` bucket unchanged. Production `promotions` count = **0**.
+
+**Detail docs:** `docs/PHASE_9F4_APPLICATION_RETIREMENT_ARCHITECTURE.md`, `docs/PHASE_9F4_CHECKPOINT4_APPLICATION_RETIREMENT_AUDIT.md`.

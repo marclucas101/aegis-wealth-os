@@ -1,30 +1,26 @@
-import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
-import AuthenticatedAppShell from "@/components/aegis/AuthenticatedAppShell";
-import PromotionsClient from "@/components/aegis/promotions/PromotionsClient";
-import ClientTrustNotice from "@/components/aegis/client/ClientTrustNotice";
+import {
+  auditLegacyPromotionsRetirementAccess,
+  clientPromotionsRetiredRedirectTarget,
+} from "@/lib/promotions/legacyPromotionsRetirement";
+import { ensureUserClientProfile } from "@/lib/supabase/userProfile";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export const metadata: Metadata = {
-  title: "Promotions",
-};
-
-export default async function PromotionsPage() {
+export default async function ClientPromotionsRetiredRedirectPage() {
   await cookies();
 
-  return (
-    <AuthenticatedAppShell
-      title="Curated Opportunities"
-      subtitle="Selected campaigns and planning opportunities from your advisory team."
-    >
-      <PromotionsClient />
+  const session = await ensureUserClientProfile();
+  if (session.authenticated && session.user.role === "client") {
+    await auditLegacyPromotionsRetirementAccess({
+      userId: session.user.id,
+      role: session.user.role,
+      routeCategory: "client_page",
+    });
+  }
 
-      <div className="mt-8">
-        <ClientTrustNotice variant="compact" context="general" />
-      </div>
-    </AuthenticatedAppShell>
-  );
+  redirect(clientPromotionsRetiredRedirectTarget());
 }

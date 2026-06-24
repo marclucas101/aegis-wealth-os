@@ -139,10 +139,10 @@ const TESTS: TestCase[] = [
   }),
   record(33, "privatePromotionJson on access denial", () =>
     assert(read("lib/promotions/promotionMigrationAdminAccess.ts").includes("privatePromotionJson"), "private json")),
-  record(34, "advisor promotions route still has write guard", () =>
-    assert(read("app/api/advisor/promotions/route.ts").includes("requireLegacyPromotionsWriteAccess"), "write guard")),
-  record(35, "client promotions route unchanged entitlement", () =>
-    assert(read("app/api/promotions/route.ts").includes("evaluateClientPromotionsAccess"), "client route")),
+  record(34, "advisor promotions route returns retired 410", () =>
+    assert(read("app/api/advisor/promotions/route.ts").includes("legacyPromotionsRetiredAdvisorResponse"), "410")),
+  record(35, "client promotions route returns retired empty payload", () =>
+    assert(read("app/api/promotions/route.ts").includes("legacyPromotionsRetiredClientListResponse"), "retired client")),
   record(36, "admin layout requires admin", () =>
     assert(read("app/admin/layout.tsx").includes("requireAdminAccess"), "layout")),
 

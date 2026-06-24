@@ -3,6 +3,11 @@ import { NextResponse } from "next/server";
 import { isValidPromotionId, privatePromotionJson } from "@/lib/promotions/legacyPromotionsAuthorization";
 import { requirePromotionMigrationAdminAccess } from "@/lib/promotions/promotionMigrationAdminAccess";
 import {
+  isPhase9f4MigrationExecutionRestricted,
+  PHASE9F4_MIGRATION_RUNTIME_GATE_CODE,
+  PHASE9F4_MIGRATION_RUNTIME_GATE_MESSAGE,
+} from "@/lib/promotions/promotionMigrationRuntimeGate";
+import {
   parseClassificationBody,
   parseOperatorNote,
 } from "@/lib/promotions/promotionMigrationRouteParams";
@@ -40,6 +45,19 @@ export async function POST(
     const { promotionId } = await context.params;
     if (!isValidPromotionId(promotionId)) {
       return privatePromotionJson({ ok: false, error: "Promotion not found" }, 404);
+    }
+
+    if (isPhase9f4MigrationExecutionRestricted()) {
+      return privatePromotionJson(
+        {
+          ok: false,
+          error: {
+            code: PHASE9F4_MIGRATION_RUNTIME_GATE_CODE,
+            message: PHASE9F4_MIGRATION_RUNTIME_GATE_MESSAGE,
+          },
+        },
+        403,
+      );
     }
 
     const parsed = await parseJsonBodySafely(request);

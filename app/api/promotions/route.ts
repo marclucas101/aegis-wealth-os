@@ -1,20 +1,21 @@
 import { NextResponse } from "next/server";
 
 import {
-  CLIENT_PROMOTIONS_MAX_RESULTS,
-  evaluateClientPromotionsAccess,
-  privatePromotionJson,
-  toClientSafePromotionRecord,
-  type ClientSafePromotionRecord,
-} from "@/lib/promotions/legacyPromotionsAuthorization";
+  legacyPromotionsRetiredClientListResponse,
+} from "@/lib/promotions/legacyPromotionsRetirement";
+import { privatePromotionJson } from "@/lib/promotions/legacyPromotionsAuthorization";
 import { toPublicErrorMessage } from "@/lib/security/apiGuards";
-import { listPublishedPromotions } from "@/lib/supabase/promotionsPersistence";
 import { ensureUserClientProfile } from "@/lib/supabase/userProfile";
 
 export const dynamic = "force-dynamic";
 
 export type PromotionsListResponse =
-  | { ok: true; promotions: ClientSafePromotionRecord[] }
+  | {
+      ok: true;
+      promotions: [];
+      retired: true;
+      replacement: "insights";
+    }
   | { ok: false; error: string };
 
 export async function GET(): Promise<NextResponse<PromotionsListResponse>> {
@@ -28,17 +29,14 @@ export async function GET(): Promise<NextResponse<PromotionsListResponse>> {
       );
     }
 
-    const access = await evaluateClientPromotionsAccess(session);
-    if (!access.allowed) {
-      return access.response as NextResponse<PromotionsListResponse>;
+    if (session.user.role !== "client") {
+      return privatePromotionJson(
+        { ok: false, error: "Client access required" },
+        403,
+      );
     }
 
-    const promotions = await listPublishedPromotions();
-    const safe = promotions
-      .slice(0, CLIENT_PROMOTIONS_MAX_RESULTS)
-      .map(toClientSafePromotionRecord);
-
-    return privatePromotionJson({ ok: true, promotions: safe });
+    return legacyPromotionsRetiredClientListResponse() as NextResponse<PromotionsListResponse>;
   } catch (err) {
     const message = toPublicErrorMessage(err, "Failed to load promotions");
     console.error("[api/promotions GET]", err);

@@ -49,8 +49,18 @@ const CLASSIFICATION_LABELS: Record<string, string> = {
   unsuitable: "Retain / obsolete / manual rewrite",
 };
 
+type MigrationRetirementContext = {
+  legacyPromotionsRetired: boolean;
+  sourceRowCount: number;
+  unmigratedQueueCount: number;
+  migrationRuntimeAcceptanceComplete: boolean;
+  migrationExecutionRestricted: boolean;
+  runtimeGateMessage: string;
+};
+
 export default function PromotionsMigrationReviewClient() {
   const [items, setItems] = useState<MigrationListItem[]>([]);
+  const [retirement, setRetirement] = useState<MigrationRetirementContext | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<MigrationDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -85,6 +95,9 @@ export default function PromotionsMigrationReviewClient() {
         }
         setItems(data.promotions ?? []);
         setTotalPages(data.totalPages ?? 0);
+        if (data.retirement) {
+          setRetirement(data.retirement);
+        }
       } catch {
         if (!cancelled) setError("Failed to load promotions");
       } finally {
@@ -206,10 +219,25 @@ export default function PromotionsMigrationReviewClient() {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-sm border border-[#D1A866]/15 bg-[#071B2A]/40 px-4 py-4 text-sm font-light text-[#F3F1EA]/75">
+        <p className="font-normal text-[#F3F1EA]/90">Legacy Promotions is retired.</p>
+        <p className="mt-2">
+          Production migration queue: {retirement?.unmigratedQueueCount ?? 0}. Historical schema is
+          retained during the observation period.
+        </p>
+        {(retirement?.sourceRowCount ?? 0) === 0 ? (
+          <p className="mt-2 text-[#F3F1EA]/55">No legacy promotions require migration.</p>
+        ) : null}
+        {retirement?.migrationExecutionRestricted &&
+        (retirement?.sourceRowCount ?? 0) > 0 ? (
+          <p className="mt-3 text-xs text-amber-200/90">{retirement.runtimeGateMessage}</p>
+        ) : null}
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm font-light text-[#F3F1EA]/50">
-          Legacy Promotions is read-only. Approved records migrate into Governed Communications as
-          unpublished drafts for normal admin review — never auto-published.
+          Approved records migrate into Governed Communications as unpublished drafts for normal
+          admin review — never auto-published.
         </p>
         <Link
           href="/admin/communications"
@@ -396,12 +424,21 @@ export default function PromotionsMigrationReviewClient() {
                   </button>
                   <button
                     type="button"
-                    disabled={actionLoading || detail.preview.migrationBlocked}
+                    disabled={
+                      actionLoading ||
+                      detail.preview.migrationBlocked ||
+                      retirement?.migrationExecutionRestricted
+                    }
                     onClick={() => void executeMigrate()}
                     className="rounded-sm border border-[#D1A866]/40 bg-[#D1A866]/10 px-4 py-2 text-[10px] uppercase tracking-wider text-[#D1A866] disabled:opacity-50"
                   >
                     Migrate to governed draft
                   </button>
+                  {retirement?.migrationExecutionRestricted ? (
+                    <p className="w-full text-xs text-amber-200/85">
+                      {retirement.runtimeGateMessage}
+                    </p>
+                  ) : null}
                 </div>
               )}
             </div>

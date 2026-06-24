@@ -189,7 +189,7 @@ function checkNavigationRoleFiltering(): Finding {
 
   const advisoryItemsMarked = [
     'href: "/advisor"',
-    'href: "/advisor/promotions"',
+    'href: "/advisor/insights"',
     'href: "/advisor/feedback"',
     'href: "/advisor/protection-report"',
   ].every(
