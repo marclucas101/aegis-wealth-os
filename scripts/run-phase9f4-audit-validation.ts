@@ -207,8 +207,10 @@ const TESTS: TestCase[] = [
     assert(!activeBlock.includes('href: "/promotions"'), "no promotions in active nav");
   }),
 
-  record(33, "advisor promotions nav still in catalogue", () => {
-    assert(read("lib/navigation.ts").includes('href: "/advisor/promotions"'), "advisor promotions");
+  record(33, "advisor promotions nav removed from catalogue", () => {
+    const nav = read("lib/navigation.ts");
+    assert(!nav.includes('href: "/advisor/promotions"'), "no advisor promotions nav");
+    assert(nav.includes('href: "/advisor/insights"'), "insights replacement");
   }),
 
   record(34, "preflight diagnostic exists", () => {

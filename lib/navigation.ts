@@ -188,11 +188,6 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/document-vault",
         description: "Architecture records",
       },
-      {
-        label: "Promotions",
-        href: "/promotions",
-        description: "Curated opportunities",
-      },
     ],
   },
   {
@@ -214,12 +209,6 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Appointments",
         href: "/advisor/appointments",
         description: "Manage client bookings",
-        advisorOnly: true,
-      },
-      {
-        label: "Promotions Manager",
-        href: "/advisor/promotions",
-        description: "Campaigns & opportunities",
         advisorOnly: true,
       },
       {

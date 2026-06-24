@@ -1,32 +1,30 @@
-import PromotionsManagerClient from "@/components/aegis/advisor/promotions/PromotionsManagerClient";
+import { redirect } from "next/navigation";
 
-import AuthenticatedAppShell from "@/components/aegis/AuthenticatedAppShell";
-
-
+import {
+  auditLegacyPromotionsRetirementAccess,
+  adviserPromotionsRetiredRedirectTarget,
+} from "@/lib/promotions/legacyPromotionsRetirement";
+import {
+  resolveLegacyPromotionViewerRole,
+} from "@/lib/promotions/legacyPromotionsAuthorization";
+import { isAdvisorRole, requireAuthenticatedUser } from "@/lib/supabase/authGuards";
 
 export const dynamic = "force-dynamic";
-
 export const revalidate = 0;
 
+export default async function AdvisorPromotionsRetiredRedirectPage() {
+  const auth = await requireAuthenticatedUser();
 
+  if (auth.authenticated && isAdvisorRole(auth.user.role)) {
+    const role = resolveLegacyPromotionViewerRole(auth.user.role);
+    if (role) {
+      await auditLegacyPromotionsRetirementAccess({
+        userId: auth.authUser.id,
+        role,
+        routeCategory: "advisor_page",
+      });
+    }
+  }
 
-export default async function AdvisorPromotionsPage() {
-
-  return (
-
-    <AuthenticatedAppShell
-
-      title="Promotions Manager"
-
-      subtitle="Curate concise client opportunities, campaigns, and advisory highlights."
-
-    >
-
-      <PromotionsManagerClient />
-
-    </AuthenticatedAppShell>
-
-  );
-
+  redirect(adviserPromotionsRetiredRedirectTarget());
 }
-

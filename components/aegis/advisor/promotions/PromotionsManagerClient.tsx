@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import type { AdvisorPromotionsListResponse } from "@/app/api/advisor/promotions/route";
 import AdvisorAccessDenied from "@/components/aegis/advisor/AdvisorAccessDenied";
 import PromotionForm, {
   promotionToFormValues,
@@ -23,6 +22,15 @@ type LegacyPromotionsMeta = {
   readOnlyMessage: string;
   replacementHref: string;
 };
+
+type AdvisorPromotionsListPayload =
+  | {
+      ok: true;
+      promotions: PromotionRecord[];
+      legacyPromotions: LegacyPromotionsMeta;
+    }
+  | { ok: false; reason: "unauthenticated" | "forbidden" }
+  | { error: { code: string; message: string } };
 
 export default function PromotionsManagerClient() {
   const [mode, setMode] = useState<ManagerMode>("loading");
@@ -45,7 +53,7 @@ export default function PromotionsManagerClient() {
     async function loadPromotions() {
       try {
         const response = await fetch("/api/advisor/promotions", { cache: "no-store" });
-        const data = (await response.json()) as AdvisorPromotionsListResponse;
+        const data = (await response.json()) as AdvisorPromotionsListPayload;
 
         if (cancelled) {
           return;
@@ -56,9 +64,25 @@ export default function PromotionsManagerClient() {
           return;
         }
 
-        if (!response.ok || !data.ok) {
+        if (response.status === 410) {
           setMode("error");
-          setError(data.ok ? "Failed to load promotions" : data.error ?? "Failed to load promotions");
+          setError(
+            "error" in data && data.error?.message
+              ? data.error.message
+              : "Legacy Promotions has been retired. Use Governed Communications.",
+          );
+          return;
+        }
+
+        if (!response.ok || !("ok" in data) || !data.ok) {
+          setMode("error");
+          setError(
+            "ok" in data && data.ok === false
+              ? "Failed to load promotions"
+              : "error" in data
+                ? data.error.message
+                : "Failed to load promotions",
+          );
           return;
         }
 

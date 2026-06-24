@@ -103,3 +103,35 @@ Check audit logs for:
 - `legacy_promotion_migration_failed`
 
 Metadata contains IDs and classification only — not bodies or storage paths.
+
+---
+
+## Checkpoint 4 — Application retirement context
+
+Legacy Promotions application paths are retired. This runbook remains valid for **admin migration review** during the 30-day observation period.
+
+| Topic | CP4 posture |
+|-------|-------------|
+| Admin UI | `/admin/promotions-migration` — **active** |
+| List / detail / preview / review | **Active** for authorized admins |
+| Migrate POST | **Blocked** until `PHASE9F4_MIGRATION_RUNTIME_ACCEPTANCE_COMPLETE=true` (staging concurrency acceptance **not completed**) |
+| Production `promotions` rows | **0** — queue may show review-only historical records |
+| Adviser legacy UI | Redirect to `/advisor/insights` — do not direct advisers to legacy CRUD |
+| Client legacy API | Returns `retired: true` — clients should use `/insights` |
+
+**Runtime gate error (migrate):**
+
+```json
+HTTP 403
+{
+  "ok": false,
+  "error": {
+    "code": "PHASE9F4_MIGRATION_RUNTIME_GATE_INCOMPLETE",
+    "message": "Migration execution is restricted until staging concurrency acceptance is completed."
+  }
+}
+```
+
+**Waived for CP4 deploy:** Runtime acceptance is not required to ship application retirement; it is required only before executing migrate POST in any environment.
+
+See also: `docs/PHASE_9F4_OBSERVATION_PLAN.md`, `docs/PHASE_9F4_RELEASE_SIGNOFF.md`.

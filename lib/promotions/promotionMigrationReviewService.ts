@@ -149,6 +149,44 @@ async function loadReviewMap(): Promise<Map<string, ReviewRow>> {
   return map;
 }
 
+export async function getPromotionMigrationQueueOverview(): Promise<{
+  sourceRowCount: number;
+  unmigratedQueueCount: number;
+}> {
+  const admin = createAdminSupabaseClient();
+  const { count: sourceRowCount, error } = await admin
+    .from("promotions")
+    .select("id", { count: "exact", head: true });
+
+  if (error) {
+    throw new Error("Failed to count legacy promotions");
+  }
+
+  const total = sourceRowCount ?? 0;
+  if (total === 0) {
+    return { sourceRowCount: 0, unmigratedQueueCount: 0 };
+  }
+
+  const [reviewMap, { data: promotionRows, error: listError }] = await Promise.all([
+    loadReviewMap(),
+    admin.from("promotions").select("id"),
+  ]);
+
+  if (listError) {
+    throw new Error("Failed to list legacy promotions for queue overview");
+  }
+
+  let unmigratedQueueCount = 0;
+  for (const row of promotionRows ?? []) {
+    const review = reviewMap.get((row as { id: string }).id);
+    if (!review?.migrated_content_id) {
+      unmigratedQueueCount += 1;
+    }
+  }
+
+  return { sourceRowCount: total, unmigratedQueueCount };
+}
+
 export async function listPromotionMigrationRecords(filter: PromotionMigrationListFilter = {}) {
   const page = Math.max(1, filter.page ?? 1);
   const pageSize = Math.min(

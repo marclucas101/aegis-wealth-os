@@ -39,6 +39,7 @@
     "qa:phase9f4-audit": "npx tsx scripts/run-phase9f4-audit-validation.ts",
     "qa:phase9f4-write-freeze": "npx tsx scripts/run-phase9f4-write-freeze-validation.ts",
     "qa:phase9f4-migration-review": "npx tsx scripts/run-phase9f4-migration-review-validation.ts",
+    "qa:phase9f4-app-retirement": "npx tsx scripts/run-phase9f4-app-retirement-validation.ts",
     "qa:a4-summary-report": "npx tsx scripts/run-a4-summary-report-validation.ts",
     "qa:migration-readiness": "npx tsx scripts/run-migration-readiness-validation.ts",
     "qa:phase9-migration-readiness": "npx tsx scripts/run-phase9-migration-readiness-validation.ts",

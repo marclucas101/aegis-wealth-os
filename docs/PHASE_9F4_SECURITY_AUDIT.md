@@ -140,3 +140,21 @@
 | SEC-9F4-05 | No admin UI for migration API | Low | Operator runbook |
 
 **No broad security changes implemented in this checkpoint** per scope.
+
+---
+
+## Checkpoint 4 — Application retirement
+
+| Finding | CP4 treatment | Classification |
+|---------|---------------|----------------|
+| SEC-9F4-01 Legacy publish without compliance | Adviser mutation APIs **410** permanent retirement | **Mitigated** |
+| SEC-9F4-02 Client API without entitlement | Returns empty list + `retired: true`; no RLS-backed leak | **Mitigated** |
+| SEC-9F4-03 Firm-wide RLS visibility | Client API does not query `promotions`; pages redirect | **Mitigated** |
+| SEC-9F4-04 Adviser edit any promotion | Adviser APIs retired — no list/detail data returned | **Mitigated** |
+| SEC-9F4-05 No admin migration UI | Admin workspace at `/admin/promotions-migration` | **Mitigated** |
+| Direct URL `/promotions` | Redirect to `/insights` | **Mitigated** |
+| `legacy_promotions_write` re-enable | Does **not** restore adviser APIs under CP4 code | **Mitigated** (fail-closed) |
+
+**Audit:** Retirement access logged via `legacy_promotions_replacement_redirected`, `legacy_promotions_retired_route_accessed`, and `legacy_promotions_retired_mutation_blocked` with `result_code: LEGACY_PROMOTIONS_RETIRED`.
+
+**Deferred:** RLS policies on `promotions` remain until optional Stage 6. `promotion-assets` bucket retained — no deletion.
