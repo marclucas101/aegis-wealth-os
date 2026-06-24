@@ -162,8 +162,14 @@ Forbidden in metadata: source body, destination body, storage paths, signed URLs
 
 ---
 
-## Schema sufficiency
+## Schema sufficiency (Checkpoint 3)
 
 `promotion_migration_reviews` columns used: `promotion_id`, `classification`, `migrated_content_id`, `reviewed_by_user_id`, `reviewed_at`, `notes`.
 
-**Verdict: migration `202606200012` NOT required for Checkpoint 3.**
+**Checkpoint 3 verdict:** migration `202606200012` was not required for the initial review workflow.
+
+## Idempotency hardening (Checkpoint 3.1)
+
+Migration `202606200012_phase9f4_promotion_migration_idempotency.sql` adds atomic RPC + deterministic destination IDs. See `docs/PHASE_9F4_CHECKPOINT31_IDEMPOTENCY.md`.
+
+**Checkpoint 3.1 verdict:** migration `202606200012` **required** before production promotion migration.

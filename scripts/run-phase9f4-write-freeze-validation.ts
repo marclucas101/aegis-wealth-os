@@ -333,11 +333,11 @@ const TESTS: TestCase[] = [
     const route = read("app/api/admin/promotions-migration/route.ts");
     assert(route.includes('"legacy_promotion_migration_failed"'), "failed audit");
   }),
-  record(56, "promotion migration review service idempotent via promotion_migration_reviews", () => {
+  record(56, "promotion migration review service idempotent via atomic RPC", () => {
     const svc = read("lib/promotions/promotionMigrationReviewService.ts");
-    assert(svc.includes("promotion_migration_reviews"), "reviews table");
-    assert(svc.includes("alreadyMigrated: true"), "idempotent return");
-    assert(svc.includes("migrated_content_id"), "content link");
+    assert(svc.includes("executeAtomicLegacyPromotionMigration"), "atomic rpc");
+    assert(svc.includes('alreadyMigrated: atomic.outcome === "already_migrated"'), "idempotent return");
+    assert(svc.includes("migrated_destination_id"), "content link audit");
   }),
   record(57, "promotion migration review service audits migration_completed", () => {
     assert(

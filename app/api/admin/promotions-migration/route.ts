@@ -127,6 +127,32 @@ export async function POST(request: Request): Promise<NextResponse> {
           409,
         );
       }
+      if (result.reason === "conflict") {
+        return privatePromotionJson(
+          {
+            ok: false,
+            error: {
+              code: "LEGACY_PROMOTION_MIGRATION_CONFLICT",
+              message: result.message ?? "Migration linkage conflict",
+            },
+            outcome: result.outcome,
+          },
+          409,
+        );
+      }
+      if (result.reason === "failed") {
+        return privatePromotionJson(
+          {
+            ok: false,
+            error: {
+              code: "LEGACY_PROMOTION_MIGRATION_FAILED",
+              message: result.message ?? "Migration failed",
+            },
+            outcome: result.outcome,
+          },
+          500,
+        );
+      }
       return privatePromotionJson({ ok: false, error: "Migration not allowed" }, 400);
     }
 

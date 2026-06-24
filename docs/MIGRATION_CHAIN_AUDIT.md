@@ -250,6 +250,19 @@ Evidence-based inventory of every file under `supabase/migrations/`.
 | **Existing DB** | Safe (`ON CONFLICT DO NOTHING`) |
 | **Destructive** | No |
 
+### 202606200012 — phase9f4_promotion_migration_idempotency.sql
+
+| Attribute | Detail |
+|-----------|--------|
+| **Purpose** | Atomic legacy promotion migration RPC with deterministic governed_content IDs |
+| **Tables** | None (RPC-only; reads/writes `promotion_migration_reviews`, `governed_content`) |
+| **Functions** | `legacy_promotion_migration_destination_id(uuid)`, `execute_legacy_promotion_migration(...)` |
+| **Grants** | `EXECUTE` to `service_role` only; revoked from `PUBLIC`, `anon`, `authenticated` |
+| **Depends on** | **202606200011**, `promotion_migration_reviews`, `governed_content`, `uuid-ossp` |
+| **Clean DB** | Safe |
+| **Existing DB** | Safe (additive functions) |
+| **Destructive** | No |
+
 ---
 
 ## Historical migration edit policy

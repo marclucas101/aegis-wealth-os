@@ -1,4 +1,4 @@
--- Read-only verification for pending migrations 202606100019..202606200011.
+-- Read-only verification for pending migrations 202606100019..202606200012.
 -- Safe when expected post-018 relations are absent.
 -- No writes. No schema changes. No migration-history modification.
 
@@ -10,7 +10,7 @@ WITH pending(version) AS (
     ('202606100019'), ('202606100020'), ('202606100021'), ('202606150001'),
     ('202606180001'), ('202606180002'), ('202606200001'), ('202606200002'),
     ('202606200003'), ('202606200004'), ('202606200005'), ('202606200006'),
-    ('202606200007'), ('202606200008'), ('202606200009'), ('202606200010'), ('202606200011')
+    ('202606200007'), ('202606200008'), ('202606200009'), ('202606200010'), ('202606200011'), ('202606200012')
 ),
 history_table AS (
   SELECT EXISTS (
@@ -159,7 +159,11 @@ WITH expected_checks AS (
     ('202606200010','seed_row','storage','buckets','binder-exports'),
 
     -- 9F.4 legacy promotions write freeze
-    ('202606200011','seed_row','public','platform_feature_controls','legacy_promotions_write')
+    ('202606200011','seed_row','public','platform_feature_controls','legacy_promotions_write'),
+
+    -- 9F.4 Checkpoint 3.1 promotion migration idempotency RPC
+    ('202606200012','function','public',NULL,'execute_legacy_promotion_migration'),
+    ('202606200012','function','public',NULL,'legacy_promotion_migration_destination_id')
   ) AS expected(
     expected_migration,
     expected_check_kind,
@@ -417,7 +421,7 @@ WITH expected_migrations(version) AS (
     ('202606100019'), ('202606100020'), ('202606100021'), ('202606150001'),
     ('202606180001'), ('202606180002'), ('202606200001'), ('202606200002'),
     ('202606200003'), ('202606200004'), ('202606200005'), ('202606200006'),
-    ('202606200007'), ('202606200008'), ('202606200009'), ('202606200010'), ('202606200011')
+    ('202606200007'), ('202606200008'), ('202606200009'), ('202606200010'), ('202606200011'), ('202606200012')
 ),
 rollup_checks AS (
   SELECT * FROM (VALUES
@@ -453,7 +457,12 @@ rollup_checks AS (
     ('202606200010','index', EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_binder_exports_lineage_version')),
     ('202606200010','index', EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_binder_exports_generation_idempotent')),
     ('202606200010','seed_row', NULL::boolean),
-    ('202606200011','seed_row', NULL::boolean)
+    ('202606200011','seed_row', NULL::boolean),
+    ('202606200012','function', EXISTS (
+      SELECT 1 FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public' AND p.proname = 'execute_legacy_promotion_migration'
+    ))
   ) AS rollup_input(rollup_migration, rollup_check_kind, rollup_is_present)
 ),
 checks AS (

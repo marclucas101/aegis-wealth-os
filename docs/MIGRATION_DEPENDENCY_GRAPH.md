@@ -29,6 +29,7 @@ flowchart TD
   M9F2[202606200009 lifecycle_notifications]
   M9F3[202606200010 binder_pdf_client_vault]
   M9F4[202606200011 legacy_promotions_write_freeze]
+  M9F4B[202606200012 promotion_migration_idempotency]
 
   M018 --> M019
   M003 --> M019
@@ -51,6 +52,7 @@ flowchart TD
   M9F1 --> M9F2
   M9F2 --> M9F3
   M9F3 --> M9F4
+  M9F4 --> M9F4B
 ```
 
 ## Blocking relationships
@@ -69,6 +71,7 @@ flowchart TD
 | 202606200009 | 008, client_notifications |
 | 202606200010 | 009, binder_exports, documents |
 | 202606200011 | 010, platform_feature_controls, promotions |
+| 202606200012 | 011, promotion_migration_reviews, governed_content, uuid-ossp |
 
 ## Parallel-safe (after 018)
 
