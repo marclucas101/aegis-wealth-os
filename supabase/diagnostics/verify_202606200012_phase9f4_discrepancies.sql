@@ -18,6 +18,8 @@ expected AS (
     ('202606200012', 'routine', 'execute_legacy_promotion_migration', 'present'),
     ('202606200012', 'routine_attr', 'execute_legacy_promotion_migration', 'security_definer|true'),
     ('202606200012', 'routine_attr', 'execute_legacy_promotion_migration', 'search_path|public'),
+    ('202606200012', 'extension', 'extensions.uuid_generate_v5(uuid,text)', 'callable'),
+    ('202606200012', 'routine_attr', 'legacy_promotion_migration_destination_id', 'uses_extensions_uuid_v5|true'),
     ('202606200012', 'grant', 'execute_legacy_promotion_migration.service_role', 'execute|true'),
     ('202606200012', 'grant', 'execute_legacy_promotion_migration.anon', 'execute|false'),
     ('202606200012', 'grant', 'execute_legacy_promotion_migration.authenticated', 'execute|false'),
@@ -31,14 +33,24 @@ history_applied AS (
   WHERE (SELECT history_exists FROM refs)
 ),
 destination_fn AS (
-  SELECT EXISTS (
-    SELECT 1
-    FROM pg_proc p
-    JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname = 'public'
-      AND p.proname = 'legacy_promotion_migration_destination_id'
-      AND pg_get_function_identity_arguments(p.oid) = 'p_promotion_id uuid'
-  ) AS present
+  SELECT
+    EXISTS (
+      SELECT 1
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public'
+        AND p.proname = 'legacy_promotion_migration_destination_id'
+        AND pg_get_function_identity_arguments(p.oid) = 'p_promotion_id uuid'
+    ) AS present,
+    (
+      SELECT pg_get_functiondef(p.oid)
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public'
+        AND p.proname = 'legacy_promotion_migration_destination_id'
+        AND pg_get_function_identity_arguments(p.oid) = 'p_promotion_id uuid'
+      LIMIT 1
+    ) AS definition
 ),
 migration_rpc AS (
   SELECT
@@ -92,6 +104,17 @@ evaluated AS (
           ) THEN 'search_path|public'
           ELSE 'search_path|other'
         END
+      WHEN e.check_kind = 'extension' AND e.object_name = 'extensions.uuid_generate_v5(uuid,text)'
+        THEN CASE
+          WHEN to_regprocedure('extensions.uuid_generate_v5(uuid,text)') IS NOT NULL THEN 'callable'
+          ELSE 'absent'
+        END
+      WHEN e.check_kind = 'routine_attr' AND e.object_name = 'legacy_promotion_migration_destination_id'
+        AND e.expected_value = 'uses_extensions_uuid_v5|true'
+        THEN CASE
+          WHEN (SELECT definition FROM destination_fn) ILIKE '%extensions.uuid_generate_v5%' THEN 'uses_extensions_uuid_v5|true'
+          ELSE 'uses_extensions_uuid_v5|false'
+        END
       WHEN e.check_kind = 'grant' AND e.object_name = 'execute_legacy_promotion_migration.service_role'
         THEN CASE WHEN (SELECT service_role_execute FROM grant_flags) THEN 'execute|true' ELSE 'execute|false' END
       WHEN e.check_kind = 'grant' AND e.object_name = 'execute_legacy_promotion_migration.anon'
@@ -120,6 +143,12 @@ evaluated AS (
           WHERE cfg = 'search_path=public'
         ) THEN 'match'
       WHEN e.check_kind = 'routine_attr' THEN 'conflicting'
+      WHEN e.check_kind = 'extension' AND e.object_name = 'extensions.uuid_generate_v5(uuid,text)'
+        AND to_regprocedure('extensions.uuid_generate_v5(uuid,text)') IS NOT NULL THEN 'match'
+      WHEN e.check_kind = 'extension' THEN 'conflicting'
+      WHEN e.check_kind = 'routine_attr' AND e.object_name = 'legacy_promotion_migration_destination_id'
+        AND e.expected_value = 'uses_extensions_uuid_v5|true'
+        AND (SELECT definition FROM destination_fn) ILIKE '%extensions.uuid_generate_v5%' THEN 'match'
       WHEN e.check_kind = 'grant' AND e.object_name = 'execute_legacy_promotion_migration.service_role'
         AND (SELECT service_role_execute FROM grant_flags) THEN 'match'
       WHEN e.check_kind = 'grant' AND e.object_name = 'execute_legacy_promotion_migration.anon'

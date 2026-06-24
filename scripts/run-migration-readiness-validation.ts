@@ -1011,6 +1011,28 @@ const tests: TestCase[] = [
       assert(PENDING_VERSIONS.includes("202606200012"), "pending 012");
     },
   },
+  {
+    id: 93,
+    name: "Phase 9F.4 idempotency preflight probes extensions.uuid_generate_v5",
+    run: () => {
+      const preflight = read("supabase/diagnostics/preflight_202606200012_phase9f4.sql");
+      assert(
+        preflight.includes("to_regprocedure('extensions.uuid_generate_v5(uuid,text)')"),
+        "extensions uuid v5 regprocedure",
+      );
+    },
+  },
+  {
+    id: 94,
+    name: "Phase 9F.4 idempotency migration uses qualified extensions.uuid_generate_v5",
+    run: () => {
+      const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql");
+      assert(sql.includes('WITH SCHEMA extensions'), "extension schema");
+      assert(sql.includes("extensions.uuid_generate_v5"), "qualified");
+      const withoutQualified = sql.split("extensions.uuid_generate_v5").join("");
+      assert(!withoutQualified.includes("uuid_generate_v5("), "no unqualified call");
+    },
+  },
 ];
 
 function main(): void {

@@ -3,10 +3,11 @@
 --
 -- Guarantees at most one governed_content destination per promotion_id using:
 --   1. pg_advisory_xact_lock (concurrency)
---   2. Deterministic governed_content.id via uuid_generate_v5
+--   2. Deterministic governed_content.id via extensions.uuid_generate_v5
 --   3. Single-transaction draft insert + promotion_migration_reviews linkage
 
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp"
+WITH SCHEMA extensions;
 
 -- Stable namespace UUID for legacy promotion migration destinations.
 -- Do not rotate without a new migration plan.
@@ -16,7 +17,7 @@ RETURNS UUID
 LANGUAGE sql
 IMMUTABLE
 AS $$
-  SELECT uuid_generate_v5(
+  SELECT extensions.uuid_generate_v5(
     'f47ac10b-58cc-4372-a567-0e02b2c3d479'::uuid,
     'legacy_promotion:' || p_promotion_id::text
   );

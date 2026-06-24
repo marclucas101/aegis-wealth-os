@@ -103,6 +103,21 @@ checks AS (
     END,
     'Destination function must be IMMUTABLE'
   UNION ALL
+  SELECT 'extension.extensions_uuid_generate_v5_callable',
+    CASE
+      WHEN to_regprocedure('extensions.uuid_generate_v5(uuid,text)') IS NOT NULL THEN 'pass'
+      ELSE 'fail'
+    END,
+    'extensions.uuid_generate_v5(uuid,text) must exist in extensions schema'
+  UNION ALL
+  SELECT 'routine.destination_function_qualified_uuid_v5',
+    CASE
+      WHEN (SELECT oid FROM destination_fn) IS NULL THEN 'unknown'
+      WHEN (SELECT definition FROM destination_fn) ILIKE '%extensions.uuid_generate_v5%' THEN 'pass'
+      ELSE 'fail'
+    END,
+    'Destination function must call extensions.uuid_generate_v5 (not unqualified)'
+  UNION ALL
   SELECT 'routine.migration_rpc_security_definer',
     CASE
       WHEN (SELECT oid FROM migration_rpc) IS NULL THEN 'unknown'

@@ -7,18 +7,7 @@ WITH refs AS (
     to_regclass('public.promotion_migration_reviews') IS NOT NULL AS migration_reviews_exists,
     to_regclass('public.governed_content') IS NOT NULL AS governed_content_exists,
     to_regclass('public.platform_feature_controls') IS NOT NULL AS feature_controls_exists,
-    EXISTS (
-      SELECT 1
-      FROM pg_extension
-      WHERE extname = 'uuid-ossp'
-    ) AS uuid_ossp_installed,
-    EXISTS (
-      SELECT 1
-      FROM pg_proc p
-      JOIN pg_namespace n ON n.oid = p.pronamespace
-      WHERE n.nspname = 'public'
-        AND p.proname = 'uuid_generate_v5'
-    ) AS uuid_generate_v5_available,
+    to_regprocedure('extensions.uuid_generate_v5(uuid,text)') IS NOT NULL AS extensions_uuid_generate_v5_available,
     EXISTS (
       SELECT 1
       FROM pg_roles
@@ -188,13 +177,12 @@ probes (probe_id, classification, detail) AS (
     END,
     'governed_content.approval_status required for draft enforcement'
   UNION ALL
-  SELECT 'extension.uuid_ossp_or_uuid_generate_v5',
+  SELECT 'extension.extensions_uuid_generate_v5_callable',
     CASE
-      WHEN (SELECT uuid_ossp_installed FROM refs)
-        OR (SELECT uuid_generate_v5_available FROM refs) THEN 'READY'
+      WHEN (SELECT extensions_uuid_generate_v5_available FROM refs) THEN 'READY'
       ELSE 'BLOCKER'
     END,
-    'uuid-ossp / uuid_generate_v5 required for deterministic destination IDs'
+    'extensions.uuid_generate_v5(uuid,text) must be callable for deterministic destination IDs'
   UNION ALL
   SELECT 'routine.destination_function_absent_before_apply',
     CASE

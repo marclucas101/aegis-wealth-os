@@ -377,7 +377,7 @@ const TESTS: TestCase[] = [
   record(108, "idempotency migration uses advisory lock", () => {
     const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql");
     assert(sql.includes("pg_advisory_xact_lock"), "advisory lock");
-    assert(sql.includes("uuid_generate_v5"), "deterministic id");
+    assert(sql.includes("extensions.uuid_generate_v5"), "qualified uuid v5");
   }),
 
   // Package & re-exports (109-115)
@@ -643,6 +643,22 @@ const TESTS: TestCase[] = [
       ),
       "write freeze",
     )),
+  record(161, "012 migration uses extensions.uuid_generate_v5 only", () => {
+    const sql = read("supabase/migrations/202606200012_phase9f4_promotion_migration_idempotency.sql");
+    assert(sql.includes('WITH SCHEMA extensions'), "extension schema");
+    assert(sql.includes("extensions.uuid_generate_v5"), "qualified call");
+    const withoutQualified = sql.split("extensions.uuid_generate_v5").join("");
+    assert(!withoutQualified.includes("uuid_generate_v5("), "no unqualified uuid_generate_v5 call");
+  }),
+  record(162, "012 preflight probes extensions.uuid_generate_v5 callable", () => {
+    const sql = read("supabase/diagnostics/preflight_202606200012_phase9f4.sql");
+    assert(sql.includes("to_regprocedure('extensions.uuid_generate_v5(uuid,text)')"), "regprocedure");
+  }),
+  record(163, "012 verify proves qualified uuid v5 in destination function", () => {
+    const sql = read("supabase/diagnostics/verify_202606200012_phase9f4_promotion_migration_idempotency.sql");
+    assert(sql.includes("routine.destination_function_qualified_uuid_v5"), "qualified check");
+    assert(sql.includes("extensions.uuid_generate_v5"), "extensions schema");
+  }),
 ];
 
 function main(): void {
