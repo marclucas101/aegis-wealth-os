@@ -1033,6 +1033,90 @@ const tests: TestCase[] = [
       assert(!withoutQualified.includes("uuid_generate_v5("), "no unqualified call");
     },
   },
+  {
+    id: 95,
+    name: "Phase 01 CRM V2 migration file exists",
+    run: () => {
+      assert(
+        existsSync(join(ROOT, "supabase/migrations/202606290001_phase01_crm_v2_feature_controls.sql")),
+        "migration",
+      );
+    },
+  },
+  {
+    id: 96,
+    name: "Phase 01 CRM V2 dedicated verify diagnostic exists",
+    run: () => {
+      assert(
+        existsSync(join(ROOT, "supabase/diagnostics/verify_202606290001_phase01_crm_v2_feature_controls.sql")),
+        "verify",
+      );
+    },
+  },
+  {
+    id: 97,
+    name: "Phase 01 CRM V2 preflight diagnostic exists",
+    run: () => {
+      assert(
+        existsSync(join(ROOT, "supabase/diagnostics/preflight_202606290001_phase01_crm_v2_feature_controls.sql")),
+        "preflight",
+      );
+    },
+  },
+  {
+    id: 98,
+    name: "Phase 01 CRM V2 discrepancy diagnostic exists",
+    run: () => {
+      assert(
+        existsSync(
+          join(ROOT, "supabase/diagnostics/verify_202606290001_phase01_crm_v2_feature_controls_discrepancies.sql"),
+        ),
+        "discrepancies",
+      );
+    },
+  },
+  {
+    id: 99,
+    name: "Phase 01 CRM V2 diagnostics are SELECT-only",
+    run: () => {
+      for (const file of [
+        "supabase/diagnostics/verify_202606290001_phase01_crm_v2_feature_controls.sql",
+        "supabase/diagnostics/preflight_202606290001_phase01_crm_v2_feature_controls.sql",
+        "supabase/diagnostics/verify_202606290001_phase01_crm_v2_feature_controls_discrepancies.sql",
+      ]) {
+        const sql = read(file).toLowerCase();
+        assert(!sql.includes("insert into"), file);
+        assert(!sql.includes("update "), file);
+        assert(!sql.includes("delete from"), file);
+      }
+    },
+  },
+  {
+    id: 100,
+    name: "Phase 01 CRM V2 migration seeds both feature keys disabled",
+    run: () => {
+      const sql = read("supabase/migrations/202606290001_phase01_crm_v2_feature_controls.sql");
+      assert(sql.includes("'crm_v2_master'"), "master key");
+      assert(sql.includes("'crm_v2_pilot_mode'"), "pilot key");
+      assert(sql.includes("ON CONFLICT (feature_key) DO NOTHING"), "idempotent");
+      assert(!sql.includes("UPDATE platform_feature_controls"), "no update");
+    },
+  },
+  {
+    id: 101,
+    name: "Phase 01 CRM V2 discrepancies use to_regclass guard",
+    run: () => {
+      const disc = read("supabase/diagnostics/verify_202606290001_phase01_crm_v2_feature_controls_discrepancies.sql");
+      assert(disc.includes("to_regclass('public.platform_feature_controls')"), "guard");
+    },
+  },
+  {
+    id: 102,
+    name: "Phase 01 CRM V2 migration remains pending in drift classifier",
+    run: () => {
+      assert(PENDING_VERSIONS.includes("202606290001"), "pending 202606290001");
+    },
+  },
 ];
 
 function main(): void {

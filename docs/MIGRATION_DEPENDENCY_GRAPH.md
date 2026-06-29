@@ -30,6 +30,7 @@ flowchart TD
   M9F3[202606200010 binder_pdf_client_vault]
   M9F4[202606200011 legacy_promotions_write_freeze]
   M9F4B[202606200012 promotion_migration_idempotency]
+  MCRM01[202606290001 phase01_crm_v2_feature_controls]
 
   M018 --> M019
   M003 --> M019
@@ -53,6 +54,7 @@ flowchart TD
   M9F2 --> M9F3
   M9F3 --> M9F4
   M9F4 --> M9F4B
+  M9F4B --> MCRM01
 ```
 
 ## Blocking relationships
@@ -72,6 +74,16 @@ flowchart TD
 | 202606200010 | 009, binder_exports, documents |
 | 202606200011 | 010, platform_feature_controls, promotions |
 | 202606200012 | 011, promotion_migration_reviews, governed_content, uuid-ossp |
+| 202606290001 | 9F4B chain complete; `platform_feature_controls` table (from 9A1) |
+
+## Phase 01 CRM V2 (202606290001)
+
+| Item | Detail |
+|------|--------|
+| Depends on | `platform_feature_controls` (Phase 9A) |
+| Blocks | Nothing downstream in current chain |
+| Risk | Low — idempotent INSERT only, both flags disabled |
+| Operator gate | G2 — apply only after Phase 01 QA + security sign-off |
 
 ## Parallel-safe (after 018)
 

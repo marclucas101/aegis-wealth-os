@@ -263,6 +263,18 @@ Evidence-based inventory of every file under `supabase/migrations/`.
 | **Existing DB** | Safe (additive functions) |
 | **Destructive** | No |
 
+### 202606290001 — phase01_crm_v2_feature_controls.sql
+
+| Attribute | Detail |
+|-----------|--------|
+| **Purpose** | CRM V2 foundation feature-control seed (`crm_v2_master`, `crm_v2_pilot_mode`) |
+| **Tables** | None |
+| **Seeds** | `crm_v2_master` (disabled, adviser-visible), `crm_v2_pilot_mode` (disabled, adviser-visible) |
+| **Depends on** | **202606200001**, `platform_feature_controls` |
+| **Clean DB** | Safe |
+| **Existing DB** | Safe (`ON CONFLICT DO NOTHING`) |
+| **Destructive** | No |
+
 ---
 
 ## Historical migration edit policy
