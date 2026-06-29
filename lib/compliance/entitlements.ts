@@ -62,6 +62,7 @@ const HREF_TO_FEATURE: Record<string, ClientFeatureKey> = {
   "/profile": "complete_information",
   "/meeting-preparation": "meeting_preparation",
   "/my-adviser": "my_adviser",
+  "/appointments": "appointments",
   "/my-plan": "my_plan",
   "/insights": "insights_and_updates",
   "/shield-diagnostic": "shield_diagnostic",

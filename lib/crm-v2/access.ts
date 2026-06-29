@@ -4,16 +4,19 @@ import type { User } from "@supabase/supabase-js";
 
 import {
   CRM_V2_APPOINTMENTS_ADVISER_FEATURE_KEY,
+  CRM_V2_APPOINTMENTS_CLIENT_FEATURE_KEY,
   CRM_V2_MASTER_FEATURE_KEY,
   CRM_V2_PILOT_MODE_FEATURE_KEY,
   CRM_V2_RELATIONSHIPS_FEATURE_KEY,
 } from "@/lib/crm-v2/constants";
+import { loadFeatureControls } from "@/lib/compliance/featureFlags";
 import {
   isUserInPilotAllowlist,
   parsePilotAllowlistFromEnv,
 } from "@/lib/crm-v2/pilotConfig";
 import { isFeatureEnabled } from "@/lib/compliance/featureFlags";
 import { requireAdvisorAccess } from "@/lib/supabase/advisorAuth";
+import { ensureUserClientProfile, type AppClientRow } from "@/lib/supabase/userProfile";
 import type { AppUserRow } from "@/lib/supabase/userProfile";
 
 export type CrmV2AccessDeniedReason =
@@ -165,5 +168,47 @@ export async function assertCrmV2AppointmentsAccess(): Promise<CrmV2Appointments
     masterEnabled: true,
     pilotModeEnabled: true,
     appointmentsEnabled: true,
+  };
+}
+
+export type CrmV2ClientAppointmentsAccessResult =
+  | { allowed: false; reason: "unauthenticated" | "forbidden" | "feature_disabled"; requestId: string }
+  | {
+      allowed: true;
+      requestId: string;
+      authUserId: string;
+      user: AppUserRow;
+      client: AppClientRow;
+      appointmentsClientEnabled: true;
+    };
+
+/**
+ * Central gate for CRM V2 client appointment collaboration.
+ * Server-derived client identity only; fail-closed on flag visibility.
+ */
+export async function assertCrmV2ClientAppointmentsAccess(): Promise<CrmV2ClientAppointmentsAccessResult> {
+  const requestId = createShellRequestId();
+  const session = await ensureUserClientProfile();
+  if (!session.authenticated) {
+    return { allowed: false, reason: "unauthenticated", requestId };
+  }
+
+  if (session.user.role !== "client") {
+    return { allowed: false, reason: "forbidden", requestId };
+  }
+
+  const controls = await loadFeatureControls();
+  const row = controls.get(CRM_V2_APPOINTMENTS_CLIENT_FEATURE_KEY);
+  if (!row?.enabled || !row.client_visible) {
+    return { allowed: false, reason: "feature_disabled", requestId };
+  }
+
+  return {
+    allowed: true,
+    requestId,
+    authUserId: session.authUser.id,
+    user: session.user,
+    client: session.client,
+    appointmentsClientEnabled: true,
   };
 }

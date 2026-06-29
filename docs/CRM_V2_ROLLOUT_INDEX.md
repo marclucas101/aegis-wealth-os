@@ -31,7 +31,7 @@ Today | Relationships | Appointments | Service | Communications | More
 | **01** | `crm-v2-01-shell` | `/advisor-v2` shell + pilot gating | **Complete** — see Phase 01 docs below |
 | **02** | `crm-v2-02-relationship-360` | Relationship list + Relationship 360 | **Complete** — see Phase 02 docs below |
 | **03** | `crm-v2-03-appointments-adviser` | Authoritative appointment core (adviser) | **Complete** — see Phase 03 docs below |
-| **04** | `crm-v2-04-appointments-client` | Client appointment collaboration | Pending |
+| **04** | `crm-v2-04-appointments-client` | Client appointment collaboration | In progress |
 | **05** | `crm-v2-05-google-calendar` | Google Calendar integration (AEGIS authoritative) | Pending |
 | **06** | `crm-v2-06-service-commitments` | Service layer + commitments | Pending |
 | **07** | `crm-v2-07-protection-portfolio` | Protection portfolio + verification | Pending |
@@ -59,6 +59,23 @@ Today | Relationships | Appointments | Service | Communications | More
 | [CRM_V2_PHASE_03_MIGRATION_RUNBOOK.md](./CRM_V2_PHASE_03_MIGRATION_RUNBOOK.md) | Apply/verify/discrepancy |
 | [CRM_V2_PHASE_03_MANUAL_TESTS.md](./CRM_V2_PHASE_03_MANUAL_TESTS.md) | Operator checklist (34 tests) |
 | [CRM_V2_PHASE_03_COMPLETION.md](./CRM_V2_PHASE_03_COMPLETION.md) | Sign-off, QA results, verdict |
+
+---
+
+## Phase 04 documents (appointments client)
+
+| Document | Purpose |
+|----------|---------|
+| [CRM_V2_PHASE_04_EXISTING_CLIENT_APPOINTMENT_AUDIT.md](./CRM_V2_PHASE_04_EXISTING_CLIENT_APPOINTMENT_AUDIT.md) | Existing client appointment audit |
+| [CRM_V2_PHASE_04_CLIENT_APPOINTMENT_ARCHITECTURE.md](./CRM_V2_PHASE_04_CLIENT_APPOINTMENT_ARCHITECTURE.md) | Client appointment architecture |
+| [CRM_V2_PHASE_04_CLIENT_LIFECYCLE_ACTIONS.md](./CRM_V2_PHASE_04_CLIENT_LIFECYCLE_ACTIONS.md) | Safe lifecycle actions |
+| [CRM_V2_PHASE_04_API_CONTRACT.md](./CRM_V2_PHASE_04_API_CONTRACT.md) | Client APIs and DTO contract |
+| [CRM_V2_PHASE_04_VISIBILITY_AND_PRIVACY.md](./CRM_V2_PHASE_04_VISIBILITY_AND_PRIVACY.md) | Visibility and privacy boundaries |
+| [CRM_V2_PHASE_04_DOCUMENT_PREPARATION.md](./CRM_V2_PHASE_04_DOCUMENT_PREPARATION.md) | Vault/upload reuse model |
+| [CRM_V2_PHASE_04_SECURITY_REVIEW.md](./CRM_V2_PHASE_04_SECURITY_REVIEW.md) | Security control inventory |
+| [CRM_V2_PHASE_04_MIGRATION_RUNBOOK.md](./CRM_V2_PHASE_04_MIGRATION_RUNBOOK.md) | Migration preflight/verify steps |
+| [CRM_V2_PHASE_04_MANUAL_TESTS.md](./CRM_V2_PHASE_04_MANUAL_TESTS.md) | Manual operator tests |
+| [CRM_V2_PHASE_04_COMPLETION.md](./CRM_V2_PHASE_04_COMPLETION.md) | Completion report |
 
 ---
 
