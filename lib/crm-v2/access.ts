@@ -5,6 +5,7 @@ import type { User } from "@supabase/supabase-js";
 import {
   CRM_V2_APPOINTMENTS_ADVISER_FEATURE_KEY,
   CRM_V2_APPOINTMENTS_CLIENT_FEATURE_KEY,
+  CRM_V2_GOOGLE_CALENDAR_FEATURE_KEY,
   CRM_V2_MASTER_FEATURE_KEY,
   CRM_V2_PILOT_MODE_FEATURE_KEY,
   CRM_V2_RELATIONSHIPS_FEATURE_KEY,
@@ -168,6 +169,58 @@ export async function assertCrmV2AppointmentsAccess(): Promise<CrmV2Appointments
     masterEnabled: true,
     pilotModeEnabled: true,
     appointmentsEnabled: true,
+  };
+}
+
+export type CrmV2GoogleCalendarAccessDeniedReason = CrmV2AccessDeniedReason;
+
+export type CrmV2GoogleCalendarAccessResult =
+  | { allowed: false; reason: CrmV2GoogleCalendarAccessDeniedReason; requestId: string }
+  | {
+      allowed: true;
+      authUser: User;
+      user: AppUserRow;
+      requestId: string;
+      masterEnabled: true;
+      pilotModeEnabled: true;
+      appointmentsEnabled: true;
+      googleCalendarEnabled: true;
+    };
+
+/**
+ * Central gate for CRM V2 Google Calendar operations.
+ * Requires master + pilot + adviser appointments + google calendar flags.
+ */
+export async function assertCrmV2GoogleCalendarAccess(): Promise<CrmV2GoogleCalendarAccessResult> {
+  const appointments = await assertCrmV2AppointmentsAccess();
+  if (!appointments.allowed) {
+    return {
+      allowed: false,
+      reason: appointments.reason,
+      requestId: appointments.requestId,
+    };
+  }
+
+  const googleCalendarEnabled = await isFeatureEnabled(
+    CRM_V2_GOOGLE_CALENDAR_FEATURE_KEY,
+  );
+  if (!googleCalendarEnabled) {
+    return {
+      allowed: false,
+      reason: "feature_disabled",
+      requestId: appointments.requestId,
+    };
+  }
+
+  return {
+    allowed: true,
+    authUser: appointments.authUser,
+    user: appointments.user,
+    requestId: appointments.requestId,
+    masterEnabled: true,
+    pilotModeEnabled: true,
+    appointmentsEnabled: true,
+    googleCalendarEnabled: true,
   };
 }
 

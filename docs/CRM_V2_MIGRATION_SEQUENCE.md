@@ -146,15 +146,25 @@ Phase 02 uses existing `clients` — read-only APIs only.
 | Rollback | DROP |
 | Risk | Low |
 
-### M09 — Phase 05: Calendar sync (conditional)
-
-Only if existing `adviser_appointments` / `adviser_calendar_connections` columns insufficient:
+### M03c — Phase 05: Google Calendar feature seed (**created, not applied**)
 
 | Item | Detail |
 |------|--------|
-| Changes | `sync_failure_reason`, `last_sync_attempt_at`, `google_event_etag` |
-| Rollback | DROP columns |
-| Risk | Low |
+| File | `supabase/migrations/202606290006_phase05_crm_v2_google_calendar_feature_control.sql` |
+| Keys | `crm_v2_google_calendar` |
+| Default | `enabled = false`, `client_visible = false`, `adviser_visible = true` |
+| Applied | **No** |
+| Diagnostics | `preflight_202606290006_*`, `verify_202606290006_*` |
+
+### M09 — Phase 05: Google Calendar authority core (**created, not applied**)
+
+| Item | Detail |
+|------|--------|
+| File | `supabase/migrations/202606290007_phase05_crm_v2_google_calendar_core.sql` |
+| Changes | Extend `adviser_calendar_connections`; add `crm_google_oauth_states`; add `crm_google_calendar_event_mappings` |
+| Rollback | Disable feature and keep additive schema retained |
+| Risk | Medium |
+| Diagnostics | `preflight_202606290007_*`, `verify_202606290007_*` |
 
 ---
 

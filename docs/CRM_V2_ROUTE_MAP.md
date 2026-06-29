@@ -117,6 +117,14 @@ Route: `/advisor-v2/relationships/[relationshipId]?tab=`
 | `/api/advisor-v2/appointments/[id]` | GET, PATCH | 03 | Detail + transitions |
 | `/api/advisor-v2/appointments/[id]/transitions` | POST | 03 | State machine |
 | `/api/advisor-v2/calendar/google/**` | * | 05 | OAuth, sync, retry |
+| `/api/advisor-v2/integrations/google-calendar/status` | GET | 05 | Connection and sync summary |
+| `/api/advisor-v2/integrations/google-calendar/connect` | POST | 05 | Start OAuth |
+| `/api/advisor-v2/integrations/google-calendar/calendars` | GET | 05 | Writable calendars |
+| `/api/advisor-v2/integrations/google-calendar/select` | POST | 05 | Calendar selection |
+| `/api/advisor-v2/integrations/google-calendar/disconnect` | POST | 05 | Revoke/disconnect |
+| `/api/advisor-v2/appointments/[id]/google-calendar/sync` | POST | 05 | Explicit sync |
+| `/api/advisor-v2/appointments/[id]/google-calendar/retry` | POST | 05 | Retry failed sync |
+| `/api/advisor-v2/appointments/[id]/google-calendar/status` | GET | 05 | Per-appointment sync status |
 | `/api/advisor-v2/service/commitments` | GET, POST | 06 | Service layer |
 | `/api/advisor-v2/service/commitments/[id]` | PATCH | 06 | Complete/update |
 | `/api/advisor-v2/protection/**` | * | 07 | Portfolio, verification |
@@ -135,6 +143,11 @@ Route: `/advisor-v2/relationships/[relationshipId]?tab=`
 | `/api/client/appointments/**` | 04 (legacy note) | `crm_v2_appointments_client` |
 | `/api/appointments/**` | 04 | `crm_v2_appointments_client` |
 | `/api/client/service/**` | 06 | `crm_v2_client_service` |
+
+**Phase 05 adviser routes:**
+
+- `/advisor-v2/settings/integrations/google-calendar`
+- `/advisor-v2/operations/google-calendar`
 
 **Legacy APIs:** All `/api/advisor/**` routes remain until Phase 15 dependency audit.
 

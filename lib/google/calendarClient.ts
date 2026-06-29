@@ -181,6 +181,8 @@ export type CreateCalendarEventInput = {
   attendeeEmail: string;
   locationType: "physical" | "phone" | "google_meet";
   meetingLocationText?: string | null;
+  sendUpdates?: "none" | "externalOnly" | "all";
+  conferenceRequestId?: string;
 };
 
 export async function updateGoogleCalendarEvent(
@@ -197,7 +199,7 @@ export async function updateGoogleCalendarEvent(
       dateTime: input.endsAt,
       timeZone: input.timezone,
     },
-    attendees: [{ email: input.attendeeEmail }],
+    attendees: input.attendeeEmail ? [{ email: input.attendeeEmail }] : [],
     reminders: { useDefault: true },
   };
 
@@ -208,7 +210,7 @@ export async function updateGoogleCalendarEvent(
   }
 
   const params = new URLSearchParams({
-    sendUpdates: "all",
+    sendUpdates: input.sendUpdates ?? "none",
     conferenceDataVersion: input.locationType === "google_meet" ? "1" : "0",
   });
 
@@ -246,7 +248,7 @@ export async function createGoogleCalendarEvent(
       dateTime: input.endsAt,
       timeZone: input.timezone,
     },
-    attendees: [{ email: input.attendeeEmail }],
+    attendees: input.attendeeEmail ? [{ email: input.attendeeEmail }] : [],
     reminders: { useDefault: true },
   };
 
@@ -257,14 +259,14 @@ export async function createGoogleCalendarEvent(
   } else {
     eventBody.conferenceData = {
       createRequest: {
-        requestId: `aegis-${Date.now()}`,
+        requestId: input.conferenceRequestId ?? `aegis-${Date.now()}`,
         conferenceSolutionKey: { type: "hangoutsMeet" },
       },
     };
   }
 
   const params = new URLSearchParams({
-    sendUpdates: "all",
+    sendUpdates: input.sendUpdates ?? "none",
     conferenceDataVersion: input.locationType === "google_meet" ? "1" : "0",
   });
 

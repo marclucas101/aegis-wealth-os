@@ -1,3 +1,11 @@
+## Phase 05 CRM V2 Google Calendar (202606290006, 202606290007)
+
+| Item | Detail |
+|------|--------|
+| Depends on | `platform_feature_controls`, `adviser_calendar_connections`, `adviser_appointments` |
+| 202606290006 | Seeds `crm_v2_google_calendar` disabled |
+| 202606290007 | Adds mapping authority and OAuth state tables |
+| Apply state | Not applied (dry-run only) |
 # Migration Dependency Graph
 
 Pending migrations `202606100019`–`202606200010` and their prerequisites.  

@@ -47,6 +47,7 @@
     "qa:crm-v2-relationship-360": "npx tsx --import ./scripts/qa-stub-server-only.ts scripts/run-crm-v2-relationship-360-validation.ts",
     "qa:crm-v2-appointments-adviser": "npx tsx --import ./scripts/qa-stub-server-only.ts scripts/run-crm-v2-appointments-adviser-validation.ts",
     "qa:crm-v2-appointments-client": "npx tsx --import ./scripts/qa-stub-server-only.ts scripts/run-crm-v2-appointments-client-validation.ts",
+    "qa:crm-v2-google-calendar": "npx tsx --import ./scripts/qa-stub-server-only.ts scripts/run-crm-v2-google-calendar-validation.ts",
     "qa:a4-summary-report": "npx tsx scripts/run-a4-summary-report-validation.ts",
     "qa:migration-readiness": "npx tsx scripts/run-migration-readiness-validation.ts",
     "qa:phase9-migration-readiness": "npx tsx scripts/run-phase9-migration-readiness-validation.ts",

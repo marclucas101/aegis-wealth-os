@@ -153,6 +153,11 @@ export const FEATURE_DEFAULTS: Record<
     client_visible: false,
     adviser_visible: false,
   },
+  crm_v2_google_calendar: {
+    enabled: false,
+    client_visible: false,
+    adviser_visible: true,
+  },
 };
 
 let cachedControls: Map<PlatformFeatureKey, FeatureControlRow> | null = null;

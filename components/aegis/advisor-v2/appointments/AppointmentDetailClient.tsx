@@ -31,6 +31,7 @@ export default function AppointmentDetailClient({
   const [error, setError] = useState<string | null>(null);
   const [conflict, setConflict] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [googleSyncStatus, setGoogleSyncStatus] = useState<string | null>(null);
 
   async function reloadDetail() {
     const response = await fetch(`/api/advisor-v2/appointments/${appointment.appointmentId}`, {
@@ -83,6 +84,35 @@ export default function AppointmentDetailClient({
       router.refresh();
     } catch {
       setError("Action could not be completed");
+    } finally {
+      setLoadingAction(null);
+    }
+  }
+
+  async function runGoogleSync(path: "sync" | "retry") {
+    setLoadingAction(`google_${path}`);
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/advisor-v2/appointments/${appointment.appointmentId}/google-calendar/${path}`,
+        { method: "POST" },
+      );
+      const payload = (await response.json()) as { ok: boolean; error?: string };
+      if (!response.ok || !payload.ok) {
+        setError(payload.error ?? "Google sync failed");
+        return;
+      }
+      await reloadDetail();
+      const statusResponse = await fetch(
+        `/api/advisor-v2/appointments/${appointment.appointmentId}/google-calendar/status`,
+        { cache: "no-store" },
+      );
+      const statusPayload = (await statusResponse.json()) as { ok: boolean; status?: string };
+      if (statusPayload.ok && statusPayload.status) {
+        setGoogleSyncStatus(statusPayload.status);
+      }
+    } catch {
+      setError("Google sync failed");
     } finally {
       setLoadingAction(null);
     }
@@ -247,6 +277,30 @@ export default function AppointmentDetailClient({
         <p className="text-sm text-slate-700">
           Follow-up state: {appointment.followUpState.replace(/_/g, " ")}
         </p>
+      </CrmV2SectionPanel>
+
+      <CrmV2SectionPanel title="Google Calendar">
+        <p className="text-sm text-slate-700">
+          Sync status: {googleSyncStatus ?? "not_synced"}
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={loadingAction !== null}
+            onClick={() => void runGoogleSync("sync")}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-50"
+          >
+            Sync to Google
+          </button>
+          <button
+            type="button"
+            disabled={loadingAction !== null}
+            onClick={() => void runGoogleSync("retry")}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-50"
+          >
+            Retry sync
+          </button>
+        </div>
       </CrmV2SectionPanel>
 
       <CrmV2SectionPanel title="Activity / history">

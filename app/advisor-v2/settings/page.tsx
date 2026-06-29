@@ -22,6 +22,12 @@ export default function CrmV2SettingsPage() {
         >
           Open adviser profile
         </Link>
+        <Link
+          href="/advisor-v2/settings/integrations/google-calendar"
+          className="mt-2 block text-sm text-[#D1A866]/90 underline-offset-4 hover:underline"
+        >
+          Open CRM V2 Google Calendar integration
+        </Link>
       </CrmV2SectionPanel>
     </>
   );
