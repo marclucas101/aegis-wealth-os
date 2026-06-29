@@ -1,3 +1,5 @@
+- Phase 05 Google event payload remains minimal: safe title, schedule, delivery mode, safe location, optional approved attendee email, optional Meet link.
+- Google payload must never include ethnicity, advocacy, policy numbers, financial values, private adviser agenda, notes, checklist internals, document names, storage paths, NRIC, or cancellation reason details.
 # CRM V2 — Visibility Model
 
 **Phase:** 00

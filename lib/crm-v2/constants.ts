@@ -6,6 +6,8 @@ export const CRM_V2_APPOINTMENTS_ADVISER_FEATURE_KEY =
   "crm_v2_appointments_adviser" as const;
 export const CRM_V2_APPOINTMENTS_CLIENT_FEATURE_KEY =
   "crm_v2_appointments_client" as const;
+export const CRM_V2_GOOGLE_CALENDAR_FEATURE_KEY =
+  "crm_v2_google_calendar" as const;
 
 export const CRM_V2_PILOT_USER_IDS_ENV = "CRM_V2_PILOT_USER_IDS" as const;
 

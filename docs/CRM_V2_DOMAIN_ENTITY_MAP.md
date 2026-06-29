@@ -1,3 +1,8 @@
+### Phase 05 extension — Google mapping authority
+
+- Added `crm_google_calendar_event_mappings` as the authoritative provider-mapping table for appointment sync status/history.
+- Existing `adviser_appointments.google_*` fields remain compatibility projection fields and are not treated as lifecycle authority.
+- Added `crm_google_oauth_states` for short-lived OAuth state persistence metadata.
 # CRM V2 — Domain Entity Map
 
 **Phase:** 00

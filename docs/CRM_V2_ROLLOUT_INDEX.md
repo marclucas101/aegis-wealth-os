@@ -31,8 +31,8 @@ Today | Relationships | Appointments | Service | Communications | More
 | **01** | `crm-v2-01-shell` | `/advisor-v2` shell + pilot gating | **Complete** — see Phase 01 docs below |
 | **02** | `crm-v2-02-relationship-360` | Relationship list + Relationship 360 | **Complete** — see Phase 02 docs below |
 | **03** | `crm-v2-03-appointments-adviser` | Authoritative appointment core (adviser) | **Complete** — see Phase 03 docs below |
-| **04** | `crm-v2-04-appointments-client` | Client appointment collaboration | In progress |
-| **05** | `crm-v2-05-google-calendar` | Google Calendar integration (AEGIS authoritative) | Pending |
+| **04** | `crm-v2-04-appointments-client` | Client appointment collaboration | **Complete** |
+| **05** | `crm-v2-05-google-calendar` | Google Calendar integration (AEGIS authoritative) | In progress |
 | **06** | `crm-v2-06-service-commitments` | Service layer + commitments | Pending |
 | **07** | `crm-v2-07-protection-portfolio` | Protection portfolio + verification | Pending |
 | **08** | `crm-v2-08-relationship-moments` | Moments engine (birthdays, holidays, travel) | Pending |
@@ -76,6 +76,24 @@ Today | Relationships | Appointments | Service | Communications | More
 | [CRM_V2_PHASE_04_MIGRATION_RUNBOOK.md](./CRM_V2_PHASE_04_MIGRATION_RUNBOOK.md) | Migration preflight/verify steps |
 | [CRM_V2_PHASE_04_MANUAL_TESTS.md](./CRM_V2_PHASE_04_MANUAL_TESTS.md) | Manual operator tests |
 | [CRM_V2_PHASE_04_COMPLETION.md](./CRM_V2_PHASE_04_COMPLETION.md) | Completion report |
+
+---
+
+## Phase 05 documents (Google Calendar)
+
+| Document | Purpose |
+|----------|---------|
+| [CRM_V2_PHASE_05_EXISTING_GOOGLE_CALENDAR_AUDIT.md](./CRM_V2_PHASE_05_EXISTING_GOOGLE_CALENDAR_AUDIT.md) | Existing Google integration audit |
+| [CRM_V2_PHASE_05_GOOGLE_CALENDAR_ARCHITECTURE.md](./CRM_V2_PHASE_05_GOOGLE_CALENDAR_ARCHITECTURE.md) | Phase 05 authority and sync model |
+| [CRM_V2_PHASE_05_OAUTH_AND_TOKEN_SECURITY.md](./CRM_V2_PHASE_05_OAUTH_AND_TOKEN_SECURITY.md) | OAuth/state/token controls |
+| [CRM_V2_PHASE_05_EVENT_MAPPING_AND_IDEMPOTENCY.md](./CRM_V2_PHASE_05_EVENT_MAPPING_AND_IDEMPOTENCY.md) | Mapping authority and idempotency |
+| [CRM_V2_PHASE_05_EVENT_PRIVACY.md](./CRM_V2_PHASE_05_EVENT_PRIVACY.md) | Outbound event privacy limits |
+| [CRM_V2_PHASE_05_SYNC_AND_RECONCILIATION.md](./CRM_V2_PHASE_05_SYNC_AND_RECONCILIATION.md) | Sync triggers and reconciliation |
+| [CRM_V2_PHASE_05_API_CONTRACT.md](./CRM_V2_PHASE_05_API_CONTRACT.md) | Adviser API contract |
+| [CRM_V2_PHASE_05_SECURITY_REVIEW.md](./CRM_V2_PHASE_05_SECURITY_REVIEW.md) | Security controls and residual risks |
+| [CRM_V2_PHASE_05_MIGRATION_RUNBOOK.md](./CRM_V2_PHASE_05_MIGRATION_RUNBOOK.md) | Migration/diagnostic runbook |
+| [CRM_V2_PHASE_05_MANUAL_TESTS.md](./CRM_V2_PHASE_05_MANUAL_TESTS.md) | Manual operator tests |
+| [CRM_V2_PHASE_05_COMPLETION.md](./CRM_V2_PHASE_05_COMPLETION.md) | Completion report |
 
 ---
 

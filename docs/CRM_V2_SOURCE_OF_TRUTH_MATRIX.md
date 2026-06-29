@@ -50,7 +50,7 @@
 | Advocacy config | **SOT NEW** | `advocacy_score_config` | Weights, caps (operator) | 09 |
 | Google connection | **SOT REUSE** | `adviser_calendar_connections` | OAuth tokens | 05 |
 | Calendar settings | **SOT REUSE** | `adviser_calendar_settings` | Slots, types | 05 |
-| Google event mapping | **SOT REUSE** | `adviser_appointments.google_*` | Per-appointment | 05 |
+| Google event mapping | **SOT REUSE EXT** | `crm_google_calendar_event_mappings` + `adviser_appointments.google_*` (compatibility projection) | Per-appointment external mapping authority | 05 |
 | Feature control | **SOT REUSE** | `platform_feature_controls` | CRM flags added via seed migrations | 01+ |
 | Audit log | **SOT REUSE** | `audit_logs` | Cross-cutting | All |
 | Shield / stress | **SOT REUSE** | `shield_scores`, `stress_tests` | Advice domain read-only in CRM | 02 |
