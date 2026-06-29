@@ -55,16 +55,16 @@ Phase 02 uses existing `clients` — read-only APIs only.
 | Dependency | After M01 (same table); see `202606290002` in dependency graph |
 | Diagnostics | `preflight_202606290002_phase02_crm_v2_relationships_feature_control.sql`, `verify_202606290002_phase02_crm_v2_relationships_feature_control.sql`, `verify_202606290002_phase02_crm_v2_relationships_feature_control_discrepancies.sql` |
 
-### M02b — Phase 03: Appointments adviser feature seed (**created, not applied**)
+### M02b — Phase 03: Appointments adviser feature seed (**applied**)
 
 | Item | Detail |
 |------|--------|
 | File | `supabase/migrations/202606290003_phase03_crm_v2_appointments_adviser_feature_control.sql` |
 | Keys | `crm_v2_appointments_adviser` |
-| Applied | **No** — operator Gate G4 approval required |
+| Applied | **Yes** |
 | Diagnostics | `preflight_202606290003_*`, `verify_202606290003_*` |
 
-### M02 — Phase 03: Appointment lifecycle extension (**created, not applied**)
+### M02 — Phase 03: Appointment lifecycle extension (**applied after rerun-safety recovery**)
 
 | Item | Detail |
 |------|--------|
@@ -72,11 +72,13 @@ Phase 02 uses existing `clients` — read-only APIs only.
 | Table | `adviser_appointments` ALTER + `crm_appointment_*` supporting tables |
 | Changes | `crm_lifecycle_status`, `template_key`, `title`, preparation/follow-up state, `version`, transition metadata |
 | Data migration | **None** — read-time legacy mapping when `crm_lifecycle_status` IS NULL |
-| Applied | **No** |
+| Applied | **Yes** |
 | Rollback | Disable feature; columns/tables retained |
 | Risk | Medium — production appointments exist |
 
 **Diagnostics:** `preflight_202606290004_phase03_crm_v2_appointment_core.sql`, `verify_202606290004_phase03_crm_v2_appointment_core.sql`, `verify_202606290004_phase03_crm_v2_appointment_core_discrepancies.sql`
+
+**Recovery note:** Initial apply stopped due to pre-existing trigger `crm_appointment_checklist_items_set_updated_at`; migration was patched with `DROP TRIGGER IF EXISTS` and five `DROP POLICY IF EXISTS` guards, then applied successfully without data deletion or migration-history repair.
 
 ### M03 — Phase 03: Appointment participants and audit (**merged into M02 / 202606290004**)
 

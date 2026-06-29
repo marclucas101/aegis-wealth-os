@@ -66,7 +66,7 @@
 
 Existing columns retained: `adviser_user_id`, `client_id`, `client_user_id`, `starts_at`, `ends_at`, `google_event_id`, `notification_status`, `calendar_sync_status`, `private_adviser_note`, `source`.
 
-New/extended (Phase 03 migration `202606290004`): `crm_lifecycle_status`, `template_key`, `title`, `preparation_state`, `follow_up_state`, `version`, transition metadata. Supporting tables: `crm_appointment_participants`, `crm_appointment_state_events`, `crm_appointment_client_topics`, `crm_appointment_agenda_items`, `crm_appointment_checklist_items`.
+New/extended (Phase 03 migration `202606290004`): `crm_lifecycle_status`, `template_key`, `title`, `preparation_state`, `follow_up_state`, `version`, transition metadata. Reschedule lineage remains event-driven (the Phase 00 design reference to `rescheduled_from_appointment_id` is satisfied by immutable `crm_appointment_state_events` with prior schedule fields). Supporting tables: `crm_appointment_participants`, `crm_appointment_state_events`, `crm_appointment_client_topics`, `crm_appointment_agenda_items`, `crm_appointment_checklist_items`.
 
 ### 2.3 `meeting_sessions` — Meeting Studio (unchanged ownership)
 

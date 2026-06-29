@@ -620,6 +620,26 @@ check("schema: checklist updated_at trigger", () => {
   assert(phase03CoreMigrationSql().includes("crm_appointment_checklist_items_set_updated_at"), "trigger missing");
 });
 
+check("schema: checklist trigger is rerunnable with DROP TRIGGER IF EXISTS", () => {
+  const sql = phase03CoreMigrationSql();
+  assert(
+    sql.includes("DROP TRIGGER IF EXISTS crm_appointment_checklist_items_set_updated_at"),
+    "idempotent trigger drop missing",
+  );
+  const dropIdx = sql.indexOf("DROP TRIGGER IF EXISTS crm_appointment_checklist_items_set_updated_at");
+  const createIdx = sql.indexOf("CREATE TRIGGER crm_appointment_checklist_items_set_updated_at");
+  assert(dropIdx >= 0 && createIdx > dropIdx, "trigger drop must precede create");
+});
+
+check("schema: all appointment policies are rerunnable via DROP POLICY IF EXISTS", () => {
+  const sql = phase03CoreMigrationSql();
+  assert(sql.includes("DROP POLICY IF EXISTS crm_appointment_participants_adviser_access"), "participants policy drop missing");
+  assert(sql.includes("DROP POLICY IF EXISTS crm_appointment_state_events_adviser_access"), "events policy drop missing");
+  assert(sql.includes("DROP POLICY IF EXISTS crm_appointment_client_topics_adviser_access"), "client topics policy drop missing");
+  assert(sql.includes("DROP POLICY IF EXISTS crm_appointment_agenda_items_adviser_access"), "agenda policy drop missing");
+  assert(sql.includes("DROP POLICY IF EXISTS crm_appointment_checklist_items_adviser_access"), "checklist policy drop missing");
+});
+
 check("schema: no forbidden competing migration patterns", () => {
   const sql = phase03CoreMigrationSql();
   for (const pattern of PHASE03_FORBIDDEN_MIGRATION_PATTERNS) {

@@ -1,6 +1,7 @@
 # Migration Dependency Graph
 
-Pending migrations `202606100019`–`202606200010` and their prerequisites.
+Pending migrations `202606100019`–`202606200010` and their prerequisites.  
+Phase 03 CRM migrations `202606290003` and `202606290004` are applied on remote after rerun-safety recovery.
 
 ```mermaid
 flowchart TD
@@ -95,7 +96,8 @@ flowchart TD
 | Depends on | `adviser_appointments` (Phase 6D), `platform_feature_controls` (Phase 9A) |
 | Blocks | Phase 04 client appointments (logical) |
 | Risk | Medium — schema ALTER on production appointments table |
-| Operator gate | G4 — dry-run + QA before apply |
+| Operator gate | G4 — completed |
+| State | Applied on remote; migration `202606290004` recovered from pre-existing trigger using idempotent drop+create guards |
 
 ## Phase 02 CRM V2 relationships (202606290002)
 
