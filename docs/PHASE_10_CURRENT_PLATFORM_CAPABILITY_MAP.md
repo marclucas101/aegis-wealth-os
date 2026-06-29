@@ -93,4 +93,4 @@
 | Client | 11 | 4 | 2 (raw diagnostics, promotions) |
 | Admin | 4 | 4 | 0 |
 
-**Highest-risk gaps for Phase 10 planning:** admin feature-control UI absence, disconnected adviser work items, client communication preferences UI absence, dual client lifecycle enums (`status` vs `relationship_stage`).
+**Highest-risk gaps for Phase 10 planning:** admin feature-control UI absence, disconnected adviser work items (**work queue domain implemented in 10.2 — UI pending 10.3**), client communication preferences UI absence, dual client lifecycle enums (`status` vs `relationship_stage`).

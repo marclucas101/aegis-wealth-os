@@ -1,0 +1,214 @@
+# CRM V2 — Migration Sequence
+
+**Phase:** 00  
+**Rule:** Migrations are **additive** extensions only in implementation phases; **not applied** without operator approval. Each migration ships with diagnostics.
+
+---
+
+## 1. Sequence overview
+
+```text
+M01  Phase 01  Feature control seeds (crm_v2_master, crm_v2_pilot_mode)
+M02  Phase 03  adviser_appointments CRM lifecycle extension
+M03  Phase 03  appointment_participants, appointment_state_events
+M04  Phase 06  service_commitments
+M05  Phase 07  protection_policies, protection_policy_versions
+M06  Phase 08  relationship_moments, adviser_moment_overrides, clients.ethnicity
+M07  Phase 09  advocacy_events, advocacy_score_config
+M08  Phase 10  crm_communication_drafts
+M09  Phase 05  calendar sync metadata extensions (if needed beyond existing columns)
+M10  Phase 11  adviser_work_queue flag seed (if not already)
+M11  Phase 14  cutover flags seed
+```
+
+**No migration in Phase 00, 02, 04, 12, 13.**
+
+Phase 02 uses existing `clients` — read-only APIs only.
+
+---
+
+## 2. Migration detail
+
+### M01 — Phase 01: CRM V2 feature seeds (**created, not applied**)
+
+| Item | Detail |
+|------|--------|
+| File | `supabase/migrations/202606290001_phase01_crm_v2_feature_controls.sql` |
+| Table | `platform_feature_controls` INSERT |
+| Keys | `crm_v2_master`, `crm_v2_pilot_mode` |
+| Default | `enabled = false`, `client_visible = false`, `adviser_visible = true` |
+| Applied | **No** — operator Gate G2 approval required |
+| Idempotency | `ON CONFLICT (feature_key) DO NOTHING` — no UPDATE |
+| Dependency | Requires `platform_feature_controls` (Phase 9A); see `docs/MIGRATION_DEPENDENCY_GRAPH.md` (`202606290001`) |
+| Diagnostics | `preflight_202606290001_phase01_crm_v2_feature_controls.sql`, `verify_202606290001_phase01_crm_v2_feature_controls.sql`, `verify_202606290001_phase01_crm_v2_feature_controls_discrepancies.sql` |
+
+### M02 — Phase 03: Appointment lifecycle extension
+
+| Item | Detail |
+|------|--------|
+| Table | `adviser_appointments` ALTER |
+| Changes | New status enum values; `appointment_type_id`; preparation/outcome JSONB; `rescheduled_from_appointment_id`; separate client/adviser field groups |
+| Data migration | Map existing `pending`→`proposed`, `confirmed`→`confirmed`, `cancelled`→`cancelled_by_*`, `completed`→`closed` |
+| Rollback | Revert enum mapping view; keep columns nullable |
+| Risk | Medium — production appointments exist |
+
+**Diagnostics:** `preflight_crm_v2_appointments.sql`, `verify_crm_v2_appointments.sql`, `verify_crm_v2_appointments_discrepancies.sql`
+
+### M03 — Phase 03: Appointment participants and audit
+
+| Item | Detail |
+|------|--------|
+| Tables | `appointment_participants`, `appointment_state_events` CREATE |
+| RLS | `is_assigned_advisor(client_id)` |
+| Rollback | DROP tables (no data in legacy) |
+| Risk | Low |
+
+### M04 — Phase 06: Service commitments
+
+| Item | Detail |
+|------|--------|
+| Table | `service_commitments` CREATE |
+| Indexes | `(adviser_user_id, status)`, `(client_id, status)` |
+| RLS | Assignment-scoped |
+| Rollback | DROP or archive |
+| Risk | Low — greenfield |
+
+### M05 — Phase 07: Protection portfolio
+
+| Item | Detail |
+|------|--------|
+| Tables | `protection_policies`, `protection_policy_versions` |
+| Link | `source_document_id` → `documents` |
+| Rollback | DROP; PDFs in vault retained |
+| Risk | Medium — adviser verification workflow |
+
+### M06 — Phase 08: Relationship moments
+
+| Item | Detail |
+|------|--------|
+| Tables | `relationship_moments`, `adviser_moment_overrides` |
+| Column | `clients.ethnicity` nullable enum |
+| Seed | `festive_holiday_mappings` reference table (read-only config) |
+| Rollback | DROP tables; column nullable — can remain |
+| Risk | Low |
+
+### M07 — Phase 09: Advocacy
+
+| Item | Detail |
+|------|--------|
+| Tables | `advocacy_events`, `advocacy_score_config` |
+| Constraint | Events append-only (no DELETE policy for advisers) |
+| Rollback | DROP |
+| Risk | Low |
+
+### M08 — Phase 10: Communication drafts
+
+| Item | Detail |
+|------|--------|
+| Table | `crm_communication_drafts` |
+| FK | Optional `governed_content_id` |
+| Rollback | DROP |
+| Risk | Low |
+
+### M09 — Phase 05: Calendar sync (conditional)
+
+Only if existing `adviser_appointments` / `adviser_calendar_connections` columns insufficient:
+
+| Item | Detail |
+|------|--------|
+| Changes | `sync_failure_reason`, `last_sync_attempt_at`, `google_event_etag` |
+| Rollback | DROP columns |
+| Risk | Low |
+
+---
+
+## 3. Migrations explicitly excluded
+
+| Item | Reason |
+|------|--------|
+| `households` table | Deferred |
+| `crm_relationships` table | clients.id sufficient |
+| `engagement_events` table | Projection only |
+| `advisor_work_items` table | Virtual queue |
+| Promotions Stage 6 DROP | 9F.4 observation |
+| Rename `advisor_*` columns | Breaking — forbidden |
+| Bulk legacy appointment import | Requires operator approval per import batch |
+
+---
+
+## 4. Per-migration artifact checklist
+
+Each implementation migration must include:
+
+```text
+supabase/migrations/YYYYMMDDHHMMSS_<name>.sql
+supabase/diagnostics/preflight_<name>.sql
+supabase/diagnostics/verify_<name>.sql
+supabase/diagnostics/verify_<name>_discrepancies.sql
+```
+
+Phase 03+ run `npx supabase db push --dry-run` before operator apply.
+
+---
+
+## 5. Index strategy
+
+| Table | Index | Phase |
+|-------|-------|-------|
+| `adviser_appointments` | `(adviser_user_id, starts_at)` WHERE status active | Exists — verify |
+| `service_commitments` | `(adviser_user_id, due_at)` WHERE open | 06 |
+| `relationship_moments` | `(adviser_user_id, moment_date)` | 08 |
+| `advocacy_events` | `(adviser_user_id, event_date)` | 09 |
+| `protection_policy_versions` | `(policy_id, version)` | 07 |
+
+---
+
+## 6. RLS pattern
+
+All new tables use existing helpers:
+
+```sql
+-- Adviser: assigned clients only
+USING (is_assigned_advisor(client_id))
+
+-- Client: own client_id via owns_client
+USING (owns_client(client_id))
+```
+
+Admin: service-role APIs only — no broad RLS bypass in adviser routes.
+
+---
+
+## 7. Rollback philosophy
+
+| Tier | Strategy |
+|------|----------|
+| Feature off | Stop writes; schema retained |
+| Migration revert | New down migration or manual SQL documented per phase |
+| Cutover rollback | `crm_v2_cutover = false` + legacy routes |
+| Data | Never delete client/audit data on rollback |
+
+---
+
+## 8. Dependency order
+
+```text
+M01 (flags) before any V2 UI
+M02–M03 before appointment UI writes
+M04 before service UI writes
+M05 before protection verification UI
+M06 before moments UI
+M07 before advocacy UI
+M08 before CRM comms UI
+M09 can parallel M02 if column-only
+M10 after Today implementation
+M11 only after Phase 13 pilot approval
+```
+
+---
+
+## 9. Phase 9F.4 interaction
+
+- No migration may DROP `promotions` or `promotion-assets`
+- No migration may re-enable `legacy_promotions_write` by default
+- CRM migrations must not alter governed_content retirement paths

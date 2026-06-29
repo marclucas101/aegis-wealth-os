@@ -37,6 +37,8 @@ Classification: **Must fix before Phase 10** | **Fix within Phase 10** | **Defer
 | D23 | Budget vs Discover dual SOT | `client_budgets` independent | Accept for Phase 10 | Track E scope |
 | D24 | Goals dual SOT | `client_goals` vs Discover | Accept for Phase 10 | Don't automate merge |
 | D25 | No normalized policy/investment tables | JSONB only | Accept | Track E defer |
+| D26 | Virtual work queue not in UI yet | `lib/work-queue` domain complete 10.2 | **Fix within Phase 10** | 10.3 UI |
+| D27 | Shared work-item types centralized | `lib/work-queue/types.ts` | **Fix within Phase 10** | Done in 10.2 |
 
 ---
 

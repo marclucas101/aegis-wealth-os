@@ -1,4 +1,4 @@
--- Read-only verification for pending migrations 202606100019..202606200012.
+-- Read-only verification for pending migrations 202606100019..202606290001.
 -- Safe when expected post-018 relations are absent.
 -- No writes. No schema changes. No migration-history modification.
 
@@ -10,7 +10,8 @@ WITH pending(version) AS (
     ('202606100019'), ('202606100020'), ('202606100021'), ('202606150001'),
     ('202606180001'), ('202606180002'), ('202606200001'), ('202606200002'),
     ('202606200003'), ('202606200004'), ('202606200005'), ('202606200006'),
-    ('202606200007'), ('202606200008'), ('202606200009'), ('202606200010'), ('202606200011'), ('202606200012')
+    ('202606200007'), ('202606200008'), ('202606200009'), ('202606200010'), ('202606200011'), ('202606200012'),
+    ('202606290001')
 ),
 history_table AS (
   SELECT EXISTS (
@@ -163,7 +164,11 @@ WITH expected_checks AS (
 
     -- 9F.4 Checkpoint 3.1 promotion migration idempotency RPC
     ('202606200012','function','public',NULL,'execute_legacy_promotion_migration'),
-    ('202606200012','function','public',NULL,'legacy_promotion_migration_destination_id')
+    ('202606200012','function','public',NULL,'legacy_promotion_migration_destination_id'),
+
+    -- CRM V2 Phase 01 foundation feature controls
+    ('202606290001','seed_row','public','platform_feature_controls','crm_v2_master'),
+    ('202606290001','seed_row','public','platform_feature_controls','crm_v2_pilot_mode')
   ) AS expected(
     expected_migration,
     expected_check_kind,
@@ -409,6 +414,28 @@ FROM (
       $$SELECT feature_key, enabled, client_visible, adviser_visible
         FROM platform_feature_controls
         WHERE feature_key = 'legacy_promotions_write';$$
+    ),
+    (
+      '202606290001',
+      'seed_row:crm_v2_master',
+      EXISTS (
+        SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'platform_feature_controls' AND c.relkind IN ('r','p')
+      ),
+      $$SELECT feature_key, enabled, client_visible, adviser_visible
+        FROM platform_feature_controls
+        WHERE feature_key = 'crm_v2_master';$$
+    ),
+    (
+      '202606290001',
+      'seed_row:crm_v2_pilot_mode',
+      EXISTS (
+        SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'platform_feature_controls' AND c.relkind IN ('r','p')
+      ),
+      $$SELECT feature_key, enabled, client_visible, adviser_visible
+        FROM platform_feature_controls
+        WHERE feature_key = 'crm_v2_pilot_mode';$$
     )
 ) AS probes(migration, check_id, relation_exists, probe_sql)
 ORDER BY migration;
@@ -421,7 +448,8 @@ WITH expected_migrations(version) AS (
     ('202606100019'), ('202606100020'), ('202606100021'), ('202606150001'),
     ('202606180001'), ('202606180002'), ('202606200001'), ('202606200002'),
     ('202606200003'), ('202606200004'), ('202606200005'), ('202606200006'),
-    ('202606200007'), ('202606200008'), ('202606200009'), ('202606200010'), ('202606200011'), ('202606200012')
+    ('202606200007'), ('202606200008'), ('202606200009'), ('202606200010'), ('202606200011'), ('202606200012'),
+    ('202606290001')
 ),
 rollup_checks AS (
   SELECT * FROM (VALUES
@@ -462,7 +490,8 @@ rollup_checks AS (
       SELECT 1 FROM pg_proc p
       JOIN pg_namespace n ON n.oid = p.pronamespace
       WHERE n.nspname = 'public' AND p.proname = 'execute_legacy_promotion_migration'
-    ))
+    )),
+    ('202606290001','seed_row', NULL::boolean)
   ) AS rollup_input(rollup_migration, rollup_check_kind, rollup_is_present)
 ),
 checks AS (

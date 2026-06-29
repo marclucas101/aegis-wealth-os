@@ -251,6 +251,18 @@ Each checkpoint is independently reviewable and reversible via feature flag.
 
 ---
 
+## Phase 10.2 status (2026-06-24)
+
+**Checkpoint 10.2 complete** — virtual work-queue domain implemented:
+
+- `lib/work-queue/*` — types, servicing state, adapters, assembly, batch loader
+- No migration, no API route, no UI, `adviser_work_queue` flag **not activated**
+- See `docs/PHASE_10_2_WORK_ITEM_DOMAIN_MODEL.md` and `npm run qa:phase10-work-queue-core`
+
+**Next:** Checkpoint 10.3 — Adviser book-level queue UI (flag-gated).
+
+---
+
 ## Operator decisions required
 
 1. Approve **Track A** as Phase 10 implementation scope

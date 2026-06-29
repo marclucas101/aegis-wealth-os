@@ -168,6 +168,12 @@ export const PENDING_MIGRATIONS: MigrationManifest[] = [
       "execute_legacy_promotion_migration",
     ],
   },
+  {
+    version: "202606290001",
+    name: "phase01_crm_v2_feature_controls",
+    dependsOn: ["202606200001"],
+    requiredChecks: ["crm_v2_master_seed", "crm_v2_pilot_mode_seed"],
+  },
 ];
 
 export { PRE_PHASE9_HISTORY_REPAIR_ORDER };
