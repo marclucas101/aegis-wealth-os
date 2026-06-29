@@ -75,7 +75,7 @@ Enabling `crm_v2_master` alone does not grant book-wide access.
 | Phase | Migration action |
 |-------|------------------|
 | 01 | Seed `crm_v2_master`, `crm_v2_pilot_mode` — **implemented** `202606290001_phase01_crm_v2_feature_controls.sql` (not applied) |
-| 02 | Seed `crm_v2_relationships` — disabled |
+| 02 | Seed `crm_v2_relationships` — disabled — **implemented** `202606290002_phase02_crm_v2_relationships_feature_control.sql` (not applied) |
 | 03 | Seed `crm_v2_appointments_adviser` — disabled |
 | ... | One seed per sub-flag at implementation phase |
 | 14 | Seed cutover flags — disabled until operator |

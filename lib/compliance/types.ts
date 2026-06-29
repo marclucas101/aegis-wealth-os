@@ -112,7 +112,8 @@ export type PlatformFeatureKey =
   | "scheduled_content_automation"
   | "legacy_promotions_write"
   | "crm_v2_master"
-  | "crm_v2_pilot_mode";
+  | "crm_v2_pilot_mode"
+  | "crm_v2_relationships";
 
 export const PLATFORM_FEATURE_KEYS: readonly PlatformFeatureKey[] = [
   "raw_client_financial_views",
@@ -140,6 +141,7 @@ export const PLATFORM_FEATURE_KEYS: readonly PlatformFeatureKey[] = [
   "legacy_promotions_write",
   "crm_v2_master",
   "crm_v2_pilot_mode",
+  "crm_v2_relationships",
 ] as const;
 
 /** Entitlement-gated client portal features. */

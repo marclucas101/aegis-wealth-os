@@ -105,9 +105,15 @@ check("route shell: error.tsx exists", () => {
   assert(existsSync("app/advisor-v2/error.tsx"), "missing");
 });
 
-check("route guard: no relationships/[id] detail route", () => {
-  assert(!existsSync("app/advisor-v2/relationships/[id]"), "detail route present");
-  assert(!existsSync("app/advisor-v2/relationships/[relationshipId]"), "detail route present");
+check("route guard: relationships/[relationshipId] detail route exists (Phase 02)", () => {
+  assert(
+    existsSync("app/advisor-v2/relationships/[relationshipId]/page.tsx"),
+    "relationship detail route missing",
+  );
+});
+
+check("route guard: no legacy relationships/[id] alias route", () => {
+  assert(!existsSync("app/advisor-v2/relationships/[id]"), "legacy [id] alias present");
 });
 
 check("route guard: no appointments/[id] detail route", () => {
@@ -470,6 +476,15 @@ check("ui shell: AdviserCrmV2Shell aria-current on active link", () => {
 // --- UI placeholders (12 checks) ---
 
 for (const route of ROUTE_PAGES) {
+  if (route.segment === "relationships") {
+    check("ui relationships: list page server-loads initial book", () => {
+      const source = doc(route.path);
+      assert(source.includes("loadCrmRelationshipListPage"), "missing server list loader");
+      assert(source.includes("RelationshipListClient"), "missing list client");
+      assert(!source.includes("CrmV2FoundationPlaceholderPage"), "still placeholder");
+    });
+    continue;
+  }
   check(`ui placeholder: ${route.segment} page has no fetch`, () => {
     const source = doc(route.path);
     assert(!source.includes("fetch("), "fetch call present");
@@ -553,10 +568,23 @@ check("migration: 202606290001_phase01 file exists", () => {
   );
 });
 
-check("migration: only approved Phase 01 CRM feature migration", () => {
+check("migration: only approved Phase 01–02 CRM feature migrations", () => {
   const migrations = readdirSync(join(ROOT, "supabase/migrations"));
-  const crmMigrations = migrations.filter((f) => /crm.?v2|phase01_crm/i.test(f));
-  assert(crmMigrations.length === 1, `unexpected crm migrations: ${crmMigrations.join(", ")}`);
+  const crmMigrations = migrations
+    .filter((f) => /crm.?v2|phase01_crm|phase02_crm/i.test(f))
+    .sort();
+  assert(
+    crmMigrations.length === 2,
+    `unexpected crm migrations: ${crmMigrations.join(", ")}`,
+  );
+  assert(
+    crmMigrations.some((f) => f.includes("phase01_crm_v2_feature_controls")),
+    "phase01 migration missing",
+  );
+  assert(
+    crmMigrations.some((f) => f.includes("phase02_crm_v2_relationships")),
+    "phase02 migration missing",
+  );
 });
 
 check("migration: seeds only CRM V2 feature controls", () => {

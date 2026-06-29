@@ -5,6 +5,7 @@ import type { User } from "@supabase/supabase-js";
 import {
   CRM_V2_MASTER_FEATURE_KEY,
   CRM_V2_PILOT_MODE_FEATURE_KEY,
+  CRM_V2_RELATIONSHIPS_FEATURE_KEY,
 } from "@/lib/crm-v2/constants";
 import {
   isUserInPilotAllowlist,
@@ -81,5 +82,45 @@ export async function assertCrmV2Access(): Promise<CrmV2AccessResult> {
     requestId,
     masterEnabled: true,
     pilotModeEnabled: true,
+  };
+}
+
+export type CrmV2RelationshipsAccessDeniedReason = CrmV2AccessDeniedReason;
+
+export type CrmV2RelationshipsAccessResult =
+  | { allowed: false; reason: CrmV2RelationshipsAccessDeniedReason; requestId: string }
+  | {
+      allowed: true;
+      authUser: User;
+      user: AppUserRow;
+      requestId: string;
+      masterEnabled: true;
+      pilotModeEnabled: true;
+      relationshipsEnabled: true;
+    };
+
+/**
+ * Central gate for CRM V2 relationship list and Relationship 360.
+ * Requires master + pilot gates; does not bypass them.
+ */
+export async function assertCrmV2RelationshipsAccess(): Promise<CrmV2RelationshipsAccessResult> {
+  const base = await assertCrmV2Access();
+  if (!base.allowed) {
+    return { allowed: false, reason: base.reason, requestId: base.requestId };
+  }
+
+  const relationshipsEnabled = await isFeatureEnabled(CRM_V2_RELATIONSHIPS_FEATURE_KEY);
+  if (!relationshipsEnabled) {
+    return { allowed: false, reason: "feature_disabled", requestId: base.requestId };
+  }
+
+  return {
+    allowed: true,
+    authUser: base.authUser,
+    user: base.user,
+    requestId: base.requestId,
+    masterEnabled: true,
+    pilotModeEnabled: true,
+    relationshipsEnabled: true,
   };
 }

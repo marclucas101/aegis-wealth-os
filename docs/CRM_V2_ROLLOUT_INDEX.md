@@ -29,7 +29,7 @@ Today | Relationships | Appointments | Service | Communications | More
 |-------|--------|-------------|--------|
 | **00** | `crm-v2-00-blueprint` | Architecture blueprint (docs only) | **Complete** |
 | **01** | `crm-v2-01-shell` | `/advisor-v2` shell + pilot gating | **Complete** — see Phase 01 docs below |
-| **02** | `crm-v2-02-relationship-360` | Relationship list + Relationship 360 | Pending |
+| **02** | `crm-v2-02-relationship-360` | Relationship list + Relationship 360 | **Complete** — see Phase 02 docs below |
 | **03** | `crm-v2-03-appointments-adviser` | Authoritative appointment core (adviser) | Pending |
 | **04** | `crm-v2-04-appointments-client` | Client appointment collaboration | Pending |
 | **05** | `crm-v2-05-google-calendar` | Google Calendar integration (AEGIS authoritative) | Pending |
@@ -43,6 +43,19 @@ Today | Relationships | Appointments | Service | Communications | More
 | **13** | `crm-v2-13-pilot` | Controlled pilot | Pending |
 | **14** | `crm-v2-14-cutover` | `/advisor` → CRM V2 cutover | Pending |
 | **15** | `crm-v2-15-legacy-retirement` | Legacy adviser portal retirement (conditional) | Deferred |
+
+---
+
+## Phase 02 documents (relationship 360)
+
+| Document | Purpose |
+|----------|---------|
+| [CRM_V2_PHASE_02_RELATIONSHIP_ARCHITECTURE.md](./CRM_V2_PHASE_02_RELATIONSHIP_ARCHITECTURE.md) | Routes, identity, six sections |
+| [CRM_V2_PHASE_02_READ_MODEL.md](./CRM_V2_PHASE_02_READ_MODEL.md) | Centralized read model |
+| [CRM_V2_PHASE_02_TIMELINE_PROJECTION.md](./CRM_V2_PHASE_02_TIMELINE_PROJECTION.md) | Engagement timeline rules |
+| [CRM_V2_PHASE_02_SECURITY_REVIEW.md](./CRM_V2_PHASE_02_SECURITY_REVIEW.md) | Threat table |
+| [CRM_V2_PHASE_02_MANUAL_TESTS.md](./CRM_V2_PHASE_02_MANUAL_TESTS.md) | Operator checklist (25 tests) |
+| [CRM_V2_PHASE_02_COMPLETION.md](./CRM_V2_PHASE_02_COMPLETION.md) | Sign-off, QA results, verdict |
 
 ---
 

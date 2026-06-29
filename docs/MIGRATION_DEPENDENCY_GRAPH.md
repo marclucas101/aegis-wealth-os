@@ -75,6 +75,7 @@ flowchart TD
 | 202606200011 | 010, platform_feature_controls, promotions |
 | 202606200012 | 011, promotion_migration_reviews, governed_content, uuid-ossp |
 | 202606290001 | 9F4B chain complete; `platform_feature_controls` table (from 9A1) |
+| 202606290002 | 202606290001 (logical); `platform_feature_controls` INSERT `crm_v2_relationships` |
 
 ## Phase 01 CRM V2 (202606290001)
 
@@ -84,6 +85,15 @@ flowchart TD
 | Blocks | Nothing downstream in current chain |
 | Risk | Low — idempotent INSERT only, both flags disabled |
 | Operator gate | G2 — apply only after Phase 01 QA + security sign-off |
+
+## Phase 02 CRM V2 relationships (202606290002)
+
+| Item | Detail |
+|------|--------|
+| Depends on | `platform_feature_controls` (Phase 9A); logically after 202606290001 |
+| Blocks | Nothing downstream in current chain |
+| Risk | Low — idempotent INSERT only, flag disabled |
+| Operator gate | G3 — apply only after Phase 02 QA on staging |
 
 ## Parallel-safe (after 018)
 
