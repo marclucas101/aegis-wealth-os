@@ -193,6 +193,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_crm_appointment_checklist_items_unique_key
 CREATE INDEX IF NOT EXISTS idx_crm_appointment_checklist_items_appointment
   ON crm_appointment_checklist_items (appointment_id, sort_order);
 
+DROP TRIGGER IF EXISTS crm_appointment_checklist_items_set_updated_at
+  ON crm_appointment_checklist_items;
+
 CREATE TRIGGER crm_appointment_checklist_items_set_updated_at
   BEFORE UPDATE ON crm_appointment_checklist_items
   FOR EACH ROW
@@ -207,11 +210,17 @@ ALTER TABLE crm_appointment_client_topics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE crm_appointment_agenda_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE crm_appointment_checklist_items ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS crm_appointment_participants_adviser_access
+  ON crm_appointment_participants;
+
 CREATE POLICY crm_appointment_participants_adviser_access
   ON crm_appointment_participants FOR ALL
   TO authenticated
   USING (is_assigned_advisor(client_id) OR is_admin())
   WITH CHECK (is_assigned_advisor(client_id) OR is_admin());
+
+DROP POLICY IF EXISTS crm_appointment_state_events_adviser_access
+  ON crm_appointment_state_events;
 
 CREATE POLICY crm_appointment_state_events_adviser_access
   ON crm_appointment_state_events FOR ALL
@@ -219,17 +228,26 @@ CREATE POLICY crm_appointment_state_events_adviser_access
   USING (is_assigned_advisor(client_id) OR is_admin())
   WITH CHECK (is_assigned_advisor(client_id) OR is_admin());
 
+DROP POLICY IF EXISTS crm_appointment_client_topics_adviser_access
+  ON crm_appointment_client_topics;
+
 CREATE POLICY crm_appointment_client_topics_adviser_access
   ON crm_appointment_client_topics FOR ALL
   TO authenticated
   USING (is_assigned_advisor(client_id) OR is_admin())
   WITH CHECK (is_assigned_advisor(client_id) OR is_admin());
 
+DROP POLICY IF EXISTS crm_appointment_agenda_items_adviser_access
+  ON crm_appointment_agenda_items;
+
 CREATE POLICY crm_appointment_agenda_items_adviser_access
   ON crm_appointment_agenda_items FOR ALL
   TO authenticated
   USING (is_assigned_advisor(client_id) OR is_admin())
   WITH CHECK (is_assigned_advisor(client_id) OR is_admin());
+
+DROP POLICY IF EXISTS crm_appointment_checklist_items_adviser_access
+  ON crm_appointment_checklist_items;
 
 CREATE POLICY crm_appointment_checklist_items_adviser_access
   ON crm_appointment_checklist_items FOR ALL
