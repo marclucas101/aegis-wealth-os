@@ -2,7 +2,7 @@
 
 **Branch:** `crm-v2-03-appointments-adviser`  
 **Date:** 2026-06-29  
-**Verdict:** **READY TO APPLY CRM V2 APPOINTMENT CORE** · **READY FOR CRM V2 CLIENT APPOINTMENTS**
+**Verdict:** **PHASE 03 CLOSED — READY FOR PHASE 04**
 
 ---
 
@@ -29,6 +29,26 @@ See `docs/CRM_V2_PHASE_03_EXISTING_APPOINTMENT_AUDIT.md`. `adviser_appointments`
 | `202606290004_phase03_crm_v2_appointment_core.sql` | Schema extension + supporting tables |
 
 Diagnostics: preflight/verify/discrepancies for both migrations.
+
+## 4b. Migration application and recovery closeout
+
+1. `202606290003_phase03_crm_v2_appointments_adviser_feature_control.sql` applied successfully.
+2. `202606290004_phase03_crm_v2_appointment_core.sql` initially stopped because trigger `crm_appointment_checklist_items_set_updated_at` already existed.
+3. Migration `202606290004` was patched with:
+   - `DROP TRIGGER IF EXISTS` before trigger creation;
+   - `DROP POLICY IF EXISTS` before each of the five policy creations.
+4. No tables, rows or appointment IDs were deleted.
+5. No migration-history repair command was used.
+6. Migration `202606290004` then applied successfully.
+7. Remote migration state is now up to date.
+8. Trigger verification found exactly one checklist updated-at trigger.
+9. All five appointment RLS policies exist exactly once.
+10. Phase 03 verification diagnostics passed.
+11. Phase 03 discrepancy diagnostics returned no rows.
+12. `legacy_cancelled` remains the safe compatibility state for historical cancellations without reliable actor evidence.
+13. No historical cancellation actor or lifecycle history was invented.
+14. No CRM feature control was enabled.
+15. All Phase 03 runtime manual tests remain **NOT RUN**.
 
 ## 5. Authoritative appointment decision
 
@@ -113,7 +133,7 @@ Explicit DTOs in `types.ts` — no financial data, paths, signed URLs, private n
 | `npm run qa:crm-v2-blueprint` | 219/219 passed |
 | `npm run qa:crm-v2-shell` | 149/149 passed |
 | `npm run qa:crm-v2-relationship-360` | 270/270 passed |
-| `npm run qa:crm-v2-appointments-adviser` | **449/449 passed** |
+| `npm run qa:crm-v2-appointments-adviser` | **451/451 passed** |
 | `npm run qa:phase10-discovery` | 118/118 passed |
 | `npm run qa:phase10-work-queue-core` | 135/135 passed |
 | `npm run qa:phase9f4-app-retirement` | 115/115 passed |
@@ -131,21 +151,18 @@ Explicit DTOs in `types.ts` — no financial data, paths, signed URLs, private n
 ## 24. Dry-run result
 
 ```
-Would push these migrations:
- • 202606290003_phase03_crm_v2_appointments_adviser_feature_control.sql
- • 202606290004_phase03_crm_v2_appointment_core.sql
+Remote database is up to date.
 ```
 
 ## 25. Manual tests remaining
 
-34 tests documented in `CRM_V2_PHASE_03_MANUAL_TESTS.md` — require staging pilot execution.
+34 tests documented in `CRM_V2_PHASE_03_MANUAL_TESTS.md` — all remain **NOT RUN**.
 
 ## 26. Operator decisions required before migration apply
 
-1. Approve Gate G4 dry-run
-2. Accept `legacy_cancelled` mapping for indistinguishable legacy cancellations
-3. Confirm no lifecycle history backfill for existing rows
-4. Enable `crm_v2_appointments_adviser` only after staging validation
+1. Accept `legacy_cancelled` mapping for indistinguishable legacy cancellations
+2. Confirm no lifecycle history backfill for existing rows
+3. Enable `crm_v2_appointments_adviser` only after staging validation
 
 ## 27. Confirmations
 
@@ -160,6 +177,4 @@ Would push these migrations:
 
 ## 28. Verdict
 
-- **READY TO APPLY CRM V2 APPOINTMENT CORE**
-- **READY FOR CRM V2 CLIENT APPOINTMENTS**
-- Not BLOCKED / Not INCOMPLETE
+- **PHASE 03 CLOSED — READY FOR PHASE 04**
