@@ -21,7 +21,7 @@ M10  Phase 11  adviser_work_queue flag seed (if not already)
 M11  Phase 14  cutover flags seed
 ```
 
-**No migration in Phase 00, 02, 04, 12, 13.**
+**No migration in Phase 00, 02, 12, 13.**
 
 Phase 02 uses existing `clients` — read-only APIs only.
 
@@ -81,6 +81,17 @@ Phase 02 uses existing `clients` — read-only APIs only.
 **Recovery note:** Initial apply stopped due to pre-existing trigger `crm_appointment_checklist_items_set_updated_at`; migration was patched with `DROP TRIGGER IF EXISTS` and five `DROP POLICY IF EXISTS` guards, then applied successfully without data deletion or migration-history repair.
 
 ### M03 — Phase 03: Appointment participants and audit (**merged into M02 / 202606290004**)
+### M03b — Phase 04: Client appointments feature seed (**created, not applied**)
+
+| Item | Detail |
+|------|--------|
+| File | `supabase/migrations/202606290005_phase04_crm_v2_appointments_client_feature_control.sql` |
+| Keys | `crm_v2_appointments_client` |
+| Default | `enabled = false`, `client_visible = false`, `adviser_visible = false` |
+| Applied | **No** |
+| Idempotency | `ON CONFLICT (feature_key) DO NOTHING` |
+| Diagnostics | `preflight_202606290005_*`, `verify_202606290005_*` |
+
 
 | Item | Detail |
 |------|--------|

@@ -63,8 +63,8 @@
 |------|--------|
 | Existing routes | Preserved — no renames |
 | Entitlements | `relationship_stage` gates unchanged |
-| `/my-adviser` booking | Legacy flow works until Phase 04 flag on |
-| Phase 04+ | Same `adviser_appointments` SOT — client APIs additive |
+| `/my-adviser` booking | Legacy flow remains available |
+| Phase 04+ | Same `adviser_appointments` SOT — additive `/appointments` routes and `/api/appointments/**` |
 | Publications | Unchanged publication workflow |
 | Insights | Governed content — not promotions |
 | Document vault | Shared `documents` table |

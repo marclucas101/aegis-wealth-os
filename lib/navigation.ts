@@ -68,6 +68,12 @@ export const ACTIVE_CLIENT_NAV_SECTIONS: NavSection[] = [
         clientOnly: true,
       },
       {
+        label: "Appointments",
+        href: "/appointments",
+        description: "Upcoming meetings and collaboration",
+        clientOnly: true,
+      },
+      {
         label: "Insights & Updates",
         href: "/insights",
         description: "Educational updates from your adviser",
@@ -110,6 +116,12 @@ export const PROSPECT_NAV_SECTIONS: NavSection[] = [
         label: "My Adviser",
         href: "/my-adviser",
         description: "Your assigned adviser",
+        clientOnly: true,
+      },
+      {
+        label: "Appointments",
+        href: "/appointments",
+        description: "Request and manage appointments",
         clientOnly: true,
       },
       {

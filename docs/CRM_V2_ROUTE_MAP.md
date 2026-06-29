@@ -89,7 +89,10 @@ Route: `/advisor-v2/relationships/[relationshipId]?tab=`
 
 | Route | CRM V2 enhancement | Phase | Flag |
 |-------|-------------------|-------|------|
-| `/my-adviser` | Appointment collaboration | 04 | `crm_v2_client_appointments` |
+| `/my-adviser` | Legacy adviser profile + booking touchpoint | Existing | existing |
+| `/appointments` | Client appointment dashboard | 04 | `crm_v2_appointments_client` |
+| `/appointments/request` | Client appointment request form | 04 | `crm_v2_appointments_client` |
+| `/appointments/[appointmentId]` | Client appointment detail/actions | 04 | `crm_v2_appointments_client` |
 | `/meeting-preparation` | Prep questions from appointment | 04 | `crm_v2_client_appointments` |
 | `/document-vault` | Document requests from service | 06 | `crm_v2_client_service` |
 | `/profile` | Ethnicity (optional), moments | 08 | `crm_v2_client_profile` |
@@ -129,7 +132,8 @@ Route: `/advisor-v2/relationships/[relationshipId]?tab=`
 
 | API | Phase | Flag |
 |-----|-------|------|
-| `/api/client/appointments/**` | 04 | `crm_v2_client_appointments` |
+| `/api/client/appointments/**` | 04 (legacy note) | `crm_v2_appointments_client` |
+| `/api/appointments/**` | 04 | `crm_v2_appointments_client` |
 | `/api/client/service/**` | 06 | `crm_v2_client_service` |
 
 **Legacy APIs:** All `/api/advisor/**` routes remain until Phase 15 dependency audit.
