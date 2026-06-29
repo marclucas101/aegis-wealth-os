@@ -101,7 +101,7 @@ function listMigrations(): string[] {
 }
 
 function phase02CrmMigrations(): string[] {
-  return listMigrations().filter((f) => /crm.?v2|phase0[12]_crm/i.test(f));
+  return listMigrations().filter((f) => /phase0[12]_crm_v2/i.test(f));
 }
 
 function phase02MigrationSql(): string {
@@ -111,8 +111,8 @@ function phase02MigrationSql(): string {
 function relationshipsFeatureFlagsBlock(): string {
   const flags = doc("lib/compliance/featureFlags.ts");
   const start = flags.indexOf("crm_v2_relationships:");
-  const end = flags.indexOf("};", start);
-  return flags.slice(start, end);
+  const end = flags.indexOf("crm_v2_appointments_adviser:", start);
+  return flags.slice(start, end > start ? end : flags.indexOf("};", start));
 }
 
 // --- Feature controls (22 checks) ---

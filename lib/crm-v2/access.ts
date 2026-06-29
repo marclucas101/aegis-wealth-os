@@ -3,6 +3,7 @@ import "server-only";
 import type { User } from "@supabase/supabase-js";
 
 import {
+  CRM_V2_APPOINTMENTS_ADVISER_FEATURE_KEY,
   CRM_V2_MASTER_FEATURE_KEY,
   CRM_V2_PILOT_MODE_FEATURE_KEY,
   CRM_V2_RELATIONSHIPS_FEATURE_KEY,
@@ -122,5 +123,47 @@ export async function assertCrmV2RelationshipsAccess(): Promise<CrmV2Relationshi
     masterEnabled: true,
     pilotModeEnabled: true,
     relationshipsEnabled: true,
+  };
+}
+
+export type CrmV2AppointmentsAccessDeniedReason = CrmV2AccessDeniedReason;
+
+export type CrmV2AppointmentsAccessResult =
+  | { allowed: false; reason: CrmV2AppointmentsAccessDeniedReason; requestId: string }
+  | {
+      allowed: true;
+      authUser: User;
+      user: AppUserRow;
+      requestId: string;
+      masterEnabled: true;
+      pilotModeEnabled: true;
+      appointmentsEnabled: true;
+    };
+
+/**
+ * Central gate for CRM V2 adviser appointment workflow.
+ * Requires master + pilot gates; does not bypass them.
+ */
+export async function assertCrmV2AppointmentsAccess(): Promise<CrmV2AppointmentsAccessResult> {
+  const base = await assertCrmV2Access();
+  if (!base.allowed) {
+    return { allowed: false, reason: base.reason, requestId: base.requestId };
+  }
+
+  const appointmentsEnabled = await isFeatureEnabled(
+    CRM_V2_APPOINTMENTS_ADVISER_FEATURE_KEY,
+  );
+  if (!appointmentsEnabled) {
+    return { allowed: false, reason: "feature_disabled", requestId: base.requestId };
+  }
+
+  return {
+    allowed: true,
+    authUser: base.authUser,
+    user: base.user,
+    requestId: base.requestId,
+    masterEnabled: true,
+    pilotModeEnabled: true,
+    appointmentsEnabled: true,
   };
 }

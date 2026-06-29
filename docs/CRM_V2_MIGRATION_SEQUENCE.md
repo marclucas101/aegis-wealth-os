@@ -55,26 +55,36 @@ Phase 02 uses existing `clients` — read-only APIs only.
 | Dependency | After M01 (same table); see `202606290002` in dependency graph |
 | Diagnostics | `preflight_202606290002_phase02_crm_v2_relationships_feature_control.sql`, `verify_202606290002_phase02_crm_v2_relationships_feature_control.sql`, `verify_202606290002_phase02_crm_v2_relationships_feature_control_discrepancies.sql` |
 
-### M02 — Phase 03: Appointment lifecycle extension
+### M02b — Phase 03: Appointments adviser feature seed (**created, not applied**)
 
 | Item | Detail |
 |------|--------|
-| Table | `adviser_appointments` ALTER |
-| Changes | New status enum values; `appointment_type_id`; preparation/outcome JSONB; `rescheduled_from_appointment_id`; separate client/adviser field groups |
-| Data migration | Map existing `pending`→`proposed`, `confirmed`→`confirmed`, `cancelled`→`cancelled_by_*`, `completed`→`closed` |
-| Rollback | Revert enum mapping view; keep columns nullable |
+| File | `supabase/migrations/202606290003_phase03_crm_v2_appointments_adviser_feature_control.sql` |
+| Keys | `crm_v2_appointments_adviser` |
+| Applied | **No** — operator Gate G4 approval required |
+| Diagnostics | `preflight_202606290003_*`, `verify_202606290003_*` |
+
+### M02 — Phase 03: Appointment lifecycle extension (**created, not applied**)
+
+| Item | Detail |
+|------|--------|
+| File | `supabase/migrations/202606290004_phase03_crm_v2_appointment_core.sql` |
+| Table | `adviser_appointments` ALTER + `crm_appointment_*` supporting tables |
+| Changes | `crm_lifecycle_status`, `template_key`, `title`, preparation/follow-up state, `version`, transition metadata |
+| Data migration | **None** — read-time legacy mapping when `crm_lifecycle_status` IS NULL |
+| Applied | **No** |
+| Rollback | Disable feature; columns/tables retained |
 | Risk | Medium — production appointments exist |
 
-**Diagnostics:** `preflight_crm_v2_appointments.sql`, `verify_crm_v2_appointments.sql`, `verify_crm_v2_appointments_discrepancies.sql`
+**Diagnostics:** `preflight_202606290004_phase03_crm_v2_appointment_core.sql`, `verify_202606290004_phase03_crm_v2_appointment_core.sql`, `verify_202606290004_phase03_crm_v2_appointment_core_discrepancies.sql`
 
-### M03 — Phase 03: Appointment participants and audit
+### M03 — Phase 03: Appointment participants and audit (**merged into M02 / 202606290004**)
 
 | Item | Detail |
 |------|--------|
-| Tables | `appointment_participants`, `appointment_state_events` CREATE |
+| Tables | `crm_appointment_participants`, `crm_appointment_state_events`, topics, agenda, checklist |
 | RLS | `is_assigned_advisor(client_id)` |
-| Rollback | DROP tables (no data in legacy) |
-| Risk | Low |
+| Note | Delivered in `202606290004` — no separate migration file |
 
 ### M04 — Phase 06: Service commitments
 
