@@ -680,11 +680,17 @@ check("rollout: advisor-v2 shell API present", () => {
   assert(existsSync("app/api/advisor-v2/shell/route.ts"), "shell api missing");
 });
 
-check("rollout: only approved Phase 01 CRM feature migration", () => {
+check("rollout: only approved Phase 01–02 CRM feature migrations", () => {
   const migrations = readdirSync(join(ROOT, "supabase/migrations"));
-  const crmMigrations = migrations.filter((f) => /crm.?v2|phase01_crm/i.test(f));
-  assert(crmMigrations.length === 1, `unexpected crm migrations: ${crmMigrations.join(", ")}`);
-  assert(crmMigrations[0]?.includes("phase01_crm_v2_feature_controls"), "wrong migration");
+  const crmMigrations = migrations
+    .filter((f) => /crm.?v2|phase01_crm|phase02_crm/i.test(f))
+    .sort();
+  assert(
+    crmMigrations.length === 2,
+    `unexpected crm migrations: ${crmMigrations.join(", ")}`,
+  );
+  assert(crmMigrations[0]?.includes("phase01_crm_v2_feature_controls"), "phase01 missing");
+  assert(crmMigrations[1]?.includes("phase02_crm_v2_relationships"), "phase02 missing");
 });
 
 check("rollout: crm_v2_master code default disabled", () => {

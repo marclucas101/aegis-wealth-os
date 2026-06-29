@@ -42,6 +42,19 @@ Phase 02 uses existing `clients` — read-only APIs only.
 | Dependency | Requires `platform_feature_controls` (Phase 9A); see `docs/MIGRATION_DEPENDENCY_GRAPH.md` (`202606290001`) |
 | Diagnostics | `preflight_202606290001_phase01_crm_v2_feature_controls.sql`, `verify_202606290001_phase01_crm_v2_feature_controls.sql`, `verify_202606290001_phase01_crm_v2_feature_controls_discrepancies.sql` |
 
+### M01b — Phase 02: Relationships feature seed (**created, not applied**)
+
+| Item | Detail |
+|------|--------|
+| File | `supabase/migrations/202606290002_phase02_crm_v2_relationships_feature_control.sql` |
+| Table | `platform_feature_controls` INSERT |
+| Keys | `crm_v2_relationships` |
+| Default | `enabled = false`, `client_visible = false`, `adviser_visible = true` |
+| Applied | **No** — operator Gate G3 approval required |
+| Idempotency | `ON CONFLICT (feature_key) DO NOTHING` |
+| Dependency | After M01 (same table); see `202606290002` in dependency graph |
+| Diagnostics | `preflight_202606290002_phase02_crm_v2_relationships_feature_control.sql`, `verify_202606290002_phase02_crm_v2_relationships_feature_control.sql`, `verify_202606290002_phase02_crm_v2_relationships_feature_control_discrepancies.sql` |
+
 ### M02 — Phase 03: Appointment lifecycle extension
 
 | Item | Detail |

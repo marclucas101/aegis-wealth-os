@@ -1,0 +1,211 @@
+import "server-only";
+
+import { CRM_V2_TIMELINE_MAX_ENTRIES } from "@/lib/crm-v2/constants";
+import {
+  buildLegacyDocumentVaultHref,
+  buildLegacyMeetingStudioHref,
+  buildLegacyPlanningOutputsHref,
+  buildLegacyTasksHref,
+  isAllowlistedRelationshipLink,
+} from "@/lib/crm-v2/relationships/routes";
+import type { CrmTimelineEntry } from "@/lib/crm-v2/relationships/types";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+
+const DOCUMENT_CATEGORY_LABELS: Record<string, string> = {
+  insurance_policy: "Insurance document",
+  investment_statement: "Investment document",
+  cpf: "CPF document",
+  estate: "Estate document",
+  will: "Will document",
+  trust: "Trust document",
+  financial_statement: "Financial document",
+  other: "Client document",
+};
+
+function safeDocumentTitle(category: string): string {
+  return DOCUMENT_CATEGORY_LABELS[category] ?? "Client document";
+}
+
+function meetingTitle(meetingType: string, status: string): string {
+  const typeLabel = meetingType.replace(/_/g, " ");
+  return `Meeting session — ${typeLabel} (${status.replace(/_/g, " ")})`;
+}
+
+export async function loadCrmTimelineProjection(
+  clientId: string,
+): Promise<{ timeline: CrmTimelineEntry[]; bounded: boolean }> {
+  const admin = createAdminSupabaseClient();
+
+  const [
+    meetingsResult,
+    appointmentsResult,
+    tasksResult,
+    outputsResult,
+    bindersResult,
+    documentsResult,
+  ] = await Promise.all([
+    admin
+      .from("meeting_sessions")
+      .select("id, meeting_type, status, created_at, completed_at, updated_at")
+      .eq("client_id", clientId)
+      .order("updated_at", { ascending: false })
+      .limit(CRM_V2_TIMELINE_MAX_ENTRIES),
+    admin
+      .from("adviser_appointments")
+      .select("id, status, starts_at, created_at, title")
+      .eq("client_id", clientId)
+      .order("starts_at", { ascending: false })
+      .limit(CRM_V2_TIMELINE_MAX_ENTRIES),
+    admin
+      .from("advisor_tasks")
+      .select("id, title, task_type, status, created_at")
+      .eq("client_id", clientId)
+      .order("created_at", { ascending: false })
+      .limit(CRM_V2_TIMELINE_MAX_ENTRIES),
+    admin
+      .from("published_outputs")
+      .select("id, output_type, published_at, created_at, publication_status")
+      .eq("client_id", clientId)
+      .eq("publication_status", "published")
+      .order("published_at", { ascending: false })
+      .limit(CRM_V2_TIMELINE_MAX_ENTRIES),
+    admin
+      .from("binder_exports")
+      .select("id, status, published_at, created_at, published_to_client")
+      .eq("client_id", clientId)
+      .order("created_at", { ascending: false })
+      .limit(CRM_V2_TIMELINE_MAX_ENTRIES),
+    admin
+      .from("documents")
+      .select("id, category, created_at")
+      .eq("client_id", clientId)
+      .eq("is_archived", false)
+      .order("created_at", { ascending: false })
+      .limit(CRM_V2_TIMELINE_MAX_ENTRIES),
+  ]);
+
+  const entries: CrmTimelineEntry[] = [];
+
+  for (const row of (meetingsResult.data ?? []) as Array<{
+    id: string;
+    meeting_type: string;
+    status: string;
+    created_at: string;
+    completed_at: string | null;
+    updated_at: string;
+  }>) {
+    const occurredAt = row.completed_at ?? row.updated_at ?? row.created_at;
+    const href = buildLegacyMeetingStudioHref(clientId);
+    entries.push({
+      eventId: `meeting_session:${row.id}`,
+      eventType: "meeting_session",
+      occurredAt,
+      title: meetingTitle(row.meeting_type, row.status),
+      summary: "Meeting studio session activity",
+      sourceLink: isAllowlistedRelationshipLink(href) ? href : null,
+      visibility: "adviser",
+    });
+  }
+
+  for (const row of (appointmentsResult.data ?? []) as Array<{
+    id: string;
+    status: string;
+    starts_at: string;
+    created_at: string;
+    title: string | null;
+  }>) {
+    entries.push({
+      eventId: `adviser_appointment:${row.id}`,
+      eventType: "appointment",
+      occurredAt: row.starts_at ?? row.created_at,
+      title: row.title?.trim() || "Adviser appointment",
+      summary: `Appointment ${row.status.replace(/_/g, " ")}`,
+      sourceLink: `/advisor/appointments`,
+      visibility: "adviser",
+    });
+  }
+
+  for (const row of (tasksResult.data ?? []) as Array<{
+    id: string;
+    title: string;
+    task_type: string;
+    status: string;
+    created_at: string;
+  }>) {
+    const href = buildLegacyTasksHref(clientId);
+    entries.push({
+      eventId: `advisor_task:${row.id}`,
+      eventType: "adviser_task",
+      occurredAt: row.created_at,
+      title: row.title,
+      summary: `${row.task_type.replace(/_/g, " ")} task — ${row.status.replace(/_/g, " ")}`,
+      sourceLink: isAllowlistedRelationshipLink(href) ? href : null,
+      visibility: "adviser",
+    });
+  }
+
+  for (const row of (outputsResult.data ?? []) as Array<{
+    id: string;
+    output_type: string;
+    published_at: string | null;
+    created_at: string;
+    publication_status: string;
+  }>) {
+    const href = buildLegacyPlanningOutputsHref(clientId);
+    entries.push({
+      eventId: `published_output:${row.id}`,
+      eventType: "published_output",
+      occurredAt: row.published_at ?? row.created_at,
+      title: "Planning output published",
+      summary: `${row.output_type.replace(/_/g, " ")} — ${row.publication_status}`,
+      sourceLink: isAllowlistedRelationshipLink(href) ? href : null,
+      visibility: "client_visible",
+    });
+  }
+
+  for (const row of (bindersResult.data ?? []) as Array<{
+    id: string;
+    status: string;
+    published_at: string | null;
+    created_at: string;
+    published_to_client: boolean;
+  }>) {
+    entries.push({
+      eventId: `binder_export:${row.id}`,
+      eventType: "binder_export",
+      occurredAt: row.published_at ?? row.created_at,
+      title: row.published_to_client ? "Binder published to client" : "Binder generated",
+      summary: `Binder export ${row.status.replace(/_/g, " ")}`,
+      sourceLink: buildLegacyDocumentVaultHref(clientId),
+      visibility: row.published_to_client ? "client_visible" : "adviser",
+    });
+  }
+
+  for (const row of (documentsResult.data ?? []) as Array<{
+    id: string;
+    category: string;
+    created_at: string;
+  }>) {
+    entries.push({
+      eventId: `document:${row.id}`,
+      eventType: "document_upload",
+      occurredAt: row.created_at,
+      title: safeDocumentTitle(row.category),
+      summary: "Document added to client vault",
+      sourceLink: buildLegacyDocumentVaultHref(clientId),
+      visibility: "adviser",
+    });
+  }
+
+  entries.sort((a, b) => {
+    const aTime = new Date(a.occurredAt).getTime();
+    const bTime = new Date(b.occurredAt).getTime();
+    return bTime - aTime;
+  });
+
+  const bounded = entries.length > CRM_V2_TIMELINE_MAX_ENTRIES;
+  return {
+    timeline: entries.slice(0, CRM_V2_TIMELINE_MAX_ENTRIES),
+    bounded,
+  };
+}

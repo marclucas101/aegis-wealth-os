@@ -36,7 +36,9 @@ Primary nav labels: **Today**, **Relationships**, **Appointments**, **Service**,
     └── /settings                   Phase 01 (profile link-out)
 ```
 
-**Phase 01 shell (implemented):** Nine placeholder pages at `/advisor-v2` plus `GET /api/advisor-v2/shell`. No `[relationshipId]` or `[appointmentId]` routes. Settings links to `/advisor/my-profile`. All routes: business data read **No**, write capability **No**. Access via `assertCrmV2Access()` in layout.
+**Phase 02 status:** Relationship list and Relationship 360 implemented at `/advisor-v2/relationships` and `/advisor-v2/relationships/[relationshipId]`. APIs: `GET /api/advisor-v2/relationships`, `GET /api/advisor-v2/relationships/[relationshipId]`. Gated by `crm_v2_relationships` in addition to master + pilot.
+
+**Phase 01 shell (implemented):** Nine placeholder pages at `/advisor-v2` plus `GET /api/advisor-v2/shell`. Settings links to `/advisor/my-profile`. Access via `assertCrmV2Access()` in layout.
 
 ---
 
