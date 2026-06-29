@@ -680,17 +680,25 @@ check("rollout: advisor-v2 shell API present", () => {
   assert(existsSync("app/api/advisor-v2/shell/route.ts"), "shell api missing");
 });
 
-check("rollout: only approved Phase 01–02 CRM feature migrations", () => {
+check("rollout: approved Phase 01–03 CRM migrations present", () => {
   const migrations = readdirSync(join(ROOT, "supabase/migrations"));
   const crmMigrations = migrations
-    .filter((f) => /crm.?v2|phase01_crm|phase02_crm/i.test(f))
+    .filter((f) => /phase0[123]_crm_v2/i.test(f))
     .sort();
   assert(
-    crmMigrations.length === 2,
+    crmMigrations.length === 4,
     `unexpected crm migrations: ${crmMigrations.join(", ")}`,
   );
-  assert(crmMigrations[0]?.includes("phase01_crm_v2_feature_controls"), "phase01 missing");
-  assert(crmMigrations[1]?.includes("phase02_crm_v2_relationships"), "phase02 missing");
+  assert(crmMigrations.some((f) => f.includes("phase01_crm_v2_feature_controls")), "phase01 missing");
+  assert(crmMigrations.some((f) => f.includes("phase02_crm_v2_relationships")), "phase02 missing");
+  assert(
+    crmMigrations.some((f) => f.includes("phase03_crm_v2_appointments_adviser_feature_control")),
+    "phase03 feature seed missing",
+  );
+  assert(
+    crmMigrations.some((f) => f.includes("phase03_crm_v2_appointment_core")),
+    "phase03 core missing",
+  );
 });
 
 check("rollout: crm_v2_master code default disabled", () => {

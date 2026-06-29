@@ -83,7 +83,8 @@
 | Legacy field | Canonical field | CRM V2 rule |
 |--------------|-----------------|-------------|
 | `clients.status` | `clients.relationship_stage` | Write `relationship_stage`; read both for transition period |
-| `adviser_appointments.status` (legacy enum) | CRM lifecycle status | Map on read; migrate enum Phase 03 migration |
+| `adviser_appointments.status` (legacy enum) | `crm_lifecycle_status` | Map on read when NULL; CRM V2 writes sync legacy `status` |
+| `crm_v2_appointments_adviser` | Phase 03 adviser appointment module | Default disabled — migration `202606290003` |
 | `advisor_*` DB names | `adviser` UI copy | No rename migration |
 
 ---

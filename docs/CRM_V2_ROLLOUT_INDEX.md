@@ -30,7 +30,7 @@ Today | Relationships | Appointments | Service | Communications | More
 | **00** | `crm-v2-00-blueprint` | Architecture blueprint (docs only) | **Complete** |
 | **01** | `crm-v2-01-shell` | `/advisor-v2` shell + pilot gating | **Complete** — see Phase 01 docs below |
 | **02** | `crm-v2-02-relationship-360` | Relationship list + Relationship 360 | **Complete** — see Phase 02 docs below |
-| **03** | `crm-v2-03-appointments-adviser` | Authoritative appointment core (adviser) | Pending |
+| **03** | `crm-v2-03-appointments-adviser` | Authoritative appointment core (adviser) | **Complete** — see Phase 03 docs below |
 | **04** | `crm-v2-04-appointments-client` | Client appointment collaboration | Pending |
 | **05** | `crm-v2-05-google-calendar` | Google Calendar integration (AEGIS authoritative) | Pending |
 | **06** | `crm-v2-06-service-commitments` | Service layer + commitments | Pending |
@@ -43,6 +43,22 @@ Today | Relationships | Appointments | Service | Communications | More
 | **13** | `crm-v2-13-pilot` | Controlled pilot | Pending |
 | **14** | `crm-v2-14-cutover` | `/advisor` → CRM V2 cutover | Pending |
 | **15** | `crm-v2-15-legacy-retirement` | Legacy adviser portal retirement (conditional) | Deferred |
+
+---
+
+## Phase 03 documents (appointments adviser)
+
+| Document | Purpose |
+|----------|---------|
+| [CRM_V2_PHASE_03_EXISTING_APPOINTMENT_AUDIT.md](./CRM_V2_PHASE_03_EXISTING_APPOINTMENT_AUDIT.md) | Pre-schema audit of `adviser_appointments` |
+| [CRM_V2_PHASE_03_APPOINTMENT_ARCHITECTURE.md](./CRM_V2_PHASE_03_APPOINTMENT_ARCHITECTURE.md) | Authority, service, routes |
+| [CRM_V2_PHASE_03_LIFECYCLE_AND_TRANSITIONS.md](./CRM_V2_PHASE_03_LIFECYCLE_AND_TRANSITIONS.md) | Canonical lifecycle |
+| [CRM_V2_PHASE_03_API_CONTRACT.md](./CRM_V2_PHASE_03_API_CONTRACT.md) | Adviser API DTOs |
+| [CRM_V2_PHASE_03_MEETING_STUDIO_INTEGRATION.md](./CRM_V2_PHASE_03_MEETING_STUDIO_INTEGRATION.md) | Session linkage |
+| [CRM_V2_PHASE_03_SECURITY_REVIEW.md](./CRM_V2_PHASE_03_SECURITY_REVIEW.md) | Threat table |
+| [CRM_V2_PHASE_03_MIGRATION_RUNBOOK.md](./CRM_V2_PHASE_03_MIGRATION_RUNBOOK.md) | Apply/verify/discrepancy |
+| [CRM_V2_PHASE_03_MANUAL_TESTS.md](./CRM_V2_PHASE_03_MANUAL_TESTS.md) | Operator checklist (34 tests) |
+| [CRM_V2_PHASE_03_COMPLETION.md](./CRM_V2_PHASE_03_COMPLETION.md) | Sign-off, QA results, verdict |
 
 ---
 

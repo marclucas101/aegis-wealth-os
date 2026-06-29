@@ -76,6 +76,8 @@ flowchart TD
 | 202606200012 | 011, promotion_migration_reviews, governed_content, uuid-ossp |
 | 202606290001 | 9F4B chain complete; `platform_feature_controls` table (from 9A1) |
 | 202606290002 | 202606290001 (logical); `platform_feature_controls` INSERT `crm_v2_relationships` |
+| 202606290003 | 202606290001 (logical); `platform_feature_controls` INSERT `crm_v2_appointments_adviser` |
+| 202606290004 | `adviser_appointments`, `clients`, `users`; logically after 202606290003 |
 
 ## Phase 01 CRM V2 (202606290001)
 
@@ -85,6 +87,15 @@ flowchart TD
 | Blocks | Nothing downstream in current chain |
 | Risk | Low — idempotent INSERT only, both flags disabled |
 | Operator gate | G2 — apply only after Phase 01 QA + security sign-off |
+
+## Phase 03 CRM V2 appointments adviser (202606290003, 202606290004)
+
+| Item | Detail |
+|------|--------|
+| Depends on | `adviser_appointments` (Phase 6D), `platform_feature_controls` (Phase 9A) |
+| Blocks | Phase 04 client appointments (logical) |
+| Risk | Medium — schema ALTER on production appointments table |
+| Operator gate | G4 — dry-run + QA before apply |
 
 ## Phase 02 CRM V2 relationships (202606290002)
 

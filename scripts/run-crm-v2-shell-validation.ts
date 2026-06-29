@@ -116,9 +116,12 @@ check("route guard: no legacy relationships/[id] alias route", () => {
   assert(!existsSync("app/advisor-v2/relationships/[id]"), "legacy [id] alias present");
 });
 
-check("route guard: no appointments/[id] detail route", () => {
-  assert(!existsSync("app/advisor-v2/appointments/[id]"), "detail route present");
-  assert(!existsSync("app/advisor-v2/appointments/[appointmentId]"), "detail route present");
+check("route guard: appointments detail route uses appointmentId param", () => {
+  assert(!existsSync("app/advisor-v2/appointments/[id]"), "legacy [id] alias present");
+  assert(
+    existsSync("app/advisor-v2/appointments/[appointmentId]/page.tsx"),
+    "appointment detail route missing",
+  );
 });
 
 // --- Auth (14 checks) ---
@@ -568,13 +571,13 @@ check("migration: 202606290001_phase01 file exists", () => {
   );
 });
 
-check("migration: only approved Phase 01–02 CRM feature migrations", () => {
+check("migration: approved Phase 01–03 CRM migrations present", () => {
   const migrations = readdirSync(join(ROOT, "supabase/migrations"));
   const crmMigrations = migrations
-    .filter((f) => /crm.?v2|phase01_crm|phase02_crm/i.test(f))
+    .filter((f) => /phase0[123]_crm_v2/i.test(f))
     .sort();
   assert(
-    crmMigrations.length === 2,
+    crmMigrations.length === 4,
     `unexpected crm migrations: ${crmMigrations.join(", ")}`,
   );
   assert(
@@ -584,6 +587,14 @@ check("migration: only approved Phase 01–02 CRM feature migrations", () => {
   assert(
     crmMigrations.some((f) => f.includes("phase02_crm_v2_relationships")),
     "phase02 migration missing",
+  );
+  assert(
+    crmMigrations.some((f) => f.includes("phase03_crm_v2_appointments_adviser_feature_control")),
+    "phase03 feature migration missing",
+  );
+  assert(
+    crmMigrations.some((f) => f.includes("phase03_crm_v2_appointment_core")),
+    "phase03 core migration missing",
   );
 });
 
