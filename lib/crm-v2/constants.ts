@@ -8,6 +8,11 @@ export const CRM_V2_APPOINTMENTS_CLIENT_FEATURE_KEY =
   "crm_v2_appointments_client" as const;
 export const CRM_V2_GOOGLE_CALENDAR_FEATURE_KEY =
   "crm_v2_google_calendar" as const;
+export const CRM_V2_SERVICE_FEATURE_KEY = "crm_v2_service" as const;
+export const CRM_V2_CLIENT_SERVICE_FEATURE_KEY =
+  "crm_v2_client_service" as const;
+export const CRM_V2_PROTECTION_PORTFOLIO_FEATURE_KEY =
+  "crm_v2_protection_portfolio" as const;
 
 export const CRM_V2_PILOT_USER_IDS_ENV = "CRM_V2_PILOT_USER_IDS" as const;
 
@@ -28,3 +33,19 @@ export const CRM_V2_APPOINTMENTS_MAX_EVENTS = 50;
 export const CRM_V2_APPOINTMENTS_LIST_DAYS_AGENDA = 7;
 export const CRM_V2_APPOINTMENTS_LIST_DAYS_HISTORY = 90;
 export const CRM_V2_APPOINTMENTS_MAX_TITLE_LENGTH = 200;
+
+/** Service workspace bounds (Phase 06). */
+export const CRM_V2_SERVICE_MAX_COMMITMENTS = 50;
+export const CRM_V2_SERVICE_MAX_EVENTS = 30;
+export const CRM_V2_SERVICE_MAX_TITLE_LENGTH = 200;
+export const CRM_V2_SERVICE_DEFAULT_PAGE_SIZE = 20;
+
+/** Protection portfolio bounds (Phase 07). */
+export const CRM_V2_PROTECTION_MAX_POLICIES = 50;
+export const CRM_V2_PROTECTION_MAX_VERSIONS = 30;
+export const CRM_V2_PROTECTION_MAX_EXTRACTIONS = 50;
+export const CRM_V2_PROTECTION_MAX_EVENTS = 50;
+export const CRM_V2_PROTECTION_MAX_TITLE_LENGTH = 200;
+export const CRM_V2_PROTECTION_STALE_DAYS = 365;
+export const CRM_V2_PROTECTION_VERIFICATION_PERIOD_DAYS = 365;
+export const CRM_V2_PROTECTION_DEFAULT_PAGE_SIZE = 20;

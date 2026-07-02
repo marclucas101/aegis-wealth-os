@@ -32,7 +32,8 @@ export async function loadCrmServiceProjection(
 ): Promise<{ items: CrmServiceItem[]; bounded: boolean }> {
   const admin = createAdminSupabaseClient();
 
-  const [tasksResult, roadmapResult, reviewResult] = await Promise.all([
+  const [tasksResult, roadmapResult, reviewResult, commitmentsResult, requestsResult] =
+    await Promise.all([
     admin
       .from("advisor_tasks")
       .select("id, title, status, due_date, task_type, assigned_to_user_id")
@@ -54,6 +55,20 @@ export async function loadCrmServiceProjection(
       .eq("client_id", clientId)
       .order("generated_at", { ascending: false })
       .limit(3),
+    admin
+      .from("service_commitments")
+      .select("id, title, lifecycle_status, due_at, owner, commitment_type")
+      .eq("client_id", clientId)
+      .not("lifecycle_status", "in", "(completed,cancelled)")
+      .order("due_at", { ascending: true, nullsFirst: false })
+      .limit(CRM_V2_SERVICE_MAX_ITEMS + 1),
+    admin
+      .from("client_service_requests")
+      .select("id, summary, lifecycle_status, created_at, request_category")
+      .eq("client_id", clientId)
+      .not("lifecycle_status", "in", "(resolved,closed,cancelled)")
+      .order("created_at", { ascending: false })
+      .limit(CRM_V2_SERVICE_MAX_ITEMS + 1),
   ]);
 
   const items: CrmServiceItem[] = [];
@@ -114,6 +129,45 @@ export async function loadCrmServiceProjection(
     });
   }
 
+  for (const row of (commitmentsResult.data ?? []) as Array<{
+    id: string;
+    title: string;
+    lifecycle_status: string;
+    due_at: string | null;
+    owner: string;
+    commitment_type: string;
+  }>) {
+    items.push({
+      itemId: `service_commitment:${row.id}`,
+      source: "Commitment",
+      ownerLabel: row.owner.replace(/_/g, " "),
+      statusLabel: row.lifecycle_status.replace(/_/g, " "),
+      dueDate: row.due_at,
+      dueDateLabel: formatDueLabel(row.due_at),
+      summary: row.title,
+      workflowHref: `/advisor-v2/service?view=commitments`,
+    });
+  }
+
+  for (const row of (requestsResult.data ?? []) as Array<{
+    id: string;
+    summary: string;
+    lifecycle_status: string;
+    created_at: string;
+    request_category: string;
+  }>) {
+    items.push({
+      itemId: `client_service_request:${row.id}`,
+      source: "Client request",
+      ownerLabel: "Client",
+      statusLabel: row.lifecycle_status.replace(/_/g, " "),
+      dueDate: row.created_at,
+      dueDateLabel: formatDueLabel(row.created_at),
+      summary: row.summary,
+      workflowHref: `/advisor-v2/service?view=client_requests`,
+    });
+  }
+
   items.sort((a, b) => {
     const aTime = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
     const bTime = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
@@ -128,4 +182,4 @@ export async function loadCrmServiceProjection(
 }
 
 export const CRM_SERVICE_PHASE_NOTICE =
-  "Canonical CRM service commitments and workflow cases arrive in Phase 06.";
+  "Phase 06: service commitments and client requests project from canonical CRM V2 authorities.";

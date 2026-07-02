@@ -54,6 +54,46 @@ export type WorkQueueBinderExportRow = {
   updatedAt: string;
 };
 
+export type WorkQueueServiceCommitmentRow = {
+  id: string;
+  clientId: string;
+  title: string;
+  commitmentType: string;
+  owner: "adviser" | "client" | "shared";
+  lifecycleStatus: string;
+  dueAt: string | null;
+  sourceType: string | null;
+  sourceId: string | null;
+  updatedAt: string;
+};
+
+export type WorkQueueClientServiceRequestRow = {
+  id: string;
+  clientId: string;
+  summary: string;
+  requestCategory: string;
+  lifecycleStatus: string;
+  urgency: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type WorkQueueProtectionExtractionRow = {
+  id: string;
+  clientId: string;
+  title: string;
+  reviewStatus: string;
+  createdAt: string;
+};
+
+export type WorkQueueProtectionPolicyServicingRow = {
+  id: string;
+  clientId: string;
+  title: string;
+  servicingReason: string;
+  dueAt: string | null;
+};
+
 /** Preloaded batch payload — populated once per queue build (no per-item queries). */
 export type WorkQueueBatchData = {
   tasks: AdvisorTaskRecord[];
@@ -63,6 +103,10 @@ export type WorkQueueBatchData = {
   meetingSessions: WorkQueueMeetingSessionRow[];
   planningOutputs: WorkQueuePlanningOutputRow[];
   binderExports: WorkQueueBinderExportRow[];
+  serviceCommitments: WorkQueueServiceCommitmentRow[];
+  clientServiceRequests: WorkQueueClientServiceRequestRow[];
+  protectionExtractions: WorkQueueProtectionExtractionRow[];
+  protectionPolicyServicing: WorkQueueProtectionPolicyServicingRow[];
   fileQualityByClientId: Record<string, ClientFileQuality>;
 };
 
@@ -75,6 +119,10 @@ export function createEmptyWorkQueueBatchData(): WorkQueueBatchData {
     meetingSessions: [],
     planningOutputs: [],
     binderExports: [],
+    serviceCommitments: [],
+    clientServiceRequests: [],
+    protectionExtractions: [],
+    protectionPolicyServicing: [],
     fileQualityByClientId: {},
   };
 }

@@ -99,24 +99,42 @@ Phase 02 uses existing `clients` — read-only APIs only.
 | RLS | `is_assigned_advisor(client_id)` |
 | Note | Delivered in `202606290004` — no separate migration file |
 
-### M04 — Phase 06: Service commitments
+### M04b — Phase 06: Service feature seeds (**created, not applied**)
 
 | Item | Detail |
 |------|--------|
-| Table | `service_commitments` CREATE |
-| Indexes | `(adviser_user_id, status)`, `(client_id, status)` |
-| RLS | Assignment-scoped |
-| Rollback | DROP or archive |
+| File | `supabase/migrations/202606290008_phase06_crm_v2_service_feature_control.sql` |
+| Keys | `crm_v2_service`, `crm_v2_client_service` |
+| Default | `enabled = false`; service `adviser_visible = true`, client service `client_visible = true` |
+| Applied | **No** — operator Gate G7 approval required |
+| Idempotency | `ON CONFLICT (feature_key) DO NOTHING` |
+| Diagnostics | `preflight_202606290008_*`, `verify_202606290008_*`, `verify_202606290008_*_discrepancies.sql` |
+
+### M04 — Phase 06: Service core (**created, not applied**)
+
+| Item | Detail |
+|------|--------|
+| File | `supabase/migrations/202606290009_phase06_crm_v2_service_core.sql` |
+| Tables | `service_commitments`, `client_service_requests`, `service_commitment_events`, `client_service_request_events` CREATE |
+| Indexes | Adviser open (`due_at`), client visible, appointment FK, idempotency, source dedup |
+| RLS | `is_assigned_advisor(client_id)` — assignment-scoped |
+| Applied | **No** |
+| Rollback | Disable flags; schema retained |
 | Risk | Low — greenfield |
+| Diagnostics | `preflight_202606290009_*`, `verify_202606290009_*`, `verify_202606290009_*_discrepancies.sql` |
 
-### M05 — Phase 07: Protection portfolio
+### M05 — Phase 07: Protection portfolio (**created, not applied**)
 
 | Item | Detail |
 |------|--------|
-| Tables | `protection_policies`, `protection_policy_versions` |
-| Link | `source_document_id` → `documents` |
-| Rollback | DROP; PDFs in vault retained |
-| Risk | Medium — adviser verification workflow |
+| File (feature) | `supabase/migrations/202606290010_phase07_crm_v2_protection_feature_control.sql` |
+| Keys | `crm_v2_protection_portfolio` (`client_visible = true`, `adviser_visible = true`) |
+| File (core) | `supabase/migrations/202606290011_phase07_crm_v2_protection_core.sql` |
+| Tables | `protection_policies`, `protection_policy_versions`, `protection_extractions`, `protection_domain_events` |
+| Link | `source_document_id` → `documents` (vault authority retained) |
+| Applied | **No** — operator Gate G8 approval required |
+| Diagnostics | `preflight_202606290010_*`, `verify_202606290010_*`, `preflight_202606290011_*`, `verify_202606290011_*` |
+| Rollback | Disable flag; schema retained; PDFs in vault retained |
 
 ### M06 — Phase 08: Relationship moments
 

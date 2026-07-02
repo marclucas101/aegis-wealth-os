@@ -1,5 +1,14 @@
 - Phase 05 Google event payload remains minimal: safe title, schedule, delivery mode, safe location, optional approved attendee email, optional Meet link.
 - Google payload must never include ethnicity, advocacy, policy numbers, financial values, private adviser agenda, notes, checklist internals, document names, storage paths, NRIC, or cancellation reason details.
+
+### Phase 06 extension — Service visibility
+
+- Commitment `client_visible` is explicit — not inferred from owner alone.
+- Client Actions (`/api/actions`) returns only `client_visible` rows with eligible owner or `document_request` type.
+- `internal_note`, `completion_evidence`, source linkage details, and raw events are adviser-only.
+- Client service requests expose safe `clientVisibleStatus` labels only — not internal urgency routing logic.
+- Document requests show category and due date; vault paths and signed URLs never appear in service DTOs.
+- Work-queue priority, blocking flags, and reason codes are never exposed to client APIs.
 # CRM V2 — Visibility Model
 
 **Phase:** 00

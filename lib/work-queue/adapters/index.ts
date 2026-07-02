@@ -1,11 +1,15 @@
 import { advisorTaskAdapter } from "./advisorTaskAdapter";
 import { appointmentAdapter } from "./appointmentAdapter";
 import { binderExportAdapter } from "./binderExportAdapter";
+import { clientServiceRequestAdapter } from "./clientServiceRequestAdapter";
 import { dataCompletenessAdapter } from "./dataCompletenessAdapter";
 import { meetingFollowUpAdapter } from "./meetingFollowUpAdapter";
 import { planningOutputAdapter } from "./planningOutputAdapter";
 import { reviewDueAdapter } from "./reviewDueAdapter";
 import { roadmapItemAdapter } from "./roadmapItemAdapter";
+import { protectionExtractionAdapter } from "./protectionExtractionAdapter";
+import { protectionPolicyServicingAdapter } from "./protectionPolicyServicingAdapter";
+import { serviceCommitmentAdapter } from "./serviceCommitmentAdapter";
 import type { AdviserWorkItemAdapter } from "./types";
 
 export const WORK_QUEUE_ADAPTERS: AdviserWorkItemAdapter[] = [
@@ -17,6 +21,10 @@ export const WORK_QUEUE_ADAPTERS: AdviserWorkItemAdapter[] = [
   planningOutputAdapter,
   binderExportAdapter,
   dataCompletenessAdapter,
+  serviceCommitmentAdapter,
+  clientServiceRequestAdapter,
+  protectionExtractionAdapter,
+  protectionPolicyServicingAdapter,
 ];
 
 export {
@@ -28,6 +36,10 @@ export {
   planningOutputAdapter,
   binderExportAdapter,
   dataCompletenessAdapter,
+  serviceCommitmentAdapter,
+  clientServiceRequestAdapter,
+  protectionExtractionAdapter,
+  protectionPolicyServicingAdapter,
 };
 
 export type { AdviserWorkItemAdapter, WorkQueueLoadContext } from "./types";

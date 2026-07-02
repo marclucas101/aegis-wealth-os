@@ -31,7 +31,10 @@
 | Appointment audit | **SOT NEW** | `appointment_state_events` | Immutable transitions | 03 |
 | Meeting session | **SOT REUSE** | `meeting_sessions` | Linked via `appointment_id` | 03 |
 | Meeting audit | **SOT REUSE** | `meeting_session_events` | Unchanged | 03 |
-| Service commitment | **SOT NEW** | `service_commitments` | Canonical action/request | 06 |
+| Service commitment | **SOT NEW** | `service_commitments` | Canonical action/commitment | 06 |
+| Client service request | **SOT NEW** | `client_service_requests` | Client-initiated service ask | 06 |
+| Service commitment audit | **SOT NEW** | `service_commitment_events` | Immutable transitions | 06 |
+| Client service request audit | **SOT NEW** | `client_service_request_events` | Immutable request history | 06 |
 | Adviser task (legacy) | **SOT REUSE** | `advisor_tasks` | Retained; adapter to queue | 06, 11 |
 | Roadmap action | **SOT REUSE** | `roadmap_items` | Unchanged | 02 |
 | Planning output | **SOT REUSE** | `published_outputs` | Unchanged | 02 |
