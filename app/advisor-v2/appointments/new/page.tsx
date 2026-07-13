@@ -17,7 +17,7 @@ export default async function CrmV2NewAppointmentPage({
       <CrmV2ModuleUnavailablePage
         title="New appointment"
         reason={access.reason}
-        nextStep="Return to Appointments when the module is enabled for your pilot session."
+        nextStep="Return to Appointments when the module is enabled for your workspace."
       />
     );
   }

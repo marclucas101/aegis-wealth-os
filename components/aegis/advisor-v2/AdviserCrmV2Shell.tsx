@@ -5,14 +5,13 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import AuthStatus from "@/components/aegis/auth/AuthStatus";
-import CrmV2AdviserParityNotice from "@/components/aegis/advisor-v2/CrmV2AdviserParityNotice";
-import CrmV2PilotBadge from "@/components/aegis/advisor-v2/CrmV2PilotBadge";
 import {
   CRM_V2_CLASSIC_ADVISER_PATH,
   CRM_V2_HOME_PATH,
   CRM_V2_LEGACY_TOOLS_NAV,
   CRM_V2_MORE_NAV,
   CRM_V2_PRIMARY_NAV,
+  CRM_V2_TOOLS_NAV_GROUPS,
   isCrmV2NavActive,
 } from "@/lib/crm-v2/navigation";
 
@@ -81,9 +80,9 @@ export default function AdviserCrmV2Shell({
   const resolvedTitle =
     pageTitle ??
     (pathname === CRM_V2_HOME_PATH || pathname === "/advisor-v2"
-      ? "Adviser workspace"
+      ? "AEGIS Adviser Workspace"
       : allNavItems.find((item) => isCrmV2NavActive(pathname, item.href))
-          ?.label ?? "Adviser CRM V2");
+          ?.label ?? "AEGIS Adviser Workspace");
 
   const moreActive = [...CRM_V2_MORE_NAV, ...CRM_V2_LEGACY_TOOLS_NAV].some(
     (item) => isCrmV2NavActive(pathname, item.href),
@@ -93,17 +92,13 @@ export default function AdviserCrmV2Shell({
     <div className="flex h-full flex-col">
       <div className="border-b border-[#D1A866]/10 px-4 py-5">
         <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-[#D1A866]/75">
-          AEGIS Adviser CRM V2
+          AEGIS Adviser Workspace
         </p>
-        <div className="mt-2">
-          <CrmV2PilotBadge />
-        </div>
         <p className="mt-2 text-xs font-light leading-relaxed text-[#F3F1EA]/40">
-          Limited pilot workspace for relationships, service, and daily
-          operations.
+          Relationships, appointments, service, advice tools, and daily operations.
         </p>
       </div>
-      <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label="CRM V2 primary">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label="Adviser primary">
         <NavLink
           href={CRM_V2_HOME_PATH}
           label="Home"
@@ -116,6 +111,7 @@ export default function AdviserCrmV2Shell({
             href={item.href}
             label={item.label}
             active={isCrmV2NavActive(pathname, item.href)}
+            description={item.description}
             onNavigate={() => setMenuOpen(false)}
           />
         ))}
@@ -136,10 +132,10 @@ export default function AdviserCrmV2Shell({
             </span>
           </button>
           {moreOpen ? (
-            <div className="mt-1 space-y-3 pl-2" aria-label="CRM V2 more">
+            <div className="mt-1 space-y-3 pl-2" aria-label="Adviser more">
               <div className="space-y-1">
                 <p className="px-3 pt-1 text-[9px] font-medium uppercase tracking-[0.18em] text-[#F3F1EA]/28">
-                  CRM V2
+                  Workspace
                 </p>
                 {CRM_V2_MORE_NAV.map((item) => (
                   <NavLink
@@ -147,25 +143,28 @@ export default function AdviserCrmV2Shell({
                     href={item.href}
                     label={item.label}
                     active={isCrmV2NavActive(pathname, item.href)}
-                    onNavigate={() => setMenuOpen(false)}
-                  />
-                ))}
-              </div>
-              <div className="space-y-1">
-                <p className="px-3 pt-1 text-[9px] font-medium uppercase tracking-[0.18em] text-[#F3F1EA]/28">
-                  Classic tools
-                </p>
-                {CRM_V2_LEGACY_TOOLS_NAV.map((item) => (
-                  <NavLink
-                    key={`${item.href}-${item.label}`}
-                    href={item.href}
-                    label={item.label}
                     description={item.description}
-                    active={isCrmV2NavActive(pathname, item.href)}
                     onNavigate={() => setMenuOpen(false)}
                   />
                 ))}
               </div>
+              {CRM_V2_TOOLS_NAV_GROUPS.map((group) => (
+                <div key={group.label} className="space-y-1">
+                  <p className="px-3 pt-1 text-[9px] font-medium uppercase tracking-[0.18em] text-[#F3F1EA]/28">
+                    {group.label}
+                  </p>
+                  {group.items.map((item) => (
+                    <NavLink
+                      key={`${item.href}-${item.label}`}
+                      href={item.href}
+                      label={item.label}
+                      description={item.description}
+                      active={isCrmV2NavActive(pathname, item.href)}
+                      onNavigate={() => setMenuOpen(false)}
+                    />
+                  ))}
+                </div>
+              ))}
             </div>
           ) : null}
         </div>
@@ -173,9 +172,9 @@ export default function AdviserCrmV2Shell({
       <div className="space-y-2 border-t border-[#D1A866]/10 p-3">
         <Link
           href={CRM_V2_CLASSIC_ADVISER_PATH}
-          className="block rounded-sm px-3 py-2 text-xs font-light text-[#F3F1EA]/45 transition-colors hover:bg-[#10283A]/50 hover:text-[#F3F1EA]/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D1A866]/60"
+          className="block rounded-sm px-3 py-2 text-[10px] font-light text-[#F3F1EA]/30 transition-colors hover:bg-[#10283A]/50 hover:text-[#F3F1EA]/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D1A866]/60"
         >
-          ← Back to classic adviser workspace
+          Classic workspace (fallback)
         </Link>
         <AuthStatus />
       </div>
@@ -219,17 +218,14 @@ export default function AdviserCrmV2Shell({
                 <h1 className="truncate text-sm font-light tracking-wide text-[#F3F1EA] sm:text-base">
                   {resolvedTitle}
                 </h1>
-                <p className="hidden text-[10px] font-light uppercase tracking-[0.14em] text-[#F3F1EA]/30 sm:block">
-                  CRM V2 Limited Pilot
-                </p>
               </div>
             </div>
             <div className="hidden items-center gap-4 lg:flex">
               <Link
                 href={CRM_V2_CLASSIC_ADVISER_PATH}
-                className="text-xs font-light text-[#F3F1EA]/40 transition-colors hover:text-[#F3F1EA]/65"
+                className="text-[10px] font-light text-[#F3F1EA]/30 transition-colors hover:text-[#F3F1EA]/50"
               >
-                Classic workspace
+                Classic fallback
               </Link>
               <AuthStatus />
             </div>
@@ -239,7 +235,6 @@ export default function AdviserCrmV2Shell({
             id="crm-v2-main"
             className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10"
           >
-            <CrmV2AdviserParityNotice />
             {children}
           </main>
         </div>

@@ -185,16 +185,46 @@ check("today UI accessibility", () => {
   assert(source.includes("Quick links"), "quick links");
 });
 
-check("landing is pilot home hub", () => {
-  const source = read("app/advisor-v2/page.tsx");
-  assert(source.includes("Adviser workspace") || source.includes("AdviserCrmV2LandingPage"), "home hub");
-  assert(source.includes("CRM_V2_PRIMARY_NAV"), "primary nav links");
-  assert(!source.includes('redirect("/advisor-v2/today")'), "no blind redirect");
+check("routing: /advisor is primary workspace home", () => {
+  const advisor = read("app/advisor/page.tsx");
+  assert(advisor.includes("AdviserCrmV2Shell"), "shell on /advisor");
+  assert(advisor.includes("AdviserCrmV2LandingContent"), "landing on /advisor");
+  assert(read("lib/crm-v2/navigation.ts").includes('CRM_V2_HOME_PATH = "/advisor"'), "home path");
+});
+
+check("routing: /advisor-v2 redirects to /advisor", () => {
+  const alias = read("app/advisor-v2/page.tsx");
+  assert(alias.includes("redirect"), "redirect required");
+  assert(alias.includes("CRM_V2_HOME_PATH"), "redirect target constant");
+  assert(!alias.includes('redirect("/advisor-v2/today")'), "no blind redirect to today");
+  assert(!alias.includes("AdviserCrmV2LandingContent"), "no duplicate landing on alias");
+});
+
+check("landing dashboard uses real projection data", () => {
+  const landing = read("components/aegis/advisor-v2/AdviserCrmV2LandingContent.tsx");
+  assert(landing.includes("AdviserWorkspaceDashboard"), "dashboard component");
+  assert(landing.includes("loadAdviserTodayProjection"), "today loader");
+  assert(!landing.toLowerCase().includes("limited pilot"), "no pilot copy");
 });
 
 check("navigation today href", () => {
   const source = read("lib/crm-v2/navigation.ts");
   assert(source.includes('href: "/advisor-v2/today"'), "nav href");
+});
+
+check("navigation Communications under More not primary", () => {
+  const source = read("lib/crm-v2/navigation.ts");
+  const primaryBlock = source.slice(source.indexOf("CRM_V2_PRIMARY_NAV"), source.indexOf("CRM_V2_MORE_NAV"));
+  const moreBlock = source.slice(source.indexOf("CRM_V2_MORE_NAV"), source.indexOf("CRM_V2_TOOLS_NAV_GROUPS"));
+  assert(!primaryBlock.includes('label: "Communications"'), "Communications in primary");
+  assert(moreBlock.includes('label: "Communications"'), "Communications in more");
+});
+
+check("shell workspace branding not pilot", () => {
+  const shell = read("components/aegis/advisor-v2/AdviserCrmV2Shell.tsx");
+  assert(shell.includes("AEGIS Adviser Workspace"), "workspace branding");
+  assert(!shell.includes("CRM V2 Limited Pilot"), "pilot badge copy");
+  assert(!shell.includes("CrmV2PilotBadge"), "pilot badge import");
 });
 
 check("work queue routes allow advisor-v2", () => {
@@ -288,7 +318,8 @@ const topics = [
   "stale data warning",
   "quick links workspaces",
   "section workspace href",
-  "landing redirect today",
+  "classic fallback /advisor/classic",
+  "primary home /advisor not /advisor-v2",
   "work queue feature gated separately",
   "dry run phase 11 migration only",
 ] as const;

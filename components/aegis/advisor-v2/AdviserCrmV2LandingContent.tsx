@@ -1,41 +1,49 @@
-import Link from "next/link";
-
-import CrmV2PageHeader from "@/components/aegis/advisor-v2/CrmV2PageHeader";
+import AdviserWorkspaceDashboard from "@/components/aegis/advisor-v2/AdviserWorkspaceDashboard";
 import {
-  CRM_V2_MORE_NAV,
-  CRM_V2_PRIMARY_NAV,
-} from "@/lib/crm-v2/navigation";
+  assertCrmV2RelationshipsAccess,
+  assertCrmV2TodayAccess,
+} from "@/lib/crm-v2/access";
+import { loadCrmRelationshipListPage } from "@/lib/crm-v2/relationships/listQueries";
+import { loadAdviserTodayProjection } from "@/lib/crm-v2/today/projection";
 
-export default function AdviserCrmV2LandingContent() {
-  const areas = [...CRM_V2_PRIMARY_NAV, ...CRM_V2_MORE_NAV];
+export default async function AdviserCrmV2LandingContent() {
+  const todayAccess = await assertCrmV2TodayAccess();
+  let today = null;
+  if (todayAccess.allowed) {
+    const todayResult = await loadAdviserTodayProjection({
+      authUserId: todayAccess.authUser.id,
+      userRole: todayAccess.user.role as "advisor" | "admin",
+    });
+    if (todayResult.ok) {
+      today = todayResult.data;
+    }
+  }
+
+  const relationshipsAccess = await assertCrmV2RelationshipsAccess();
+  let relationships: Awaited<ReturnType<typeof loadCrmRelationshipListPage>>["relationships"] = [];
+  let relationshipsTotalCount: number | null = null;
+  if (relationshipsAccess.allowed) {
+    try {
+      const listPage = await loadCrmRelationshipListPage(
+        relationshipsAccess.authUser.id,
+        relationshipsAccess.user.role as "advisor" | "admin",
+        { page: 1, pageSize: 3 },
+      );
+      relationships = listPage.relationships;
+      relationshipsTotalCount = listPage.totalCount;
+    } catch {
+      relationships = [];
+      relationshipsTotalCount = null;
+    }
+  }
 
   return (
-    <>
-      <CrmV2PageHeader
-        title="Adviser workspace"
-        subtitle="Your primary adviser home. Choose an area below or use the navigation for relationships, appointments, service, legacy tools, and operations."
-      />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {areas.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="group rounded-sm border border-[#D1A866]/14 bg-[#10283A]/45 px-4 py-4 transition-colors hover:border-[#D1A866]/28 hover:bg-[#10283A]/70"
-          >
-            <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-[#D1A866]/85 group-hover:text-[#D1A866]">
-              {item.label}
-            </p>
-            <p className="mt-2 text-xs font-light leading-relaxed text-[#F3F1EA]/40">
-              Open {item.label.toLowerCase()} workspace
-            </p>
-          </Link>
-        ))}
-      </div>
-      <p className="mt-8 max-w-2xl text-xs font-light leading-relaxed text-[#F3F1EA]/35">
-        This is a limited pilot — not a full production launch. Projections and
-        drafts stay advisory-only until you confirm actions in the classic
-        workspace or governed flows.
-      </p>
-    </>
+    <AdviserWorkspaceDashboard
+      today={today}
+      todayUnavailable={!todayAccess.allowed}
+      relationships={relationships}
+      relationshipsTotalCount={relationshipsTotalCount}
+      relationshipsUnavailable={!relationshipsAccess.allowed}
+    />
   );
 }

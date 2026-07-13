@@ -13,7 +13,7 @@ export default function CrmV2PageHeader({
     <header className="mb-8 border-b border-[#D1A866]/12 pb-6">
       <div className="flex flex-wrap items-center gap-3">
         <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-[#D1A866]/75">
-          AEGIS Adviser CRM V2
+          AEGIS Adviser Workspace
         </p>
         {phase ? (
           <span className="rounded-sm border border-[#D1A866]/20 bg-[#D1A866]/8 px-2 py-0.5 text-[9px] uppercase tracking-[0.16em] text-[#D1A866]/80">

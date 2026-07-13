@@ -42,7 +42,9 @@ Today | Relationships | Appointments | Service | Communications | More
 | **12** | `crm-v2-12-reports-operations` | Reports + operator diagnostics | **Complete** — see Phase 12 docs |
 | **13** | `crm-v2-13-pilot-activation` | Staging pilot readiness (runbooks, diagnostics, acceptance) | **Complete** — see Phase 13 docs |
 | **14** | `crm-v2-14-cutover` | `/advisor` → CRM V2 workspace + legacy parity nav | **Complete** — see Phase 14 docs |
-| **15** | `crm-v2-15-legacy-retirement` | Legacy adviser portal retirement (conditional) | Deferred |
+| **15** | `crm-v2-15-adviser-rebuild` | Adviser workspace rebuild + client-safe cutover | **Complete** — see Phase 15 docs |
+| **15.1** | `crm-v2-15-1-qa-alignment` | Shell/Today validation aligned with Phase 15 routing | **Complete** — see Phase 15 docs § 15.1 |
+| **16** | `crm-v2-16-legacy-retirement` | Legacy adviser portal retirement (conditional) | Deferred |
 
 ---
 
@@ -295,6 +297,12 @@ Today | Relationships | Appointments | Service | Communications | More
 |----------|---------|
 | [CRM_V2_PHASE_14_ADVISER_WORKSPACE_REPLACEMENT.md](./CRM_V2_PHASE_14_ADVISER_WORKSPACE_REPLACEMENT.md) | `/advisor` CRM V2 primary entry, classic fallback, safety rules, QA, rollback |
 | [CRM_V2_PHASE_14_ADVISER_FEATURE_PARITY_INVENTORY.md](./CRM_V2_PHASE_14_ADVISER_FEATURE_PARITY_INVENTORY.md) | Legacy feature audit table and CRM V2 navigation mapping |
+
+### Phase 15 — adviser workspace rebuild
+
+| Document | Purpose |
+|----------|---------|
+| [CRM_V2_PHASE_15_ADVISER_WORKSPACE_REBUILD.md](./CRM_V2_PHASE_15_ADVISER_WORKSPACE_REBUILD.md) | Primary `/advisor` OS, `/advisor-v2` redirect, nav restructure, client safety freeze, QA, rollback |
 
 ---
 

@@ -20,7 +20,7 @@ export default function CrmV2FoundationEmptyState({
 }: CrmV2FoundationEmptyStateProps) {
   const statusLabel =
     variant === "unavailable"
-      ? "Not available in this pilot session"
+      ? "Not available in this workspace"
       : variant === "empty"
         ? "Nothing here yet"
         : phase

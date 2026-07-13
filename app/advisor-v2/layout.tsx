@@ -24,7 +24,7 @@ export default async function AdviserCrmV2Layout({
     }
 
     return (
-      <AuthenticatedAppShell title="Adviser CRM V2">
+      <AuthenticatedAppShell title="Adviser Workspace">
         <CrmV2AccessDenied />
       </AuthenticatedAppShell>
     );

@@ -1,5 +1,11 @@
-import AdviserCrmV2LandingContent from "@/components/aegis/advisor-v2/AdviserCrmV2LandingContent";
+import { redirect } from "next/navigation";
 
-export default function AdviserCrmV2LandingPage() {
-  return <AdviserCrmV2LandingContent />;
+import { CRM_V2_HOME_PATH } from "@/lib/crm-v2/navigation";
+
+/**
+ * Legacy `/advisor-v2` home alias — redirects to the primary adviser workspace.
+ * Sub-routes under `/advisor-v2/*` remain unchanged for bookmarks and deep links.
+ */
+export default function AdviserCrmV2AliasPage() {
+  redirect(CRM_V2_HOME_PATH);
 }

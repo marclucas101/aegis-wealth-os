@@ -1,7 +1,8 @@
 /**
- * CRM V2 Phase 01 — foundation shell validation (≥120 explicit checks).
+ * CRM V2 Phase 01 + Phase 15 — foundation shell validation (≥120 explicit checks).
  * Run: npm run qa:crm-v2-shell
  *
+ * Phase 15.1: expectations aligned with /advisor primary workspace and /advisor-v2 redirect.
  * Each check is independently reported — grouped assertions are not collapsed.
  */
 
@@ -387,7 +388,14 @@ check("pilot: pilotConfig fail-closed on missing env", () => {
   assert(doc("lib/crm-v2/pilotConfig.ts").includes('"missing"'), "missing reason missing");
 });
 
-// --- UI navigation (18 checks) ---
+// --- UI navigation (Phase 15 aligned) ---
+
+check("ui nav: CRM_V2_HOME_PATH is /advisor", () => {
+  assert(
+    doc("lib/crm-v2/navigation.ts").includes('export const CRM_V2_HOME_PATH = "/advisor"'),
+    "home path missing",
+  );
+});
 
 check("ui nav: CRM_V2_PRIMARY_NAV exports Today", () => {
   assert(doc("lib/crm-v2/navigation.ts").includes('label: "Today"'), "Today missing");
@@ -405,16 +413,24 @@ check("ui nav: CRM_V2_PRIMARY_NAV exports Service", () => {
   assert(doc("lib/crm-v2/navigation.ts").includes('label: "Service"'), "Service missing");
 });
 
-check("ui nav: CRM_V2_PRIMARY_NAV exports Communications", () => {
-  assert(doc("lib/crm-v2/navigation.ts").includes('label: "Communications"'), "Communications missing");
-});
-
-check("ui nav: CRM_V2_MORE_NAV exports Reports", () => {
+check("ui nav: CRM_V2_PRIMARY_NAV exports Reports", () => {
   assert(doc("lib/crm-v2/navigation.ts").includes('label: "Reports"'), "Reports missing");
 });
 
-check("ui nav: CRM_V2_MORE_NAV exports Operations", () => {
+check("ui nav: CRM_V2_PRIMARY_NAV exports Operations", () => {
   assert(doc("lib/crm-v2/navigation.ts").includes('label: "Operations"'), "Operations missing");
+});
+
+check("ui nav: Communications is in CRM_V2_MORE_NAV not primary", () => {
+  const nav = doc("lib/crm-v2/navigation.ts");
+  const primaryBlock = nav.slice(nav.indexOf("CRM_V2_PRIMARY_NAV"), nav.indexOf("CRM_V2_MORE_NAV"));
+  const moreBlock = nav.slice(nav.indexOf("CRM_V2_MORE_NAV"), nav.indexOf("CRM_V2_TOOLS_NAV_GROUPS"));
+  assert(!primaryBlock.includes('label: "Communications"'), "Communications in primary nav");
+  assert(moreBlock.includes('label: "Communications"'), "Communications missing from more nav");
+});
+
+check("ui nav: CRM_V2_MORE_NAV exports Communications", () => {
+  assert(doc("lib/crm-v2/navigation.ts").includes('label: "Communications"'), "Communications missing");
 });
 
 check("ui nav: CRM_V2_MORE_NAV exports Templates", () => {
@@ -423,6 +439,10 @@ check("ui nav: CRM_V2_MORE_NAV exports Templates", () => {
 
 check("ui nav: CRM_V2_MORE_NAV exports Settings", () => {
   assert(doc("lib/crm-v2/navigation.ts").includes('label: "Settings"'), "Settings missing");
+});
+
+check("ui nav: CRM_V2_TOOLS_NAV_GROUPS exported", () => {
+  assert(doc("lib/crm-v2/navigation.ts").includes("CRM_V2_TOOLS_NAV_GROUPS"), "tools groups missing");
 });
 
 check("ui nav: primary href /advisor-v2/today", () => {
@@ -436,7 +456,7 @@ check("ui nav: isCrmV2NavActive helper exported", () => {
 check("ui shell: AdviserCrmV2Shell renders nav landmark", () => {
   const shell = doc("components/aegis/advisor-v2/AdviserCrmV2Shell.tsx");
   assert(shell.includes("<nav"), "nav landmark missing");
-  assert(shell.includes('aria-label="CRM V2 primary"'), "primary nav label missing");
+  assert(shell.includes('aria-label="Adviser primary"'), "primary nav label missing");
 });
 
 check("ui shell: AdviserCrmV2Shell renders main landmark", () => {
@@ -472,8 +492,62 @@ check("ui shell: AdviserCrmV2Shell uses CRM_V2_MORE_NAV", () => {
   );
 });
 
+check("ui shell: AdviserCrmV2Shell uses CRM_V2_TOOLS_NAV_GROUPS", () => {
+  assert(
+    doc("components/aegis/advisor-v2/AdviserCrmV2Shell.tsx").includes("CRM_V2_TOOLS_NAV_GROUPS"),
+    "tools nav groups not wired",
+  );
+});
+
 check("ui shell: AdviserCrmV2Shell aria-current on active link", () => {
   assert(doc("components/aegis/advisor-v2/AdviserCrmV2Shell.tsx").includes("aria-current"), "aria-current missing");
+});
+
+check("ui shell: AEGIS Adviser Workspace branding", () => {
+  const shell = doc("components/aegis/advisor-v2/AdviserCrmV2Shell.tsx");
+  assert(shell.includes("AEGIS Adviser Workspace"), "workspace branding missing");
+  assert(!shell.includes("CRM V2 Limited Pilot"), "pilot badge copy present");
+  assert(!shell.includes("CrmV2PilotBadge"), "pilot badge imported");
+  assert(!shell.includes("CrmV2AdviserParityNotice"), "parity notice imported");
+});
+
+check("ui shell: classic fallback link is subtle not prominent", () => {
+  const shell = doc("components/aegis/advisor-v2/AdviserCrmV2Shell.tsx");
+  assert(!shell.includes("Back to classic adviser workspace"), "prominent classic CTA present");
+  assert(
+    shell.includes("/advisor/classic") || shell.includes("CRM_V2_CLASSIC_ADVISER_PATH"),
+    "classic fallback link missing",
+  );
+});
+
+// --- Phase 15 routing (6 checks) ---
+
+check("routing: /advisor is primary workspace entry", () => {
+  const advisor = doc("app/advisor/page.tsx");
+  assert(advisor.includes("AdviserCrmV2Shell"), "shell missing");
+  assert(advisor.includes("AdviserCrmV2LandingContent"), "landing missing");
+  assert(advisor.includes("isCrmV2PilotAvailable"), "availability gate");
+});
+
+check("routing: /advisor-v2 redirects to CRM_V2_HOME_PATH", () => {
+  const alias = doc("app/advisor-v2/page.tsx");
+  assert(alias.includes("redirect"), "redirect missing");
+  assert(alias.includes("CRM_V2_HOME_PATH"), "home path constant used");
+  assert(!alias.includes("AdviserCrmV2LandingContent"), "duplicate landing on alias");
+});
+
+check("routing: /advisor/classic fallback exists", () => {
+  assert(existsSync("app/advisor/classic/page.tsx"), "classic page missing");
+  assert(
+    doc("app/advisor/classic/page.tsx").includes("ClassicAdvisorWorkspace"),
+    "classic workspace missing",
+  );
+});
+
+check("routing: shell home link uses CRM_V2_HOME_PATH", () => {
+  const shell = doc("components/aegis/advisor-v2/AdviserCrmV2Shell.tsx");
+  assert(shell.includes("CRM_V2_HOME_PATH"), "home path constant missing in shell");
+  assert(shell.includes('label="Home"'), "home nav item missing");
 });
 
 // --- UI placeholders (12 checks) ---
@@ -500,17 +574,27 @@ check("ui placeholder: foundation component has no fetch", () => {
   assert(!source.includes("fetch("), "fetch present");
 });
 
-check("ui placeholder: landing has no fake client totals", () => {
+check("ui landing: dashboard has no hardcoded client totals", () => {
   const landing = doc("components/aegis/advisor-v2/AdviserCrmV2LandingContent.tsx");
-  assert(!landing.includes("client total"), "fake totals");
-  assert(!/\b\d+\s+clients?\b/i.test(landing), "numeric client count");
+  const dashboard = doc("components/aegis/advisor-v2/AdviserWorkspaceDashboard.tsx");
+  assert(!landing.includes("client total"), "fake totals in landing loader");
+  assert(!/\b\d+\s+clients?\b/i.test(landing), "hardcoded client count in landing");
+  assert(!/\b\d+\s+clients?\b/i.test(dashboard), "hardcoded client count in dashboard");
 });
 
-check("ui placeholder: landing is pilot home hub", () => {
+check("ui landing: primary workspace dashboard on /advisor", () => {
   const landing = doc("components/aegis/advisor-v2/AdviserCrmV2LandingContent.tsx");
-  assert(landing.includes("CRM_V2_PRIMARY_NAV"), "primary nav links on landing");
+  assert(landing.includes("AdviserWorkspaceDashboard"), "dashboard component missing");
+  assert(landing.includes("loadAdviserTodayProjection"), "today projection loader");
+  assert(landing.includes("CRM_V2_PRIMARY_NAV") || landing.includes("AdviserWorkspaceDashboard"), "workspace sections");
+  assert(!landing.toLowerCase().includes("limited pilot"), "pilot copy in landing");
+});
+
+check("ui landing: /advisor-v2 alias redirects not duplicates home", () => {
   const alias = doc("app/advisor-v2/page.tsx");
-  assert(alias.includes("AdviserCrmV2LandingContent"), "alias landing uses shared content");
+  assert(alias.includes("redirect"), "alias must redirect");
+  assert(alias.includes("CRM_V2_HOME_PATH"), "alias must target CRM_V2_HOME_PATH");
+  assert(!alias.includes("AdviserCrmV2LandingContent"), "alias must not render landing");
 });
 
 // --- Compatibility (10 checks) ---
@@ -553,8 +637,14 @@ check("compat: adviser shell components have no work-queue import", () => {
   }
 });
 
-check("compat: legacy adviser portal page still exists", () => {
-  assert(existsSync("app/advisor/page.tsx"), "legacy landing missing");
+check("compat: no CrmV2PilotEntryBanner on classic workspace", () => {
+  const classic = doc("components/aegis/advisor/ClassicAdvisorWorkspace.tsx");
+  assert(!classic.includes("CrmV2PilotEntryBanner"), "pilot entry banner on classic");
+});
+
+check("compat: pilot entry banner deprecated", () => {
+  const banner = doc("components/aegis/advisor/CrmV2PilotEntryBanner.tsx");
+  assert(banner.includes("return null"), "pilot banner should not render");
 });
 
 check("compat: CRM V2 layout does not modify legacy advisor layout file", () => {

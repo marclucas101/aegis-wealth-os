@@ -117,7 +117,7 @@ export function AdviserTodayClient({ initialToday, loadError, featureDisabled }:
   if (featureDisabled) {
     return (
       <div className="rounded-lg border border-[#F3F1EA]/10 bg-[#1A1F1C]/40 px-6 py-10 text-center">
-        <p className="text-sm text-[#F3F1EA]/60">CRM V2 Today is not enabled.</p>
+        <p className="text-sm text-[#F3F1EA]/60">Today workspace is not enabled.</p>
       </div>
     );
   }
