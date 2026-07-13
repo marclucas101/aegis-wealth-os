@@ -16,6 +16,7 @@ import {
   CRM_V2_CLIENT_PROFILE_FEATURE_KEY,
   CRM_V2_ADVOCACY_FEATURE_KEY,
   CRM_V2_COMMUNICATIONS_FEATURE_KEY,
+  CRM_V2_TODAY_FEATURE_KEY,
 } from "@/lib/crm-v2/constants";
 import { loadFeatureControls } from "@/lib/compliance/featureFlags";
 import {
@@ -648,6 +649,44 @@ export type CrmV2ClientMessagesAccessResult =
  * Server-derived client identity only; fail-closed on flag visibility.
  * Client control cannot grant adviser CRM access.
  */
+export type CrmV2TodayAccessResult =
+  | { allowed: false; reason: CrmV2AccessDeniedReason; requestId: string }
+  | {
+      allowed: true;
+      authUser: User;
+      user: AppUserRow;
+      requestId: string;
+      masterEnabled: true;
+      pilotModeEnabled: true;
+      todayEnabled: true;
+    };
+
+/**
+ * Central gate for CRM V2 Today workspace.
+ * Requires master + pilot gates; adviser-only; does not bypass them.
+ */
+export async function assertCrmV2TodayAccess(): Promise<CrmV2TodayAccessResult> {
+  const base = await assertCrmV2Access();
+  if (!base.allowed) {
+    return { allowed: false, reason: base.reason, requestId: base.requestId };
+  }
+
+  const todayEnabled = await isFeatureEnabled(CRM_V2_TODAY_FEATURE_KEY);
+  if (!todayEnabled) {
+    return { allowed: false, reason: "feature_disabled", requestId: base.requestId };
+  }
+
+  return {
+    allowed: true,
+    authUser: base.authUser,
+    user: base.user,
+    requestId: base.requestId,
+    masterEnabled: true,
+    pilotModeEnabled: true,
+    todayEnabled: true,
+  };
+}
+
 export async function assertCrmV2ClientMessagesAccess(): Promise<CrmV2ClientMessagesAccessResult> {
   const requestId = createShellRequestId();
   const session = await ensureUserClientProfile();

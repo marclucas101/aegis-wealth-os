@@ -175,10 +175,13 @@ const TESTS: TestCase[] = [
   record(50, "build module is server-only", () =>
     assert(read("lib/work-queue/buildAdviserWorkQueue.ts").includes("server-only"), "server")),
 
-  record(51, "no API route for work queue", () => {
-    const api = readdirSync(join(ROOT, "app/api"), { recursive: true } as never) as string[];
-    const hits = api.filter((p) => String(p).toLowerCase().includes("work-queue"));
-    assert(hits.length === 0, hits.join(", "));
+  record(51, "work queue API is Phase 11 read-only route only", () => {
+    const routePath = "app/api/advisor-v2/work-queue/route.ts";
+    assert(existsSync(join(ROOT, routePath)), "phase 11 work queue route");
+    const source = read(routePath);
+    assert(source.includes("readOnly: true"), "read only response");
+    assert(!source.includes("POST"), "no mutation");
+    assert(source.includes("buildAdviserWorkQueue"), "virtual assembly");
   }),
 
   record(52, "no work queue UI page", () => {

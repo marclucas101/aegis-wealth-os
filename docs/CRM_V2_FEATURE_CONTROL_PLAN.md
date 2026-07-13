@@ -83,6 +83,8 @@ Enabling `crm_v2_master` alone does not grant book-wide access.
 | 07 | Seed `crm_v2_protection_portfolio` — disabled — **implemented** `202606290010_phase07_crm_v2_protection_feature_control.sql` (not applied) |
 | 08 | Seed `crm_v2_relationship_moments`, `crm_v2_client_profile` — disabled — **implemented** `202606290012_phase08_crm_v2_relationship_moments_feature_control.sql` (not applied) |
 | 09 | Seed `crm_v2_advocacy` — disabled — **implemented** `202606290014_phase09_crm_v2_advocacy_feature_control.sql` (not applied). Single key: `adviser_visible=true`, `client_visible=true`. No separate `crm_v2_client_advocacy`. |
+| 10 | Seed `crm_v2_communications` — disabled — **implemented** `202606290016` (not applied) |
+| 11 | Seed `crm_v2_today`, `adviser_work_queue` — disabled — **implemented** `202606290018` (not applied) |
 | ... | One seed per sub-flag at implementation phase |
 | 14 | Seed cutover flags — disabled until operator |
 

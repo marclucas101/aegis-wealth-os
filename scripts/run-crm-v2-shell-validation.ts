@@ -425,8 +425,8 @@ check("ui nav: CRM_V2_MORE_NAV exports Settings", () => {
   assert(doc("lib/crm-v2/navigation.ts").includes('label: "Settings"'), "Settings missing");
 });
 
-check("ui nav: primary href /advisor-v2 landing", () => {
-  assert(doc("lib/crm-v2/navigation.ts").includes('href: "/advisor-v2"'), "landing href missing");
+check("ui nav: primary href /advisor-v2/today", () => {
+  assert(doc("lib/crm-v2/navigation.ts").includes('href: "/advisor-v2/today"'), "today href missing");
 });
 
 check("ui nav: isCrmV2NavActive helper exported", () => {
@@ -506,8 +506,8 @@ check("ui placeholder: landing has no fake client totals", () => {
   assert(!/\b\d+\s+clients?\b/i.test(landing), "numeric client count");
 });
 
-check("ui placeholder: landing references four-domain model", () => {
-  assert(doc("app/advisor-v2/page.tsx").includes("CRM_V2_DOMAIN_PILLARS"), "domain pillars missing");
+check("ui placeholder: landing redirects to today", () => {
+  assert(doc("app/advisor-v2/page.tsx").includes("/advisor-v2/today"), "today redirect missing");
 });
 
 // --- Compatibility (10 checks) ---
