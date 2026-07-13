@@ -36,7 +36,7 @@ Today | Relationships | Appointments | Service | Communications | More
 | **06** | `crm-v2-06-service-commitments` | Service layer + commitments + client requests | **Complete** — see Phase 06 docs below |
 | **07** | `crm-v2-07-protection-portfolio` | Protection portfolio + verification | **Complete** — see Phase 07 docs below |
 | **08** | `crm-v2-08-relationship-moments` | Moments engine (birthdays, holidays, review rhythm) | **Implemented** — see Phase 08 docs below |
-| **09** | `crm-v2-09-advocacy` | Advocacy event tracking + yearly score | Pending |
+| **09** | `crm-v2-09-advocacy` | Advocacy event tracking + yearly score | **Implemented** — see Phase 09 docs below |
 | **10** | `crm-v2-10-communications` | CRM → governed communications bridge | Pending |
 | **11** | `crm-v2-11-today-work-queue` | Today homepage + unified work queue | Pending |
 | **12** | `crm-v2-12-reports-operations` | Reports + operator diagnostics | Pending |
@@ -95,6 +95,25 @@ Today | Relationships | Appointments | Service | Communications | More
 | [CRM_V2_PHASE_06_MIGRATION_RUNBOOK.md](./CRM_V2_PHASE_06_MIGRATION_RUNBOOK.md) | Apply/verify/discrepancy |
 | [CRM_V2_PHASE_06_MANUAL_TESTS.md](./CRM_V2_PHASE_06_MANUAL_TESTS.md) | Operator checklist (38 tests) |
 | [CRM_V2_PHASE_06_COMPLETION.md](./CRM_V2_PHASE_06_COMPLETION.md) | Sign-off, QA results, verdict |
+
+---
+
+## Phase 09 documents (advocacy)
+
+| Document | Purpose |
+|----------|---------|
+| [CRM_V2_PHASE_09_EXISTING_ADVOCACY_AUDIT.md](./CRM_V2_PHASE_09_EXISTING_ADVOCACY_AUDIT.md) | Pre-schema audit (referrals, testimonials, promotions 9F.4) |
+| [CRM_V2_PHASE_09_ADVOCACY_ARCHITECTURE.md](./CRM_V2_PHASE_09_ADVOCACY_ARCHITECTURE.md) | Event-based advocacy layer, tables, flow |
+| [CRM_V2_PHASE_09_CONSENT_AND_PRIVACY.md](./CRM_V2_PHASE_09_CONSENT_AND_PRIVACY.md) | Consent states, testimonial rules, withdrawal |
+| [CRM_V2_PHASE_09_ADVOCACY_SCORE_RESTRICTIONS.md](./CRM_V2_PHASE_09_ADVOCACY_SCORE_RESTRICTIONS.md) | Yearly score allowed/prohibited uses |
+| [CRM_V2_PHASE_09_CLIENT_ADVOCACY_PREFERENCES.md](./CRM_V2_PHASE_09_CLIENT_ADVOCACY_PREFERENCES.md) | `/preferences/advocacy`, `crm_v2_advocacy` client gate |
+| [CRM_V2_PHASE_09_SERVICE_APPOINTMENT_WORK_QUEUE_INTEGRATION.md](./CRM_V2_PHASE_09_SERVICE_APPOINTMENT_WORK_QUEUE_INTEGRATION.md) | FK links, `advocacyEventAdapter` |
+| [CRM_V2_PHASE_09_API_CONTRACT.md](./CRM_V2_PHASE_09_API_CONTRACT.md) | Adviser and client API DTOs |
+| [CRM_V2_PHASE_09_VISIBILITY_AND_PRIVACY.md](./CRM_V2_PHASE_09_VISIBILITY_AND_PRIVACY.md) | DTO redactions |
+| [CRM_V2_PHASE_09_SECURITY_REVIEW.md](./CRM_V2_PHASE_09_SECURITY_REVIEW.md) | IDOR, feature gates, no Promotions Stage 6 |
+| [CRM_V2_PHASE_09_MIGRATION_RUNBOOK.md](./CRM_V2_PHASE_09_MIGRATION_RUNBOOK.md) | Apply/verify/discrepancy (`202606290014`, `202606290015`) |
+| [CRM_V2_PHASE_09_MANUAL_TESTS.md](./CRM_V2_PHASE_09_MANUAL_TESTS.md) | Operator checklist (42 tests) |
+| [CRM_V2_PHASE_09_COMPLETION.md](./CRM_V2_PHASE_09_COMPLETION.md) | Sign-off, QA results, verdict |
 
 ---
 

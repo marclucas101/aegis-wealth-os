@@ -26,6 +26,11 @@ import {
   CRM_MOMENTS_PHASE_NOTICE,
   loadCrmMomentsEngagementLink,
 } from "@/lib/crm-v2/relationships/momentsProjection";
+import {
+  CRM_ADVOCACY_PHASE_NOTICE,
+  loadCrmAdvocacyEngagementLink,
+} from "@/lib/crm-v2/relationships/advocacyProjection";
+import { loadCrmAdvocacyEngagementSummary } from "@/lib/crm-v2/advocacy/advocacy";
 import { loadCrmTimelineProjection } from "@/lib/crm-v2/relationships/timelineProjection";
 import type {
   CrmFinancialPlanLink,
@@ -383,6 +388,7 @@ function buildFinancialPlanLinks(
 function buildProfileFields(
   client: AppClientRow,
   momentsSummary: string,
+  advocacySummary: string,
 ): CrmRelationshipProfileField[] {
   return [
     { label: "Display name", value: client.display_name },
@@ -426,7 +432,7 @@ function buildProfileFields(
     },
     {
       label: "Referral context",
-      value: CRM_NOT_ESTABLISHED_LABEL,
+      value: advocacySummary,
     },
   ];
 }
@@ -441,7 +447,7 @@ export async function loadCrmRelationship360(
   const context = await loadSupplementaryContext(client.id, client.advisor_user_id);
   const warnings: string[] = [...context.warnings];
 
-  const [timelineResult, serviceResult, documentsResult, protectionLink, protectionNotice, momentsLink, momentsSummary] =
+  const [timelineResult, serviceResult, documentsResult, protectionLink, protectionNotice, momentsLink, momentsSummary, advocacyLink, advocacySummary] =
     await Promise.all([
     loadCrmTimelineProjection(client.id).catch(() => {
       warnings.push("timeline_unavailable");
@@ -473,6 +479,12 @@ export async function loadCrmRelationship360(
       statusLabel: CRM_NOT_ESTABLISHED_LABEL,
     })),
     loadCrmMomentsEngagementSummary(client.id).catch(() => CRM_NOT_ESTABLISHED_LABEL),
+    loadCrmAdvocacyEngagementLink(client.id).catch(() => ({
+      label: "Advocacy",
+      href: `/advisor-v2/relationships/${client.id}/advocacy`,
+      statusLabel: CRM_NOT_ESTABLISHED_LABEL,
+    })),
+    loadCrmAdvocacyEngagementSummary(client.id).catch(() => CRM_NOT_ESTABLISHED_LABEL),
   ]);
 
   const header = buildHeader(client, context, context.adviserName);
@@ -486,7 +498,7 @@ export async function loadCrmRelationship360(
       protectionNotice,
     },
     financialPlan: {
-      links: [...buildFinancialPlanLinks(client.id, context, protectionLink), momentsLink],
+      links: [...buildFinancialPlanLinks(client.id, context, protectionLink), momentsLink, advocacyLink],
     },
     engagement: timelineResult,
     service: {
@@ -500,11 +512,12 @@ export async function loadCrmRelationship360(
       bounded: documentsResult.bounded,
     },
     profile: {
-      fields: buildProfileFields(client, momentsSummary),
+      fields: buildProfileFields(client, momentsSummary, advocacySummary),
       futurePhaseNotices: [
         "Relationship Moments — Phase 08",
         CRM_MOMENTS_PHASE_NOTICE,
         "Advocacy tracking — Phase 09",
+        CRM_ADVOCACY_PHASE_NOTICE,
         "Household grouping — deferred per blueprint",
       ],
     },

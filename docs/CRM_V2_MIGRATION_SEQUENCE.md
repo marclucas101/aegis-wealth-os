@@ -151,14 +151,20 @@ Phase 02 uses existing `clients` — read-only APIs only.
 | Rollback | Disable flags; schema retained |
 | Risk | Low — greenfield tables, nullable ethnicity |
 
-### M07 — Phase 09: Advocacy
+### M07 — Phase 09: Advocacy (**created, not applied**)
 
 | Item | Detail |
 |------|--------|
-| Tables | `advocacy_events`, `advocacy_score_config` |
-| Constraint | Events append-only (no DELETE policy for advisers) |
-| Rollback | DROP |
-| Risk | Low |
+| Files | `supabase/migrations/202606290014_phase09_crm_v2_advocacy_feature_control.sql`, `supabase/migrations/202606290015_phase09_crm_v2_advocacy_core.sql` |
+| Feature seed (`014`) | `crm_v2_advocacy` — `enabled=false`, `client_visible=true`, `adviser_visible=true` |
+| Tables (`015`) | `advocacy_events`, `advocacy_score_config`, `crm_client_advocacy_preferences`, `advocacy_domain_events` |
+| Constraint | Events soft-deactivate only (`active=false`); no adviser DELETE; no Promotions Stage 6 |
+| FK deps | `clients`, `users`, `adviser_appointments`, `client_service_requests`, `relationship_moments` |
+| Applied | **No** — operator approval required |
+| Idempotency | `ON CONFLICT DO NOTHING` seeds; `IF NOT EXISTS` / `DROP POLICY IF EXISTS` |
+| Diagnostics | `preflight_202606290014_*`, `verify_202606290014_*`, `preflight_202606290015_*`, `verify_202606290015_*` |
+| Rollback | Disable `crm_v2_advocacy`; schema retained |
+| Risk | Low — greenfield tables |
 
 ### M08 — Phase 10: Communication drafts
 

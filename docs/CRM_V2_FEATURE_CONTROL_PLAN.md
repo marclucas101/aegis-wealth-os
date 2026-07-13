@@ -45,7 +45,7 @@ Enabling `crm_v2_master` alone does not grant book-wide access.
 | `crm_v2_protection_portfolio` | 07 | false | Structured protection |
 | `crm_v2_relationship_moments` | 08 | false | Moments engine |
 | `crm_v2_client_profile` | 08 | false | Client ethnicity/profile extensions |
-| `crm_v2_advocacy` | 09 | false | Advocacy tracking |
+| `crm_v2_advocacy` | 09 | false | Advocacy events + client preferences (`client_visible=true`) |
 | `crm_v2_communications` | 10 | false | CRM comm drafts bridge |
 | `crm_v2_today` | 11 | false | Today homepage |
 | `crm_v2_reports` | 12 | false | Adviser reports |
@@ -82,6 +82,7 @@ Enabling `crm_v2_master` alone does not grant book-wide access.
 | 06 | Seed `crm_v2_service`, `crm_v2_client_service` — disabled — **implemented** `202606290008_phase06_crm_v2_service_feature_control.sql` (not applied) |
 | 07 | Seed `crm_v2_protection_portfolio` — disabled — **implemented** `202606290010_phase07_crm_v2_protection_feature_control.sql` (not applied) |
 | 08 | Seed `crm_v2_relationship_moments`, `crm_v2_client_profile` — disabled — **implemented** `202606290012_phase08_crm_v2_relationship_moments_feature_control.sql` (not applied) |
+| 09 | Seed `crm_v2_advocacy` — disabled — **implemented** `202606290014_phase09_crm_v2_advocacy_feature_control.sql` (not applied). Single key: `adviser_visible=true`, `client_visible=true`. No separate `crm_v2_client_advocacy`. |
 | ... | One seed per sub-flag at implementation phase |
 | 14 | Seed cutover flags — disabled until operator |
 

@@ -183,6 +183,11 @@ export const FEATURE_DEFAULTS: Record<
     client_visible: true,
     adviser_visible: false,
   },
+  crm_v2_advocacy: {
+    enabled: false,
+    client_visible: true,
+    adviser_visible: true,
+  },
 };
 
 let cachedControls: Map<PlatformFeatureKey, FeatureControlRow> | null = null;

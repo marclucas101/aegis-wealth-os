@@ -121,7 +121,8 @@ export type PlatformFeatureKey =
   | "crm_v2_client_service"
   | "crm_v2_protection_portfolio"
   | "crm_v2_relationship_moments"
-  | "crm_v2_client_profile";
+  | "crm_v2_client_profile"
+  | "crm_v2_advocacy";
 
 export const PLATFORM_FEATURE_KEYS: readonly PlatformFeatureKey[] = [
   "raw_client_financial_views",
@@ -158,6 +159,7 @@ export const PLATFORM_FEATURE_KEYS: readonly PlatformFeatureKey[] = [
   "crm_v2_protection_portfolio",
   "crm_v2_relationship_moments",
   "crm_v2_client_profile",
+  "crm_v2_advocacy",
 ] as const;
 
 /** Entitlement-gated client portal features. */

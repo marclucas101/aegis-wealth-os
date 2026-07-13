@@ -9,6 +9,7 @@ import {
   isAllowlistedRelationshipLink,
 } from "@/lib/crm-v2/relationships/routes";
 import { buildMomentsWorkspaceHref } from "@/lib/crm-v2/moments/routes";
+import { buildAdvocacyWorkspaceHref } from "@/lib/crm-v2/advocacy/routes";
 import { createCrmMomentsAdmin } from "@/lib/crm-v2/moments/db";
 import type { CrmTimelineEntry } from "@/lib/crm-v2/relationships/types";
 
@@ -43,6 +44,22 @@ function momentEventTitle(eventType: string): string {
   return labels[eventType] ?? "Relationship moment activity";
 }
 
+function advocacyEventTitle(eventType: string): string {
+  const labels: Record<string, string> = {
+    advocacy_event_created: "Advocacy event recorded",
+    advocacy_event_updated: "Advocacy event updated",
+    consent_granted: "Advocacy consent granted",
+    consent_limited: "Advocacy consent limited",
+    consent_withdrawn: "Advocacy consent withdrawn",
+    referral_outcome_updated: "Referral outcome updated",
+    testimonial_permission_updated: "Testimonial permission updated",
+    thank_you_recorded: "Thank-you recorded",
+    advocacy_event_deactivated: "Advocacy event deactivated",
+    do_not_ask_recorded: "Do-not-ask preference recorded",
+  };
+  return labels[eventType] ?? "Advocacy activity";
+}
+
 function meetingTitle(meetingType: string, status: string): string {
   const typeLabel = meetingType.replace(/_/g, " ");
   return `Meeting session — ${typeLabel} (${status.replace(/_/g, " ")})`;
@@ -61,6 +78,7 @@ export async function loadCrmTimelineProjection(
     bindersResult,
     documentsResult,
     momentEventsResult,
+    advocacyEventsResult,
   ] = await Promise.all([
     admin
       .from("meeting_sessions")
@@ -102,6 +120,12 @@ export async function loadCrmTimelineProjection(
       .limit(CRM_V2_TIMELINE_MAX_ENTRIES),
     admin
       .from("relationship_moment_events")
+      .select("id, event_type, occurred_at, entity_type, entity_id")
+      .eq("client_id", clientId)
+      .order("occurred_at", { ascending: false })
+      .limit(CRM_V2_TIMELINE_MAX_ENTRIES),
+    admin
+      .from("advocacy_domain_events")
       .select("id, event_type, occurred_at, entity_type, entity_id")
       .eq("client_id", clientId)
       .order("occurred_at", { ascending: false })
@@ -237,6 +261,25 @@ export async function loadCrmTimelineProjection(
       summary: "Relationship moment activity",
       sourceLink: isAllowlistedRelationshipLink(href) ? href : null,
       visibility: row.event_type.startsWith("client_") ? "client_visible" : "adviser",
+    });
+  }
+
+  for (const row of (advocacyEventsResult.data ?? []) as Array<{
+    id: string;
+    event_type: string;
+    occurred_at: string;
+    entity_type: string;
+    entity_id: string;
+  }>) {
+    const href = buildAdvocacyWorkspaceHref(clientId);
+    entries.push({
+      eventId: `advocacy_domain_event:${row.id}`,
+      eventType: "advocacy",
+      occurredAt: row.occurred_at,
+      title: advocacyEventTitle(row.event_type),
+      summary: "Advocacy activity",
+      sourceLink: isAllowlistedRelationshipLink(href) ? href : null,
+      visibility: row.event_type.startsWith("consent_") ? "client_visible" : "adviser",
     });
   }
 

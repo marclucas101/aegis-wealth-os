@@ -49,8 +49,11 @@
 | CRM comm draft | **SOT NEW** | `crm_communication_drafts` | Staging before governed content | 10 |
 | Relationship moment | **SOT NEW** | `relationship_moments` | Birthdays, holidays, travel, etc. | 08 |
 | Moment override | **SOT NEW** | `adviser_moment_overrides` | Adviser add/exclude | 08 |
-| Advocacy event | **SOT NEW** | `advocacy_events` | Immutable, append-only | 09 |
+| Advocacy event | **SOT NEW** | `advocacy_events` | Consent-aware advocacy lifecycle; soft deactivate only | 09 |
+| Advocacy preferences | **SOT NEW** | `crm_client_advocacy_preferences` | Client testimonial consent, opt-outs | 09 |
+| Advocacy domain audit | **SOT NEW** | `advocacy_domain_events` | Immutable consent/event history | 09 |
 | Advocacy config | **SOT NEW** | `advocacy_score_config` | Weights, caps (operator) | 09 |
+| Advocacy yearly score | **PROJ** | — (computed) | From `advocacy_events` + `advocacy_score_config` | 09 |
 | Google connection | **SOT REUSE** | `adviser_calendar_connections` | OAuth tokens | 05 |
 | Calendar settings | **SOT REUSE** | `adviser_calendar_settings` | Slots, types | 05 |
 | Google event mapping | **SOT REUSE EXT** | `crm_google_calendar_event_mappings` + `adviser_appointments.google_*` (compatibility projection) | Per-appointment external mapping authority | 05 |
@@ -63,7 +66,7 @@
 | Engagement timeline | **PROJ** | — (virtual) | Multi-source projection | 02 |
 | Today dashboard | **PROJ** | — (virtual) | Sectioned aggregation | 11 |
 | Protection portfolio summary | **PROJ** | — (derived) | From confirmed policy versions | 07 |
-| Advocacy yearly score | **PROJ** | — (computed) | From `advocacy_events` | 09 |
+| Client testimonial (public) | **SOT REUSE** | `adviser_feedback` | Approved testimonials — not replaced by advocacy | 09 |
 
 ---
 

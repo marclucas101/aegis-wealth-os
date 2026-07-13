@@ -25,6 +25,7 @@ import type {
   WorkQueueRelationshipMomentRow,
   WorkQueueCrmReviewRhythmRow,
   WorkQueueClientPreferenceUpdateRow,
+  WorkQueueAdvocacyEventRow,
   WorkQueueRoadmapRow,
   WorkQueueServiceCommitmentRow,
 } from "./batchData";
@@ -517,6 +518,51 @@ async function loadClientPreferenceUpdates(
   }));
 }
 
+async function loadAdvocacyEvents(
+  adviserUserId: string,
+  userRole: "advisor" | "admin",
+  clientIds: string[],
+): Promise<WorkQueueAdvocacyEventRow[]> {
+  if (clientIds.length === 0) return [];
+  const admin = createAdminSupabaseClient();
+  let query = admin
+    .from("advocacy_events")
+    .select("id, client_id, safe_title, follow_up_status, next_follow_up_date, consent_state, updated_at")
+    .in("client_id", clientIds)
+    .eq("active", true)
+    .in("follow_up_status", ["pending", "overdue"]);
+
+  if (userRole === "advisor") {
+    query = query.eq("adviser_user_id", adviserUserId);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(`Failed to load advocacy events for work queue: ${error.message}`);
+  }
+
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => {
+    const followUpStatus = String(row.follow_up_status);
+    const nextFollowUpDate = row.next_follow_up_date ? String(row.next_follow_up_date) : null;
+    const consentState = String(row.consent_state);
+    const requiresAction =
+      followUpStatus === "pending" ||
+      followUpStatus === "overdue" ||
+      (consentState === "withdrawn" && followUpStatus !== "completed") ||
+      (consentState === "pending" && followUpStatus !== "completed");
+    return {
+      id: String(row.id),
+      clientId: String(row.client_id),
+      safeTitle: String(row.safe_title),
+      followUpStatus,
+      nextFollowUpDate,
+      consentState,
+      requiresAction,
+      updatedAt: String(row.updated_at),
+    };
+  });
+}
+
 export async function loadWorkQueueBatchData(input: {
   authUserId: string;
   userRole: "advisor" | "admin";
@@ -541,6 +587,7 @@ export async function loadWorkQueueBatchData(input: {
     relationshipMoments,
     crmReviewRhythms,
     clientPreferenceUpdates,
+    advocacyEvents,
   ] = await Promise.all([
     loadTasksForClients(input.authUserId, input.userRole, clientIds),
     loadRoadmapItems(clientIds),
@@ -563,6 +610,7 @@ export async function loadWorkQueueBatchData(input: {
     loadRelationshipMoments(input.authUserId, input.userRole, clientIds),
     loadCrmReviewRhythms(input.authUserId, input.userRole, clientIds),
     loadClientPreferenceUpdates(input.authUserId, input.userRole, clientIds),
+    loadAdvocacyEvents(input.authUserId, input.userRole, clientIds),
   ]);
 
   const reviewPipeline = buildAdvisorReviewPipelineFromContexts(reviewContexts);
@@ -593,6 +641,7 @@ export async function loadWorkQueueBatchData(input: {
     relationshipMoments,
     crmReviewRhythms,
     clientPreferenceUpdates,
+    advocacyEvents,
     fileQualityByClientId,
   };
 }

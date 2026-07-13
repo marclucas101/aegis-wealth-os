@@ -51,6 +51,7 @@
     "qa:crm-v2-service": "npx tsx --import ./scripts/qa-stub-server-only.ts scripts/run-crm-v2-service-validation.ts",
     "qa:crm-v2-protection": "npx tsx --import ./scripts/qa-stub-server-only.ts scripts/run-crm-v2-protection-validation.ts",
     "qa:crm-v2-relationship-moments": "npx tsx --import ./scripts/qa-stub-server-only.ts scripts/run-crm-v2-relationship-moments-validation.ts",
+    "qa:crm-v2-advocacy": "npx tsx --import ./scripts/qa-stub-server-only.ts scripts/run-crm-v2-advocacy-validation.ts",
     "qa:a4-summary-report": "npx tsx scripts/run-a4-summary-report-validation.ts",
     "qa:migration-readiness": "npx tsx scripts/run-migration-readiness-validation.ts",
     "qa:phase9-migration-readiness": "npx tsx scripts/run-phase9-migration-readiness-validation.ts",
