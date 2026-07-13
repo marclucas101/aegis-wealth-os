@@ -268,6 +268,15 @@ Today | Relationships | Appointments | Service | Communications | More
 | [CRM_V2_PHASE_13_SECURITY_REVIEW.md](./CRM_V2_PHASE_13_SECURITY_REVIEW.md) | Pilot readiness security review |
 | [CRM_V2_PHASE_13_COMPLETION.md](./CRM_V2_PHASE_13_COMPLETION.md) | Sign-off, QA results, verdict |
 
+### Day 1 — limited real client pilot
+
+| Document | Purpose |
+|----------|---------|
+| [CRM_V2_PHASE_13_DAY_1_REAL_CLIENT_PILOT.md](./CRM_V2_PHASE_13_DAY_1_REAL_CLIENT_PILOT.md) | Day 1 scope, routes, checks, observation rule |
+| [CRM_V2_PHASE_13_DAY_1_CLIENT_SCRIPT.md](./CRM_V2_PHASE_13_DAY_1_CLIENT_SCRIPT.md) | Client invite wording and follow-up |
+| [CRM_V2_PHASE_13_DAY_1_GO_NO_GO.md](./CRM_V2_PHASE_13_DAY_1_GO_NO_GO.md) | Pre-invite / live / post-test checklist and decision |
+| [CRM_V2_PHASE_13_PILOT_ISSUE_LOG.md](./CRM_V2_PHASE_13_PILOT_ISSUE_LOG.md) | Pilot incident log (operator-maintained) |
+
 ---
 
 ## Hard restrictions (all phases until operator approval)
