@@ -159,6 +159,9 @@ export function fixtureBatchData(
     clientServiceRequests: [],
     protectionExtractions: [],
     protectionPolicyServicing: [],
+    relationshipMoments: [],
+    crmReviewRhythms: [],
+    clientPreferenceUpdates: [],
     fileQualityByClientId: {
       [FIXTURE_CLIENT_B]: fileQuality,
     },

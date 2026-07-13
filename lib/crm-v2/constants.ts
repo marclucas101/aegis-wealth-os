@@ -13,6 +13,10 @@ export const CRM_V2_CLIENT_SERVICE_FEATURE_KEY =
   "crm_v2_client_service" as const;
 export const CRM_V2_PROTECTION_PORTFOLIO_FEATURE_KEY =
   "crm_v2_protection_portfolio" as const;
+export const CRM_V2_RELATIONSHIP_MOMENTS_FEATURE_KEY =
+  "crm_v2_relationship_moments" as const;
+export const CRM_V2_CLIENT_PROFILE_FEATURE_KEY =
+  "crm_v2_client_profile" as const;
 
 export const CRM_V2_PILOT_USER_IDS_ENV = "CRM_V2_PILOT_USER_IDS" as const;
 
@@ -49,3 +53,10 @@ export const CRM_V2_PROTECTION_MAX_TITLE_LENGTH = 200;
 export const CRM_V2_PROTECTION_STALE_DAYS = 365;
 export const CRM_V2_PROTECTION_VERIFICATION_PERIOD_DAYS = 365;
 export const CRM_V2_PROTECTION_DEFAULT_PAGE_SIZE = 20;
+
+/** Relationship moments bounds (Phase 08). */
+export const CRM_V2_MOMENTS_MAX_ITEMS = 50;
+export const CRM_V2_MOMENTS_MAX_EVENTS = 50;
+export const CRM_V2_MOMENTS_MAX_TITLE_LENGTH = 200;
+export const CRM_V2_MOMENTS_DEFAULT_PAGE_SIZE = 20;
+export const CRM_V2_MOMENTS_UPCOMING_DAYS = 90;

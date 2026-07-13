@@ -94,6 +94,33 @@ export type WorkQueueProtectionPolicyServicingRow = {
   dueAt: string | null;
 };
 
+export type WorkQueueRelationshipMomentRow = {
+  id: string;
+  clientId: string;
+  title: string;
+  confirmationState: string;
+  nextOccurrenceDate: string | null;
+  requiresAction: boolean;
+  updatedAt: string;
+};
+
+export type WorkQueueCrmReviewRhythmRow = {
+  id: string;
+  clientId: string;
+  title: string;
+  status: string;
+  nextDueDate: string | null;
+  updatedAt: string;
+};
+
+export type WorkQueueClientPreferenceUpdateRow = {
+  id: string;
+  clientId: string;
+  preferenceType: string;
+  status: string;
+  createdAt: string;
+};
+
 /** Preloaded batch payload — populated once per queue build (no per-item queries). */
 export type WorkQueueBatchData = {
   tasks: AdvisorTaskRecord[];
@@ -107,6 +134,9 @@ export type WorkQueueBatchData = {
   clientServiceRequests: WorkQueueClientServiceRequestRow[];
   protectionExtractions: WorkQueueProtectionExtractionRow[];
   protectionPolicyServicing: WorkQueueProtectionPolicyServicingRow[];
+  relationshipMoments: WorkQueueRelationshipMomentRow[];
+  crmReviewRhythms: WorkQueueCrmReviewRhythmRow[];
+  clientPreferenceUpdates: WorkQueueClientPreferenceUpdateRow[];
   fileQualityByClientId: Record<string, ClientFileQuality>;
 };
 
@@ -123,6 +153,9 @@ export function createEmptyWorkQueueBatchData(): WorkQueueBatchData {
     clientServiceRequests: [],
     protectionExtractions: [],
     protectionPolicyServicing: [],
+    relationshipMoments: [],
+    crmReviewRhythms: [],
+    clientPreferenceUpdates: [],
     fileQualityByClientId: {},
   };
 }

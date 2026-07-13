@@ -26,6 +26,8 @@ export const CRM_SERVICE_REQUEST_CATEGORIES = [
   "plan_question",
   "protection_correction",
   "protection_review",
+  "preference_update",
+  "review_request",
   "other",
 ] as const;
 

@@ -14,6 +14,7 @@ Primary nav labels: **Today**, **Relationships**, **Appointments**, **Service**,
 ├── /today                          Phase 11
 ├── /relationships                  Phase 02
 │   └── /[relationshipId]           Phase 02 — Relationship 360
+│       └── /moments              Phase 08 — relationship moments workspace
 ├── /appointments                   Phase 03
 │   ├── /inbox                      Phase 03 — client requests
 │   ├── /[appointmentId]            Phase 03 — detail
@@ -45,6 +46,8 @@ Primary nav labels: **Today**, **Relationships**, **Appointments**, **Service**,
 **Phase 06 status:** Service workspace implemented at `/advisor-v2/service` with views: My Work, Client Requests, Reviews, Commitments, Documents Required, Workflow Cases, Completed. Gated by `crm_v2_service` in addition to master + pilot. Client routes: `/actions`, `/requests`, `/requests/[requestId]` gated by `crm_v2_client_service`.
 
 **Phase 07 status:** Protection portfolio at `/advisor-v2/relationships/[relationshipId]/protection` (Financial Plan integration). Verification workspace for provisional extractions. Client summary at `/protection` and `/protection/[policyId]` gated by `crm_v2_protection_portfolio`. Correction/review requests use Phase 06 `client_service_requests` (requires `crm_v2_client_service` for writes).
+
+**Phase 08 status:** Relationship moments workspace at `/advisor-v2/relationships/[relationshipId]/moments` (views: upcoming, important dates, review rhythm, client preferences, festive suggestions, data quality). APIs: `GET/POST /api/advisor-v2/relationships/[id]/moments`, moment lifecycle routes, `GET/PATCH .../review-rhythm`. Gated by `crm_v2_relationship_moments` in addition to master + pilot. Client preferences at `/preferences` with `GET/PATCH /api/preferences` and `POST /api/preferences/review-request` gated by `crm_v2_client_profile`.
 
 ---
 
@@ -104,6 +107,7 @@ Route: `/advisor-v2/relationships/[relationshipId]?tab=`
 | `/document-vault` | Document upload for document requests | 06 | `crm_v2_client_service` (vault existing) |
 | `/protection` | Client protection summary (confirmed only) | 07 | `crm_v2_protection_portfolio` |
 | `/protection/[policyId]` | Policy detail + correction request | 07 | `crm_v2_protection_portfolio` |
+| `/preferences` | Client relationship preferences + review request | 08 | `crm_v2_client_profile` |
 | `/insights` | Unchanged governed feed | — | existing |
 | `/dashboard`, `/my-plan`, `/roadmap`, etc. | Unchanged | — | existing |
 
@@ -139,7 +143,11 @@ Route: `/advisor-v2/relationships/[relationshipId]?tab=`
 | `/api/advisor-v2/service/requests` | GET | 06 | Open client requests |
 | `/api/advisor-v2/service/requests/[id]/transition` | POST | 06 | Request lifecycle |
 | `/api/advisor-v2/protection/**` | * | 07 | Portfolio, verification |
-| `/api/advisor-v2/moments/**` | * | 08 | Moments engine |
+| `/api/advisor-v2/relationships/[id]/moments` | GET, POST | 08 | Moments workspace |
+| `/api/advisor-v2/relationships/[id]/moments/[momentId]` | PATCH | 08 | Update moment |
+| `/api/advisor-v2/relationships/[id]/moments/[momentId]/acknowledge` | POST | 08 | Acknowledge moment |
+| `/api/advisor-v2/relationships/[id]/moments/[momentId]/deactivate` | POST | 08 | Deactivate moment |
+| `/api/advisor-v2/relationships/[id]/review-rhythm` | GET, PATCH | 08 | Review cadence |
 | `/api/advisor-v2/advocacy/**` | * | 09 | Events, scores |
 | `/api/advisor-v2/communications/drafts` | * | 10 | CRM → governed bridge |
 | `/api/advisor-v2/today` | GET | 11 | Today projection |
@@ -159,6 +167,8 @@ Route: `/advisor-v2/relationships/[relationshipId]?tab=`
 | `/api/requests/[requestId]` | GET | 06 | `crm_v2_client_service` |
 | `/api/requests/[requestId]/respond` | POST | 06 | `crm_v2_client_service` |
 | `/api/requests/[requestId]/cancel` | POST | 06 | `crm_v2_client_service` |
+| `/api/preferences` | GET, PATCH | 08 | `crm_v2_client_profile` |
+| `/api/preferences/review-request` | POST | 08 | `crm_v2_client_profile` (+ `crm_v2_client_service` for request write) |
 
 **Phase 05 adviser routes:**
 

@@ -102,6 +102,10 @@ export type ClientNotificationType =
   | "appointment_cancelled"
   | "roadmap_task_assigned"
   | "review_requested"
+  | "review_due_soon"
+  | "preference_update_submitted"
+  | "important_date_approaching"
+  | "preference_confirmed"
   | "adviser_message"
   | "publication_approval_result";
 

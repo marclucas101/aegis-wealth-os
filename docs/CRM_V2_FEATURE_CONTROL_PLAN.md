@@ -81,6 +81,7 @@ Enabling `crm_v2_master` alone does not grant book-wide access.
 | 05 | Seed `crm_v2_google_calendar` — disabled — **implemented** `202606290006_phase05_crm_v2_google_calendar_feature_control.sql` (not applied) |
 | 06 | Seed `crm_v2_service`, `crm_v2_client_service` — disabled — **implemented** `202606290008_phase06_crm_v2_service_feature_control.sql` (not applied) |
 | 07 | Seed `crm_v2_protection_portfolio` — disabled — **implemented** `202606290010_phase07_crm_v2_protection_feature_control.sql` (not applied) |
+| 08 | Seed `crm_v2_relationship_moments`, `crm_v2_client_profile` — disabled — **implemented** `202606290012_phase08_crm_v2_relationship_moments_feature_control.sql` (not applied) |
 | ... | One seed per sub-flag at implementation phase |
 | 14 | Seed cutover flags — disabled until operator |
 

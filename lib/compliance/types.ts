@@ -119,7 +119,9 @@ export type PlatformFeatureKey =
   | "crm_v2_google_calendar"
   | "crm_v2_service"
   | "crm_v2_client_service"
-  | "crm_v2_protection_portfolio";
+  | "crm_v2_protection_portfolio"
+  | "crm_v2_relationship_moments"
+  | "crm_v2_client_profile";
 
 export const PLATFORM_FEATURE_KEYS: readonly PlatformFeatureKey[] = [
   "raw_client_financial_views",
@@ -154,6 +156,8 @@ export const PLATFORM_FEATURE_KEYS: readonly PlatformFeatureKey[] = [
   "crm_v2_service",
   "crm_v2_client_service",
   "crm_v2_protection_portfolio",
+  "crm_v2_relationship_moments",
+  "crm_v2_client_profile",
 ] as const;
 
 /** Entitlement-gated client portal features. */
