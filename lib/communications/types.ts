@@ -111,6 +111,10 @@ export type ClientNotificationType =
   | "advocacy_feedback_submitted"
   | "testimonial_permission_updated"
   | "adviser_message"
+  | "crm_client_message"
+  | "crm_client_reply_received"
+  | "crm_communication_follow_up_due"
+  | "communication_preference_updated"
   | "publication_approval_result";
 
 export type DeliveryStatus =

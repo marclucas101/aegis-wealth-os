@@ -26,6 +26,7 @@ import type {
   WorkQueueCrmReviewRhythmRow,
   WorkQueueClientPreferenceUpdateRow,
   WorkQueueAdvocacyEventRow,
+  WorkQueueCommunicationRecordRow,
   WorkQueueRoadmapRow,
   WorkQueueServiceCommitmentRow,
 } from "./batchData";
@@ -563,6 +564,50 @@ async function loadAdvocacyEvents(
   });
 }
 
+async function loadCommunicationRecords(
+  adviserUserId: string,
+  userRole: "advisor" | "admin",
+  clientIds: string[],
+): Promise<WorkQueueCommunicationRecordRow[]> {
+  if (clientIds.length === 0) return [];
+  const admin = createAdminSupabaseClient();
+  let query = admin
+    .from("crm_communication_records")
+    .select("id, client_id, safe_subject, lifecycle_status, follow_up_status, next_follow_up_date, updated_at")
+    .in("client_id", clientIds)
+    .eq("active", true);
+
+  if (userRole === "advisor") {
+    query = query.eq("created_by_user_id", adviserUserId);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(`Failed to load communication records for work queue: ${error.message}`);
+  }
+
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => {
+    const lifecycleStatus = String(row.lifecycle_status);
+    const followUpStatus = String(row.follow_up_status);
+    const nextFollowUpDate = row.next_follow_up_date ? String(row.next_follow_up_date) : null;
+    const requiresAction =
+      lifecycleStatus === "pending_review" ||
+      lifecycleStatus === "failed" ||
+      followUpStatus === "pending" ||
+      followUpStatus === "overdue";
+    return {
+      id: String(row.id),
+      clientId: String(row.client_id),
+      safeSubject: String(row.safe_subject),
+      lifecycleStatus,
+      followUpStatus,
+      nextFollowUpDate,
+      requiresAction,
+      updatedAt: String(row.updated_at),
+    };
+  });
+}
+
 export async function loadWorkQueueBatchData(input: {
   authUserId: string;
   userRole: "advisor" | "admin";
@@ -588,6 +633,7 @@ export async function loadWorkQueueBatchData(input: {
     crmReviewRhythms,
     clientPreferenceUpdates,
     advocacyEvents,
+    communicationRecords,
   ] = await Promise.all([
     loadTasksForClients(input.authUserId, input.userRole, clientIds),
     loadRoadmapItems(clientIds),
@@ -611,6 +657,7 @@ export async function loadWorkQueueBatchData(input: {
     loadCrmReviewRhythms(input.authUserId, input.userRole, clientIds),
     loadClientPreferenceUpdates(input.authUserId, input.userRole, clientIds),
     loadAdvocacyEvents(input.authUserId, input.userRole, clientIds),
+    loadCommunicationRecords(input.authUserId, input.userRole, clientIds),
   ]);
 
   const reviewPipeline = buildAdvisorReviewPipelineFromContexts(reviewContexts);
@@ -642,6 +689,7 @@ export async function loadWorkQueueBatchData(input: {
     crmReviewRhythms,
     clientPreferenceUpdates,
     advocacyEvents,
+    communicationRecords,
     fileQualityByClientId,
   };
 }

@@ -276,10 +276,12 @@ const TESTS: TestCase[] = [
     assert(d.includes("no migration") || d.includes("None") && d.includes("10.1"), "migration");
   }),
 
-  record(104, "no phase 10 implementation migration file added", () => {
+  record(104, "phase 10 communications migrations present and additive", () => {
     const migrations = readdirSync(join(ROOT, "supabase/migrations"));
-    const phase10 = migrations.filter((f) => /phase10/i.test(f));
-    assert(phase10.length === 0, `found: ${phase10.join(", ")}`);
+    const phase10 = migrations.filter((f) => /phase10_crm_v2_communications/i.test(f));
+    assert(phase10.length >= 2, `expected feature_control + core, found: ${phase10.join(", ")}`);
+    const core = read(`supabase/migrations/${phase10.find((f) => f.includes("_core")) ?? ""}`);
+    assert(!core.includes("DROP TABLE"), "no destructive drop in core");
   }),
 
   record(105, "package.json has no remote-write discovery script", () => {

@@ -15,6 +15,7 @@ import {
   CRM_V2_RELATIONSHIP_MOMENTS_FEATURE_KEY,
   CRM_V2_CLIENT_PROFILE_FEATURE_KEY,
   CRM_V2_ADVOCACY_FEATURE_KEY,
+  CRM_V2_COMMUNICATIONS_FEATURE_KEY,
 } from "@/lib/crm-v2/constants";
 import { loadFeatureControls } from "@/lib/compliance/featureFlags";
 import {
@@ -590,5 +591,86 @@ export async function assertCrmV2ClientAdvocacyAccess(): Promise<CrmV2ClientAdvo
     user: session.user,
     client: session.client,
     clientAdvocacyEnabled: true,
+  };
+}
+
+export type CrmV2CommunicationsAccessResult =
+  | { allowed: false; reason: CrmV2AccessDeniedReason; requestId: string }
+  | {
+      allowed: true;
+      authUser: User;
+      user: AppUserRow;
+      requestId: string;
+      masterEnabled: true;
+      pilotModeEnabled: true;
+      communicationsEnabled: true;
+    };
+
+/**
+ * Central gate for CRM V2 adviser communications workspace.
+ * Requires master + pilot gates; does not bypass them.
+ */
+export async function assertCrmV2CommunicationsAccess(): Promise<CrmV2CommunicationsAccessResult> {
+  const base = await assertCrmV2Access();
+  if (!base.allowed) {
+    return { allowed: false, reason: base.reason, requestId: base.requestId };
+  }
+
+  const communicationsEnabled = await isFeatureEnabled(CRM_V2_COMMUNICATIONS_FEATURE_KEY);
+  if (!communicationsEnabled) {
+    return { allowed: false, reason: "feature_disabled", requestId: base.requestId };
+  }
+
+  return {
+    allowed: true,
+    authUser: base.authUser,
+    user: base.user,
+    requestId: base.requestId,
+    masterEnabled: true,
+    pilotModeEnabled: true,
+    communicationsEnabled: true,
+  };
+}
+
+export type CrmV2ClientMessagesAccessResult =
+  | { allowed: false; reason: "unauthenticated" | "forbidden" | "feature_disabled"; requestId: string }
+  | {
+      allowed: true;
+      requestId: string;
+      authUserId: string;
+      user: AppUserRow;
+      client: AppClientRow;
+      clientMessagesEnabled: true;
+    };
+
+/**
+ * Central gate for CRM V2 client messages inbox.
+ * Server-derived client identity only; fail-closed on flag visibility.
+ * Client control cannot grant adviser CRM access.
+ */
+export async function assertCrmV2ClientMessagesAccess(): Promise<CrmV2ClientMessagesAccessResult> {
+  const requestId = createShellRequestId();
+  const session = await ensureUserClientProfile();
+  if (!session.authenticated) {
+    return { allowed: false, reason: "unauthenticated", requestId };
+  }
+
+  if (session.user.role !== "client") {
+    return { allowed: false, reason: "forbidden", requestId };
+  }
+
+  const controls = await loadFeatureControls();
+  const row = controls.get(CRM_V2_COMMUNICATIONS_FEATURE_KEY);
+  if (!row?.enabled || !row.client_visible) {
+    return { allowed: false, reason: "feature_disabled", requestId };
+  }
+
+  return {
+    allowed: true,
+    requestId,
+    authUserId: session.authUser.id,
+    user: session.user,
+    client: session.client,
+    clientMessagesEnabled: true,
   };
 }

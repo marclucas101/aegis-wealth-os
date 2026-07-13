@@ -186,9 +186,16 @@ const TESTS: TestCase[] = [
     assert(!found, "ui page");
   }),
 
-  record(53, "no phase10 migration file", () => {
+  record(53, "phase10 communications migration present for adapter", () => {
     const migrations = readdirSync(join(ROOT, "supabase/migrations"));
-    assert(!migrations.some((f) => /phase10/i.test(f)), "migration");
+    assert(
+      migrations.some((f) => f.includes("phase10_crm_v2_communications_core")),
+      "communications core migration",
+    );
+    assert(
+      read("lib/work-queue/adapters/index.ts").includes("communicationRecordAdapter"),
+      "communication adapter registered",
+    );
   }),
 
   record(54, "feature flag not activated in defaults", () => {

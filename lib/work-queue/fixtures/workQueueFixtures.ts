@@ -163,6 +163,7 @@ export function fixtureBatchData(
     crmReviewRhythms: [],
     clientPreferenceUpdates: [],
     advocacyEvents: [],
+    communicationRecords: [],
     fileQualityByClientId: {
       [FIXTURE_CLIENT_B]: fileQuality,
     },

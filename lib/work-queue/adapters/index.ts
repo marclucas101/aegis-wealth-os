@@ -1,4 +1,5 @@
 import { advocacyEventAdapter } from "./advocacyEventAdapter";
+import { communicationRecordAdapter } from "./communicationRecordAdapter";
 import { advisorTaskAdapter } from "./advisorTaskAdapter";
 import { appointmentAdapter } from "./appointmentAdapter";
 import { binderExportAdapter } from "./binderExportAdapter";
@@ -33,6 +34,7 @@ export const WORK_QUEUE_ADAPTERS: AdviserWorkItemAdapter[] = [
   crmReviewRhythmAdapter,
   clientPreferenceUpdateAdapter,
   advocacyEventAdapter,
+  communicationRecordAdapter,
 ];
 
 export {
@@ -52,6 +54,7 @@ export {
   crmReviewRhythmAdapter,
   clientPreferenceUpdateAdapter,
   advocacyEventAdapter,
+  communicationRecordAdapter,
 };
 
 export type { AdviserWorkItemAdapter, WorkQueueLoadContext } from "./types";
