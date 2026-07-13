@@ -40,7 +40,7 @@ Today | Relationships | Appointments | Service | Communications | More
 | **10** | `crm-v2-10-communications` | CRM → governed communications bridge | **Implemented** — see Phase 10 docs below |
 | **11** | `crm-v2-11-today-work-queue` | Today homepage + unified work queue | **Complete** — see Phase 11 docs |
 | **12** | `crm-v2-12-reports-operations` | Reports + operator diagnostics | **Complete** — see Phase 12 docs |
-| **13** | `crm-v2-13-pilot` | Controlled pilot | Pending |
+| **13** | `crm-v2-13-pilot-activation` | Staging pilot readiness (runbooks, diagnostics, acceptance) | **Complete** — see Phase 13 docs |
 | **14** | `crm-v2-14-cutover` | `/advisor` → CRM V2 cutover | Pending |
 | **15** | `crm-v2-15-legacy-retirement` | Legacy adviser portal retirement (conditional) | Deferred |
 
@@ -247,6 +247,24 @@ Today | Relationships | Appointments | Service | Communications | More
 | `npm run qa:crm-v2-communications` | 10 |
 | `npm run qa:crm-v2-today` | 11 |
 | `npm run qa:crm-v2-reports-operations` | 12 |
+| `npm run qa:crm-v2-pilot-readiness` | 13 |
+
+---
+
+## Phase 13 documents (pilot activation readiness)
+
+| Document | Purpose |
+|----------|---------|
+| [CRM_V2_PHASE_13_EXISTING_PILOT_READINESS_AUDIT.md](./CRM_V2_PHASE_13_EXISTING_PILOT_READINESS_AUDIT.md) | Readiness audit after Phases 01–12 |
+| [CRM_V2_PHASE_13_FEATURE_ACTIVATION_ORDER.md](./CRM_V2_PHASE_13_FEATURE_ACTIVATION_ORDER.md) | Exact flag activation sequence |
+| [CRM_V2_PHASE_13_STAGING_ACTIVATION_RUNBOOK.md](./CRM_V2_PHASE_13_STAGING_ACTIVATION_RUNBOOK.md) | Staging operator activation steps |
+| [CRM_V2_PHASE_13_ROLLBACK_RUNBOOK.md](./CRM_V2_PHASE_13_ROLLBACK_RUNBOOK.md) | Flag-disable rollback (no data deletion) |
+| [CRM_V2_PHASE_13_MASTER_MANUAL_ACCEPTANCE.md](./CRM_V2_PHASE_13_MASTER_MANUAL_ACCEPTANCE.md) | Aggregated manual tests (422) |
+| [CRM_V2_PHASE_13_PILOT_SMOKE_TESTS.md](./CRM_V2_PHASE_13_PILOT_SMOKE_TESTS.md) | Safe smoke-test guidance |
+| [CRM_V2_PHASE_13_PILOT_DATA_SAFETY.md](./CRM_V2_PHASE_13_PILOT_DATA_SAFETY.md) | Test data and external-send rules |
+| [CRM_V2_PHASE_13_FEATURE_CONTROL_DIAGNOSTICS.md](./CRM_V2_PHASE_13_FEATURE_CONTROL_DIAGNOSTICS.md) | Phase 13 SQL diagnostics |
+| [CRM_V2_PHASE_13_SECURITY_REVIEW.md](./CRM_V2_PHASE_13_SECURITY_REVIEW.md) | Pilot readiness security review |
+| [CRM_V2_PHASE_13_COMPLETION.md](./CRM_V2_PHASE_13_COMPLETION.md) | Sign-off, QA results, verdict |
 
 ---
 

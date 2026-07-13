@@ -118,6 +118,8 @@ Route: `/advisor-v2/relationships/[relationshipId]?tab=`
 
 **No client route rewrites** in Phase 01–13.
 
+**Phase 13 status:** Pilot activation runbooks and diagnostics delivered. All routes remain gated; operator enables flags on staging per `docs/CRM_V2_PHASE_13_FEATURE_ACTIVATION_ORDER.md`. Legacy `/advisor` unchanged.
+
 ---
 
 ## 5. API route map (new V2 namespace)
