@@ -22,6 +22,8 @@ M11  Phase 12  crm_v2_reports + crm_v2_operations flag seeds — **implemented**
 M12  Phase 14  cutover flags seed
 ```
 
+**Phase 13:** No schema migration. Diagnostic-only SQL under `supabase/diagnostics/preflight_phase13_*` and `verify_phase13_*`. Operator activation per `docs/CRM_V2_PHASE_13_STAGING_ACTIVATION_RUNBOOK.md`.
+
 **No schema migration in Phase 00, 02, 12, 13.** Phase 12 ships feature-control seeds only (like Phase 11).
 
 Phase 02 uses existing `clients` — read-only APIs only.

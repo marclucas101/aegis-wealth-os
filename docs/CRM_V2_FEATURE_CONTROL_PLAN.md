@@ -86,6 +86,7 @@ Enabling `crm_v2_master` alone does not grant book-wide access.
 | 10 | Seed `crm_v2_communications` — disabled — **implemented** `202606290016` (not applied) |
 | 11 | Seed `crm_v2_today`, `adviser_work_queue` — disabled — **implemented** `202606290018` (not applied) |
 | 12 | Seed `crm_v2_reports`, `crm_v2_operations` — disabled — **implemented** `202606290019` (not applied) |
+| 13 | Pilot readiness diagnostics only — **no migration**; operator runbooks in `docs/CRM_V2_PHASE_13_*` |
 | ... | One seed per sub-flag at implementation phase |
 | 14 | Seed cutover flags — disabled until operator |
 
@@ -106,7 +107,7 @@ Enabling `crm_v2_master` alone does not grant book-wide access.
 | G6 Google pilot | Phase 05 OAuth credentials + privacy review | Operator |
 | G7 Service core apply | Phase 06 migration approval | Operator |
 | G8 Protection apply | Phase 07 verification workflow sign-off | Operator |
-| G9 Full pilot | Phase 13 manual acceptance | Operator |
+| G9 Full pilot | Phase 13 manual acceptance on staging | Operator |
 | G10 Cutover | Phase 14 observation plan active | Operator |
 | G11 Legacy retirement | Phase 15 dependency audit + 30-day observation complete | Operator |
 
