@@ -6,6 +6,13 @@ const ALLOWED_ROUTE_PREFIXES = [
   "/advisor/clients/",
   "/advisor/appointments",
   "/advisor/tasks",
+  "/advisor-v2/today",
+  "/advisor-v2/appointments",
+  "/advisor-v2/relationships",
+  "/advisor-v2/service",
+  "/advisor-v2/communications",
+  "/advisor-v2/settings",
+  "/advisor-v2/operations",
 ] as const;
 
 function assertClientId(clientId: string): void {

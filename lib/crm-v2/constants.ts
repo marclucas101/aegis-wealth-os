@@ -19,6 +19,7 @@ export const CRM_V2_CLIENT_PROFILE_FEATURE_KEY =
   "crm_v2_client_profile" as const;
 export const CRM_V2_ADVOCACY_FEATURE_KEY = "crm_v2_advocacy" as const;
 export const CRM_V2_COMMUNICATIONS_FEATURE_KEY = "crm_v2_communications" as const;
+export const CRM_V2_TODAY_FEATURE_KEY = "crm_v2_today" as const;
 
 export const CRM_V2_PILOT_USER_IDS_ENV = "CRM_V2_PILOT_USER_IDS" as const;
 
@@ -75,3 +76,8 @@ export const CRM_V2_COMMUNICATIONS_MAX_ITEMS = 50;
 export const CRM_V2_COMMUNICATIONS_MAX_SUBJECT_LENGTH = 200;
 export const CRM_V2_COMMUNICATIONS_MAX_BODY_LENGTH = 8000;
 export const CRM_V2_COMMUNICATIONS_DEFAULT_PAGE_SIZE = 20;
+
+/** Today workspace bounds (Phase 11). */
+export const CRM_V2_TODAY_MAX_CARDS_PER_SECTION = 12;
+export const CRM_V2_TODAY_MAX_TOTAL_CARDS = 80;
+export const CRM_V2_TODAY_WORK_QUEUE_PANEL_ITEMS = 8;

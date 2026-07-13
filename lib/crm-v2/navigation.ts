@@ -7,7 +7,7 @@ export type CrmV2NavItem = {
 export type CrmV2MoreNavItem = CrmV2NavItem;
 
 export const CRM_V2_PRIMARY_NAV: CrmV2NavItem[] = [
-  { label: "Today", href: "/advisor-v2", description: "CRM foundation landing" },
+  { label: "Today", href: "/advisor-v2/today", description: "Daily operating dashboard" },
   {
     label: "Relationships",
     href: "/advisor-v2/relationships",
@@ -45,8 +45,8 @@ export const CRM_V2_DOMAIN_PILLARS = [
 ] as const;
 
 export function isCrmV2NavActive(pathname: string, href: string): boolean {
-  if (href === "/advisor-v2") {
-    return pathname === "/advisor-v2";
+  if (href === "/advisor-v2/today") {
+    return pathname === "/advisor-v2/today" || pathname === "/advisor-v2";
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }

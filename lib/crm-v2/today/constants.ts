@@ -1,0 +1,7 @@
+export {
+  CRM_V2_TODAY_MAX_CARDS_PER_SECTION,
+  CRM_V2_TODAY_MAX_TOTAL_CARDS,
+  CRM_V2_TODAY_WORK_QUEUE_PANEL_ITEMS,
+} from "@/lib/crm-v2/constants";
+
+export const CRM_V2_TODAY_STALE_MINUTES = 30;

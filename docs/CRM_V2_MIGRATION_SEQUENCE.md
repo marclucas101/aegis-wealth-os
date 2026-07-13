@@ -17,7 +17,7 @@ M06  Phase 08  relationship_moments, adviser_moment_overrides, clients.ethnicity
 M07  Phase 09  advocacy_events, advocacy_score_config
 M08  Phase 10  crm_communication_drafts
 M09  Phase 05  calendar sync metadata extensions (if needed beyond existing columns)
-M10  Phase 11  adviser_work_queue flag seed (if not already)
+M10  Phase 11  crm_v2_today + adviser_work_queue flag seeds — **implemented** `202606290018` (not applied)
 M11  Phase 14  cutover flags seed
 ```
 
@@ -194,6 +194,20 @@ Phase 02 uses existing `clients` — read-only APIs only.
 | Rollback | Disable feature and keep additive schema retained |
 | Risk | Medium |
 | Diagnostics | `preflight_202606290007_*`, `verify_202606290007_*` |
+
+### M10 — Phase 11: Today feature seeds (**created, not applied**)
+
+| Item | Detail |
+|------|--------|
+| File | `supabase/migrations/202606290018_phase11_crm_v2_today_feature_control.sql` |
+| Keys | `crm_v2_today`, `adviser_work_queue` |
+| Default | `enabled = false`; today `adviser_visible = true`, `client_visible = false` |
+| Tables | **None** — feature control seeds only |
+| Applied | **No** — operator approval required |
+| Idempotency | `ON CONFLICT (feature_key) DO NOTHING` |
+| Diagnostics | `preflight_202606290018_*`, `verify_202606290018_*`, `verify_202606290018_*_discrepancies.sql` |
+| Rollback | Disable flags; no schema to revert |
+| Risk | Low — no schema changes |
 
 ---
 
