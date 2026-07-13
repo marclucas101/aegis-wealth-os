@@ -136,15 +136,20 @@ Phase 02 uses existing `clients` — read-only APIs only.
 | Diagnostics | `preflight_202606290010_*`, `verify_202606290010_*`, `preflight_202606290011_*`, `verify_202606290011_*` |
 | Rollback | Disable flag; schema retained; PDFs in vault retained |
 
-### M06 — Phase 08: Relationship moments
+### M06 — Phase 08: Relationship moments (**implemented, not applied**)
 
 | Item | Detail |
 |------|--------|
-| Tables | `relationship_moments`, `adviser_moment_overrides` |
+| File (feature) | `supabase/migrations/202606290012_phase08_crm_v2_relationship_moments_feature_control.sql` |
+| Keys | `crm_v2_relationship_moments`, `crm_v2_client_profile` |
+| File (core) | `supabase/migrations/202606290013_phase08_crm_v2_relationship_moments_core.sql` |
+| Tables | `relationship_moments`, `adviser_moment_overrides`, `festive_holiday_mappings`, `crm_review_rhythm`, `crm_client_preference_updates`, `relationship_moment_events` |
 | Column | `clients.ethnicity` nullable enum |
 | Seed | `festive_holiday_mappings` reference table (read-only config) |
-| Rollback | DROP tables; column nullable — can remain |
-| Risk | Low |
+| Applied | **No** — operator approval required |
+| Diagnostics | `preflight_202606290012_*`, `verify_202606290012_*`, `preflight_202606290013_*`, `verify_202606290013_*` |
+| Rollback | Disable flags; schema retained |
+| Risk | Low — greenfield tables, nullable ethnicity |
 
 ### M07 — Phase 09: Advocacy
 
@@ -221,7 +226,7 @@ Phase 03+ run `npx supabase db push --dry-run` before operator apply.
 |-------|-------|-------|
 | `adviser_appointments` | `(adviser_user_id, starts_at)` WHERE status active | Exists — verify |
 | `service_commitments` | `(adviser_user_id, due_at)` WHERE open | 06 |
-| `relationship_moments` | `(adviser_user_id, moment_date)` | 08 |
+| `relationship_moments` | `(adviser_user_id, next_occurrence_date)` WHERE active | 08 |
 | `advocacy_events` | `(adviser_user_id, event_date)` | 09 |
 | `protection_policy_versions` | `(policy_id, version)` | 07 |
 

@@ -22,6 +22,9 @@ import type {
   WorkQueuePlanningOutputRow,
   WorkQueueProtectionExtractionRow,
   WorkQueueProtectionPolicyServicingRow,
+  WorkQueueRelationshipMomentRow,
+  WorkQueueCrmReviewRhythmRow,
+  WorkQueueClientPreferenceUpdateRow,
   WorkQueueRoadmapRow,
   WorkQueueServiceCommitmentRow,
 } from "./batchData";
@@ -417,6 +420,103 @@ async function loadProtectionPolicyServicing(
   return rows;
 }
 
+async function loadRelationshipMoments(
+  adviserUserId: string,
+  userRole: "advisor" | "admin",
+  clientIds: string[],
+): Promise<WorkQueueRelationshipMomentRow[]> {
+  if (clientIds.length === 0) return [];
+  const admin = createAdminSupabaseClient();
+  let query = admin
+    .from("relationship_moments")
+    .select("id, client_id, title, confirmation_state, next_occurrence_date, updated_at")
+    .in("client_id", clientIds)
+    .eq("active", true)
+    .in("confirmation_state", ["suggested", "pending_client"]);
+
+  if (userRole === "advisor") {
+    query = query.eq("adviser_user_id", adviserUserId);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(`Failed to load relationship moments for work queue: ${error.message}`);
+  }
+
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+    id: String(row.id),
+    clientId: String(row.client_id),
+    title: String(row.title),
+    confirmationState: String(row.confirmation_state),
+    nextOccurrenceDate: row.next_occurrence_date ? String(row.next_occurrence_date) : null,
+    requiresAction: ["suggested", "pending_client"].includes(String(row.confirmation_state)),
+    updatedAt: String(row.updated_at),
+  }));
+}
+
+async function loadCrmReviewRhythms(
+  adviserUserId: string,
+  userRole: "advisor" | "admin",
+  clientIds: string[],
+): Promise<WorkQueueCrmReviewRhythmRow[]> {
+  if (clientIds.length === 0) return [];
+  const admin = createAdminSupabaseClient();
+  let query = admin
+    .from("crm_review_rhythm")
+    .select("id, client_id, review_type, status, next_due_date, updated_at")
+    .in("client_id", clientIds)
+    .in("status", ["scheduled", "overdue"]);
+
+  if (userRole === "advisor") {
+    query = query.eq("assigned_adviser_user_id", adviserUserId);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(`Failed to load CRM review rhythms for work queue: ${error.message}`);
+  }
+
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+    id: String(row.id),
+    clientId: String(row.client_id),
+    title: String(row.review_type).replace(/_/g, " "),
+    status: String(row.status),
+    nextDueDate: row.next_due_date ? String(row.next_due_date) : null,
+    updatedAt: String(row.updated_at),
+  }));
+}
+
+async function loadClientPreferenceUpdates(
+  adviserUserId: string,
+  userRole: "advisor" | "admin",
+  clientIds: string[],
+): Promise<WorkQueueClientPreferenceUpdateRow[]> {
+  if (clientIds.length === 0) return [];
+  const admin = createAdminSupabaseClient();
+  let query = admin
+    .from("crm_client_preference_updates")
+    .select("id, client_id, preference_type, status, created_at")
+    .in("client_id", clientIds)
+    .eq("status", "pending_review");
+
+  if (userRole === "advisor") {
+    query = query.eq("adviser_user_id", adviserUserId);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(`Failed to load client preference updates for work queue: ${error.message}`);
+  }
+
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+    id: String(row.id),
+    clientId: String(row.client_id),
+    preferenceType: String(row.preference_type),
+    status: String(row.status),
+    createdAt: String(row.created_at),
+  }));
+}
+
 export async function loadWorkQueueBatchData(input: {
   authUserId: string;
   userRole: "advisor" | "admin";
@@ -438,6 +538,9 @@ export async function loadWorkQueueBatchData(input: {
     clientServiceRequests,
     protectionExtractions,
     protectionPolicyServicing,
+    relationshipMoments,
+    crmReviewRhythms,
+    clientPreferenceUpdates,
   ] = await Promise.all([
     loadTasksForClients(input.authUserId, input.userRole, clientIds),
     loadRoadmapItems(clientIds),
@@ -457,6 +560,9 @@ export async function loadWorkQueueBatchData(input: {
     loadClientServiceRequests(input.authUserId, input.userRole, clientIds),
     loadProtectionExtractions(input.authUserId, input.userRole, clientIds),
     loadProtectionPolicyServicing(input.authUserId, input.userRole, clientIds),
+    loadRelationshipMoments(input.authUserId, input.userRole, clientIds),
+    loadCrmReviewRhythms(input.authUserId, input.userRole, clientIds),
+    loadClientPreferenceUpdates(input.authUserId, input.userRole, clientIds),
   ]);
 
   const reviewPipeline = buildAdvisorReviewPipelineFromContexts(reviewContexts);
@@ -484,6 +590,9 @@ export async function loadWorkQueueBatchData(input: {
     clientServiceRequests,
     protectionExtractions,
     protectionPolicyServicing,
+    relationshipMoments,
+    crmReviewRhythms,
+    clientPreferenceUpdates,
     fileQualityByClientId,
   };
 }

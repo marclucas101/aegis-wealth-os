@@ -35,7 +35,7 @@ Today | Relationships | Appointments | Service | Communications | More
 | **05** | `crm-v2-05-google-calendar` | Google Calendar integration (AEGIS authoritative) | In progress |
 | **06** | `crm-v2-06-service-commitments` | Service layer + commitments + client requests | **Complete** — see Phase 06 docs below |
 | **07** | `crm-v2-07-protection-portfolio` | Protection portfolio + verification | **Complete** — see Phase 07 docs below |
-| **08** | `crm-v2-08-relationship-moments` | Moments engine (birthdays, holidays, travel) | Pending |
+| **08** | `crm-v2-08-relationship-moments` | Moments engine (birthdays, holidays, review rhythm) | **Implemented** — see Phase 08 docs below |
 | **09** | `crm-v2-09-advocacy` | Advocacy event tracking + yearly score | Pending |
 | **10** | `crm-v2-10-communications` | CRM → governed communications bridge | Pending |
 | **11** | `crm-v2-11-today-work-queue` | Today homepage + unified work queue | Pending |
@@ -95,6 +95,25 @@ Today | Relationships | Appointments | Service | Communications | More
 | [CRM_V2_PHASE_06_MIGRATION_RUNBOOK.md](./CRM_V2_PHASE_06_MIGRATION_RUNBOOK.md) | Apply/verify/discrepancy |
 | [CRM_V2_PHASE_06_MANUAL_TESTS.md](./CRM_V2_PHASE_06_MANUAL_TESTS.md) | Operator checklist (38 tests) |
 | [CRM_V2_PHASE_06_COMPLETION.md](./CRM_V2_PHASE_06_COMPLETION.md) | Sign-off, QA results, verdict |
+
+---
+
+## Phase 08 documents (relationship moments)
+
+| Document | Purpose |
+|----------|---------|
+| [CRM_V2_PHASE_08_EXISTING_RELATIONSHIP_MOMENTS_AUDIT.md](./CRM_V2_PHASE_08_EXISTING_RELATIONSHIP_MOMENTS_AUDIT.md) | Pre-schema audit (DOB, tasks, reviews, ethnicity) |
+| [CRM_V2_PHASE_08_RELATIONSHIP_MOMENTS_ARCHITECTURE.md](./CRM_V2_PHASE_08_RELATIONSHIP_MOMENTS_ARCHITECTURE.md) | Canonical moments, overrides, festive mappings |
+| [CRM_V2_PHASE_08_REVIEW_RHYTHM.md](./CRM_V2_PHASE_08_REVIEW_RHYTHM.md) | `crm_review_rhythm` projection |
+| [CRM_V2_PHASE_08_SENSITIVITY_AND_ETHNICITY_RULES.md](./CRM_V2_PHASE_08_SENSITIVITY_AND_ETHNICITY_RULES.md) | Hard restrictions, festive only |
+| [CRM_V2_PHASE_08_CLIENT_PREFERENCES.md](./CRM_V2_PHASE_08_CLIENT_PREFERENCES.md) | `crm_v2_client_profile` gate, `/preferences` |
+| [CRM_V2_PHASE_08_SERVICE_APPOINTMENT_WORK_QUEUE_INTEGRATION.md](./CRM_V2_PHASE_08_SERVICE_APPOINTMENT_WORK_QUEUE_INTEGRATION.md) | Service requests, appointments, queue adapters |
+| [CRM_V2_PHASE_08_API_CONTRACT.md](./CRM_V2_PHASE_08_API_CONTRACT.md) | Adviser and client API DTOs |
+| [CRM_V2_PHASE_08_VISIBILITY_AND_PRIVACY.md](./CRM_V2_PHASE_08_VISIBILITY_AND_PRIVACY.md) | DTO exclusions |
+| [CRM_V2_PHASE_08_SECURITY_REVIEW.md](./CRM_V2_PHASE_08_SECURITY_REVIEW.md) | IDOR and fail-closed gates |
+| [CRM_V2_PHASE_08_MIGRATION_RUNBOOK.md](./CRM_V2_PHASE_08_MIGRATION_RUNBOOK.md) | Apply/verify/discrepancy |
+| [CRM_V2_PHASE_08_MANUAL_TESTS.md](./CRM_V2_PHASE_08_MANUAL_TESTS.md) | Operator checklist (39 tests) |
+| [CRM_V2_PHASE_08_COMPLETION.md](./CRM_V2_PHASE_08_COMPLETION.md) | Sign-off, QA results, verdict |
 
 ---
 

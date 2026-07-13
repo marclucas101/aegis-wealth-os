@@ -8,8 +8,9 @@ import {
   buildLegacyTasksHref,
   isAllowlistedRelationshipLink,
 } from "@/lib/crm-v2/relationships/routes";
+import { buildMomentsWorkspaceHref } from "@/lib/crm-v2/moments/routes";
+import { createCrmMomentsAdmin } from "@/lib/crm-v2/moments/db";
 import type { CrmTimelineEntry } from "@/lib/crm-v2/relationships/types";
-import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 const DOCUMENT_CATEGORY_LABELS: Record<string, string> = {
   insurance_policy: "Insurance document",
@@ -26,6 +27,22 @@ function safeDocumentTitle(category: string): string {
   return DOCUMENT_CATEGORY_LABELS[category] ?? "Client document";
 }
 
+function momentEventTitle(eventType: string): string {
+  const labels: Record<string, string> = {
+    moment_created: "Relationship moment created",
+    moment_updated: "Relationship moment updated",
+    moment_deactivated: "Relationship moment deactivated",
+    moment_acknowledged: "Relationship moment acknowledged",
+    suggestion_confirmed: "Festive suggestion confirmed",
+    suggestion_rejected: "Festive suggestion rejected",
+    review_rhythm_updated: "Review rhythm updated",
+    client_preference_submitted: "Client preference submitted",
+    client_preference_approved: "Client preference approved",
+    review_requested: "Review requested",
+  };
+  return labels[eventType] ?? "Relationship moment activity";
+}
+
 function meetingTitle(meetingType: string, status: string): string {
   const typeLabel = meetingType.replace(/_/g, " ");
   return `Meeting session — ${typeLabel} (${status.replace(/_/g, " ")})`;
@@ -34,7 +51,7 @@ function meetingTitle(meetingType: string, status: string): string {
 export async function loadCrmTimelineProjection(
   clientId: string,
 ): Promise<{ timeline: CrmTimelineEntry[]; bounded: boolean }> {
-  const admin = createAdminSupabaseClient();
+  const admin = createCrmMomentsAdmin();
 
   const [
     meetingsResult,
@@ -43,6 +60,7 @@ export async function loadCrmTimelineProjection(
     outputsResult,
     bindersResult,
     documentsResult,
+    momentEventsResult,
   ] = await Promise.all([
     admin
       .from("meeting_sessions")
@@ -81,6 +99,12 @@ export async function loadCrmTimelineProjection(
       .eq("client_id", clientId)
       .eq("is_archived", false)
       .order("created_at", { ascending: false })
+      .limit(CRM_V2_TIMELINE_MAX_ENTRIES),
+    admin
+      .from("relationship_moment_events")
+      .select("id, event_type, occurred_at, entity_type, entity_id")
+      .eq("client_id", clientId)
+      .order("occurred_at", { ascending: false })
       .limit(CRM_V2_TIMELINE_MAX_ENTRIES),
   ]);
 
@@ -194,6 +218,25 @@ export async function loadCrmTimelineProjection(
       summary: "Document added to client vault",
       sourceLink: buildLegacyDocumentVaultHref(clientId),
       visibility: "adviser",
+    });
+  }
+
+  for (const row of (momentEventsResult.data ?? []) as Array<{
+    id: string;
+    event_type: string;
+    occurred_at: string;
+    entity_type: string;
+    entity_id: string;
+  }>) {
+    const href = buildMomentsWorkspaceHref(clientId);
+    entries.push({
+      eventId: `relationship_moment_event:${row.id}`,
+      eventType: "relationship_moment",
+      occurredAt: row.occurred_at,
+      title: momentEventTitle(row.event_type),
+      summary: "Relationship moment activity",
+      sourceLink: isAllowlistedRelationshipLink(href) ? href : null,
+      visibility: row.event_type.startsWith("client_") ? "client_visible" : "adviser",
     });
   }
 

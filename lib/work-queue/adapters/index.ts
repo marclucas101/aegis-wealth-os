@@ -9,6 +9,9 @@ import { reviewDueAdapter } from "./reviewDueAdapter";
 import { roadmapItemAdapter } from "./roadmapItemAdapter";
 import { protectionExtractionAdapter } from "./protectionExtractionAdapter";
 import { protectionPolicyServicingAdapter } from "./protectionPolicyServicingAdapter";
+import { relationshipMomentAdapter } from "./relationshipMomentAdapter";
+import { crmReviewRhythmAdapter } from "./crmReviewRhythmAdapter";
+import { clientPreferenceUpdateAdapter } from "./clientPreferenceUpdateAdapter";
 import { serviceCommitmentAdapter } from "./serviceCommitmentAdapter";
 import type { AdviserWorkItemAdapter } from "./types";
 
@@ -25,6 +28,9 @@ export const WORK_QUEUE_ADAPTERS: AdviserWorkItemAdapter[] = [
   clientServiceRequestAdapter,
   protectionExtractionAdapter,
   protectionPolicyServicingAdapter,
+  relationshipMomentAdapter,
+  crmReviewRhythmAdapter,
+  clientPreferenceUpdateAdapter,
 ];
 
 export {
@@ -40,6 +46,9 @@ export {
   clientServiceRequestAdapter,
   protectionExtractionAdapter,
   protectionPolicyServicingAdapter,
+  relationshipMomentAdapter,
+  crmReviewRhythmAdapter,
+  clientPreferenceUpdateAdapter,
 };
 
 export type { AdviserWorkItemAdapter, WorkQueueLoadContext } from "./types";
