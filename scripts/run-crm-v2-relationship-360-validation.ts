@@ -66,6 +66,16 @@ const FORBIDDEN_LIST_DTO_FIELDS = [
   "revenue",
 ] as const;
 
+const PHASE06_SERVICE_MIGRATIONS = [
+  "202606290008_phase06_crm_v2_service_feature_control.sql",
+  "202606290009_phase06_crm_v2_service_core.sql",
+] as const;
+
+const PHASE07_PROTECTION_MIGRATIONS = [
+  "202606290010_phase07_crm_v2_protection_feature_control.sql",
+  "202606290011_phase07_crm_v2_protection_core.sql",
+] as const;
+
 const PHASE02_FORBIDDEN_MIGRATION_PATTERNS = [
   /household/i,
   /service_commitments/i,
@@ -708,7 +718,12 @@ check("360: read model loads all six sections", () => {
 });
 
 check("360: read model protection notice Phase 07", () => {
-  assert(doc("lib/crm-v2/relationships/readModel.ts").includes("Phase 07"), "phase 07 notice");
+  const source = doc("lib/crm-v2/relationships/readModel.ts");
+  assert(source.includes("loadCrmProtectionOverviewSummary"), "phase 07 protection summary loader");
+  assert(
+    doc("lib/crm-v2/relationships/protectionProjection.ts").includes("loadCrmProtectionFinancialPlanLink"),
+    "phase 07 protection projection",
+  );
 });
 
 check("360: profile future phase notices", () => {
@@ -885,8 +900,10 @@ check("service: bounded by CRM_V2_SERVICE_MAX_ITEMS", () => {
   assert(source.includes(".slice(0, CRM_V2_SERVICE_MAX_ITEMS)"), "slice");
 });
 
-check("service: no service_commitments table", () => {
-  assert(!doc("lib/crm-v2/relationships/serviceProjection.ts").includes("service_commitments"), "commitments table");
+check("service: projects service_commitments", () => {
+  const source = doc("lib/crm-v2/relationships/serviceProjection.ts");
+  assert(source.includes("service_commitments"), "commitments table");
+  assert(source.includes("client_service_requests"), "requests table");
 });
 
 check("service: projects advisor_tasks", () => {
@@ -1219,7 +1236,12 @@ check("compat: qa script registered in package.json", () => {
 
 check("compat: no forbidden phase02 migration patterns in new migrations", () => {
   const newMigrations = listMigrations().filter((f) => f.includes("20260629"));
+  const phaseScopedMigrations = [
+    ...(PHASE06_SERVICE_MIGRATIONS as readonly string[]),
+    ...(PHASE07_PROTECTION_MIGRATIONS as readonly string[]),
+  ];
   for (const file of newMigrations) {
+    if (phaseScopedMigrations.includes(file)) continue;
     const sql = doc(`supabase/migrations/${file}`);
     for (const pattern of PHASE02_FORBIDDEN_MIGRATION_PATTERNS) {
       assert(!pattern.test(sql), `${pattern} matched in ${file}`);

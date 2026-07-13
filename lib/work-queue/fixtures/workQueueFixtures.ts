@@ -155,6 +155,10 @@ export function fixtureBatchData(
         updatedAt: "2026-06-12T00:00:00.000Z",
       },
     ],
+    serviceCommitments: [],
+    clientServiceRequests: [],
+    protectionExtractions: [],
+    protectionPolicyServicing: [],
     fileQualityByClientId: {
       [FIXTURE_CLIENT_B]: fileQuality,
     },

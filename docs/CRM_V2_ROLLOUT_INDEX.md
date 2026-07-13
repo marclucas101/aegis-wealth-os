@@ -33,8 +33,8 @@ Today | Relationships | Appointments | Service | Communications | More
 | **03** | `crm-v2-03-appointments-adviser` | Authoritative appointment core (adviser) | **Complete** — see Phase 03 docs below |
 | **04** | `crm-v2-04-appointments-client` | Client appointment collaboration | **Complete** |
 | **05** | `crm-v2-05-google-calendar` | Google Calendar integration (AEGIS authoritative) | In progress |
-| **06** | `crm-v2-06-service-commitments` | Service layer + commitments | Pending |
-| **07** | `crm-v2-07-protection-portfolio` | Protection portfolio + verification | Pending |
+| **06** | `crm-v2-06-service-commitments` | Service layer + commitments + client requests | **Complete** — see Phase 06 docs below |
+| **07** | `crm-v2-07-protection-portfolio` | Protection portfolio + verification | **Complete** — see Phase 07 docs below |
 | **08** | `crm-v2-08-relationship-moments` | Moments engine (birthdays, holidays, travel) | Pending |
 | **09** | `crm-v2-09-advocacy` | Advocacy event tracking + yearly score | Pending |
 | **10** | `crm-v2-10-communications` | CRM → governed communications bridge | Pending |
@@ -76,6 +76,45 @@ Today | Relationships | Appointments | Service | Communications | More
 | [CRM_V2_PHASE_04_MIGRATION_RUNBOOK.md](./CRM_V2_PHASE_04_MIGRATION_RUNBOOK.md) | Migration preflight/verify steps |
 | [CRM_V2_PHASE_04_MANUAL_TESTS.md](./CRM_V2_PHASE_04_MANUAL_TESTS.md) | Manual operator tests |
 | [CRM_V2_PHASE_04_COMPLETION.md](./CRM_V2_PHASE_04_COMPLETION.md) | Completion report |
+
+---
+
+## Phase 06 documents (service commitments)
+
+| Document | Purpose |
+|----------|---------|
+| [CRM_V2_PHASE_06_EXISTING_SERVICING_AUDIT.md](./CRM_V2_PHASE_06_EXISTING_SERVICING_AUDIT.md) | Pre-schema servicing source audit |
+| [CRM_V2_PHASE_06_SERVICE_ARCHITECTURE.md](./CRM_V2_PHASE_06_SERVICE_ARCHITECTURE.md) | Authority model and flow |
+| [CRM_V2_PHASE_06_COMMITMENT_LIFECYCLE.md](./CRM_V2_PHASE_06_COMMITMENT_LIFECYCLE.md) | Commitment states and transitions |
+| [CRM_V2_PHASE_06_SERVICE_REQUEST_LIFECYCLE.md](./CRM_V2_PHASE_06_SERVICE_REQUEST_LIFECYCLE.md) | Client request lifecycle |
+| [CRM_V2_PHASE_06_API_CONTRACT.md](./CRM_V2_PHASE_06_API_CONTRACT.md) | Adviser and client API DTOs |
+| [CRM_V2_PHASE_06_CLIENT_ACTIONS.md](./CRM_V2_PHASE_06_CLIENT_ACTIONS.md) | `/actions` and `/requests` client views |
+| [CRM_V2_PHASE_06_WORK_QUEUE_INTEGRATION.md](./CRM_V2_PHASE_06_WORK_QUEUE_INTEGRATION.md) | Read-only queue adapters |
+| [CRM_V2_PHASE_06_VISIBILITY_AND_PRIVACY.md](./CRM_V2_PHASE_06_VISIBILITY_AND_PRIVACY.md) | DTO exclusions |
+| [CRM_V2_PHASE_06_SECURITY_REVIEW.md](./CRM_V2_PHASE_06_SECURITY_REVIEW.md) | Threat table and controls |
+| [CRM_V2_PHASE_06_MIGRATION_RUNBOOK.md](./CRM_V2_PHASE_06_MIGRATION_RUNBOOK.md) | Apply/verify/discrepancy |
+| [CRM_V2_PHASE_06_MANUAL_TESTS.md](./CRM_V2_PHASE_06_MANUAL_TESTS.md) | Operator checklist (38 tests) |
+| [CRM_V2_PHASE_06_COMPLETION.md](./CRM_V2_PHASE_06_COMPLETION.md) | Sign-off, QA results, verdict |
+
+---
+
+## Phase 07 documents (protection portfolio)
+
+| Document | Purpose |
+|----------|---------|
+| [CRM_V2_PHASE_07_EXISTING_PROTECTION_AUDIT.md](./CRM_V2_PHASE_07_EXISTING_PROTECTION_AUDIT.md) | Existing protection system audit |
+| [CRM_V2_PHASE_07_PROTECTION_ARCHITECTURE.md](./CRM_V2_PHASE_07_PROTECTION_ARCHITECTURE.md) | Authorities and verification flow |
+| [CRM_V2_PHASE_07_EXTRACTION_AND_VERIFICATION.md](./CRM_V2_PHASE_07_EXTRACTION_AND_VERIFICATION.md) | Extraction lifecycle |
+| [CRM_V2_PHASE_07_POLICY_VERSIONING.md](./CRM_V2_PHASE_07_POLICY_VERSIONING.md) | Version model and deduplication |
+| [CRM_V2_PHASE_07_CLIENT_PROTECTION_SUMMARY.md](./CRM_V2_PHASE_07_CLIENT_PROTECTION_SUMMARY.md) | Client `/protection` views |
+| [CRM_V2_PHASE_07_REPORT_AND_BINDER_INTEGRATION.md](./CRM_V2_PHASE_07_REPORT_AND_BINDER_INTEGRATION.md) | Legacy report + binder boundaries |
+| [CRM_V2_PHASE_07_SERVICE_AND_WORK_QUEUE_INTEGRATION.md](./CRM_V2_PHASE_07_SERVICE_AND_WORK_QUEUE_INTEGRATION.md) | Service requests + queue adapters |
+| [CRM_V2_PHASE_07_API_CONTRACT.md](./CRM_V2_PHASE_07_API_CONTRACT.md) | Protection API contract |
+| [CRM_V2_PHASE_07_VISIBILITY_AND_PRIVACY.md](./CRM_V2_PHASE_07_VISIBILITY_AND_PRIVACY.md) | Masking and DTO privacy |
+| [CRM_V2_PHASE_07_SECURITY_REVIEW.md](./CRM_V2_PHASE_07_SECURITY_REVIEW.md) | IDOR and threat controls |
+| [CRM_V2_PHASE_07_MIGRATION_RUNBOOK.md](./CRM_V2_PHASE_07_MIGRATION_RUNBOOK.md) | Apply/verify/discrepancy |
+| [CRM_V2_PHASE_07_MANUAL_TESTS.md](./CRM_V2_PHASE_07_MANUAL_TESTS.md) | Operator checklist (39 tests) |
+| [CRM_V2_PHASE_07_COMPLETION.md](./CRM_V2_PHASE_07_COMPLETION.md) | Sign-off, QA results, verdict |
 
 ---
 

@@ -9,6 +9,9 @@ import {
   CRM_V2_MASTER_FEATURE_KEY,
   CRM_V2_PILOT_MODE_FEATURE_KEY,
   CRM_V2_RELATIONSHIPS_FEATURE_KEY,
+  CRM_V2_SERVICE_FEATURE_KEY,
+  CRM_V2_CLIENT_SERVICE_FEATURE_KEY,
+  CRM_V2_PROTECTION_PORTFOLIO_FEATURE_KEY,
 } from "@/lib/crm-v2/constants";
 import { loadFeatureControls } from "@/lib/compliance/featureFlags";
 import {
@@ -263,5 +266,165 @@ export async function assertCrmV2ClientAppointmentsAccess(): Promise<CrmV2Client
     user: session.user,
     client: session.client,
     appointmentsClientEnabled: true,
+  };
+}
+
+export type CrmV2ServiceAccessResult =
+  | { allowed: false; reason: CrmV2AccessDeniedReason; requestId: string }
+  | {
+      allowed: true;
+      authUser: User;
+      user: AppUserRow;
+      requestId: string;
+      masterEnabled: true;
+      pilotModeEnabled: true;
+      serviceEnabled: true;
+    };
+
+/**
+ * Central gate for CRM V2 adviser Service workspace.
+ * Requires master + pilot gates; does not bypass them.
+ */
+export async function assertCrmV2ServiceAccess(): Promise<CrmV2ServiceAccessResult> {
+  const base = await assertCrmV2Access();
+  if (!base.allowed) {
+    return { allowed: false, reason: base.reason, requestId: base.requestId };
+  }
+
+  const serviceEnabled = await isFeatureEnabled(CRM_V2_SERVICE_FEATURE_KEY);
+  if (!serviceEnabled) {
+    return { allowed: false, reason: "feature_disabled", requestId: base.requestId };
+  }
+
+  return {
+    allowed: true,
+    authUser: base.authUser,
+    user: base.user,
+    requestId: base.requestId,
+    masterEnabled: true,
+    pilotModeEnabled: true,
+    serviceEnabled: true,
+  };
+}
+
+export type CrmV2ClientServiceAccessResult =
+  | { allowed: false; reason: "unauthenticated" | "forbidden" | "feature_disabled"; requestId: string }
+  | {
+      allowed: true;
+      requestId: string;
+      authUserId: string;
+      user: AppUserRow;
+      client: AppClientRow;
+      clientServiceEnabled: true;
+    };
+
+/**
+ * Central gate for CRM V2 client Actions and service requests.
+ * Server-derived client identity only; fail-closed on flag visibility.
+ */
+export async function assertCrmV2ClientServiceAccess(): Promise<CrmV2ClientServiceAccessResult> {
+  const requestId = createShellRequestId();
+  const session = await ensureUserClientProfile();
+  if (!session.authenticated) {
+    return { allowed: false, reason: "unauthenticated", requestId };
+  }
+
+  if (session.user.role !== "client") {
+    return { allowed: false, reason: "forbidden", requestId };
+  }
+
+  const controls = await loadFeatureControls();
+  const row = controls.get(CRM_V2_CLIENT_SERVICE_FEATURE_KEY);
+  if (!row?.enabled || !row.client_visible) {
+    return { allowed: false, reason: "feature_disabled", requestId };
+  }
+
+  return {
+    allowed: true,
+    requestId,
+    authUserId: session.authUser.id,
+    user: session.user,
+    client: session.client,
+    clientServiceEnabled: true,
+  };
+}
+
+export type CrmV2ProtectionPortfolioAccessResult =
+  | { allowed: false; reason: CrmV2AccessDeniedReason; requestId: string }
+  | {
+      allowed: true;
+      authUser: User;
+      user: AppUserRow;
+      requestId: string;
+      masterEnabled: true;
+      pilotModeEnabled: true;
+      protectionPortfolioEnabled: true;
+    };
+
+/**
+ * Central gate for CRM V2 adviser protection portfolio and verification.
+ * Requires master + pilot gates; does not bypass them.
+ */
+export async function assertCrmV2ProtectionPortfolioAccess(): Promise<CrmV2ProtectionPortfolioAccessResult> {
+  const base = await assertCrmV2Access();
+  if (!base.allowed) {
+    return { allowed: false, reason: base.reason, requestId: base.requestId };
+  }
+
+  const protectionEnabled = await isFeatureEnabled(CRM_V2_PROTECTION_PORTFOLIO_FEATURE_KEY);
+  if (!protectionEnabled) {
+    return { allowed: false, reason: "feature_disabled", requestId: base.requestId };
+  }
+
+  return {
+    allowed: true,
+    authUser: base.authUser,
+    user: base.user,
+    requestId: base.requestId,
+    masterEnabled: true,
+    pilotModeEnabled: true,
+    protectionPortfolioEnabled: true,
+  };
+}
+
+export type CrmV2ClientProtectionAccessResult =
+  | { allowed: false; reason: "unauthenticated" | "forbidden" | "feature_disabled"; requestId: string }
+  | {
+      allowed: true;
+      requestId: string;
+      authUserId: string;
+      user: AppUserRow;
+      client: AppClientRow;
+      clientProtectionEnabled: true;
+    };
+
+/**
+ * Central gate for CRM V2 client protection summary.
+ * Server-derived client identity only; fail-closed on flag visibility.
+ */
+export async function assertCrmV2ClientProtectionAccess(): Promise<CrmV2ClientProtectionAccessResult> {
+  const requestId = createShellRequestId();
+  const session = await ensureUserClientProfile();
+  if (!session.authenticated) {
+    return { allowed: false, reason: "unauthenticated", requestId };
+  }
+
+  if (session.user.role !== "client") {
+    return { allowed: false, reason: "forbidden", requestId };
+  }
+
+  const controls = await loadFeatureControls();
+  const row = controls.get(CRM_V2_PROTECTION_PORTFOLIO_FEATURE_KEY);
+  if (!row?.enabled || !row.client_visible) {
+    return { allowed: false, reason: "feature_disabled", requestId };
+  }
+
+  return {
+    allowed: true,
+    requestId,
+    authUserId: session.authUser.id,
+    user: session.user,
+    client: session.client,
+    clientProtectionEnabled: true,
   };
 }

@@ -17,9 +17,13 @@ import type {
   WorkQueueAppointmentRow,
   WorkQueueBatchData,
   WorkQueueBinderExportRow,
+  WorkQueueClientServiceRequestRow,
   WorkQueueMeetingSessionRow,
   WorkQueuePlanningOutputRow,
+  WorkQueueProtectionExtractionRow,
+  WorkQueueProtectionPolicyServicingRow,
   WorkQueueRoadmapRow,
+  WorkQueueServiceCommitmentRow,
 } from "./batchData";
 import { DEFAULT_ADVISER_TIMEZONE, WORK_QUEUE_LIMITS } from "./constants";
 
@@ -236,6 +240,183 @@ async function loadBinderExports(
   }));
 }
 
+async function loadServiceCommitments(
+  adviserUserId: string,
+  userRole: "advisor" | "admin",
+  clientIds: string[],
+): Promise<WorkQueueServiceCommitmentRow[]> {
+  if (clientIds.length === 0) return [];
+  const admin = createAdminSupabaseClient();
+  let query = admin
+    .from("service_commitments")
+    .select(
+      "id, client_id, title, commitment_type, owner, lifecycle_status, due_at, source_type, source_id, updated_at",
+    )
+    .in("client_id", clientIds)
+    .not("lifecycle_status", "in", "(completed,cancelled)");
+
+  if (userRole === "advisor") {
+    query = query.eq("adviser_user_id", adviserUserId);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(`Failed to load service commitments for work queue: ${error.message}`);
+  }
+
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+    id: String(row.id),
+    clientId: String(row.client_id),
+    title: String(row.title),
+    commitmentType: String(row.commitment_type),
+    owner: row.owner as WorkQueueServiceCommitmentRow["owner"],
+    lifecycleStatus: String(row.lifecycle_status),
+    dueAt: row.due_at ? String(row.due_at) : null,
+    sourceType: row.source_type ? String(row.source_type) : null,
+    sourceId: row.source_id ? String(row.source_id) : null,
+    updatedAt: String(row.updated_at),
+  }));
+}
+
+async function loadClientServiceRequests(
+  adviserUserId: string,
+  userRole: "advisor" | "admin",
+  clientIds: string[],
+): Promise<WorkQueueClientServiceRequestRow[]> {
+  if (clientIds.length === 0) return [];
+  const admin = createAdminSupabaseClient();
+  let query = admin
+    .from("client_service_requests")
+    .select(
+      "id, client_id, summary, request_category, lifecycle_status, urgency, created_at, updated_at",
+    )
+    .in("client_id", clientIds)
+    .not("lifecycle_status", "in", "(resolved,closed,cancelled)");
+
+  if (userRole === "advisor") {
+    query = query.eq("adviser_user_id", adviserUserId);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(`Failed to load client service requests for work queue: ${error.message}`);
+  }
+
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+    id: String(row.id),
+    clientId: String(row.client_id),
+    summary: String(row.summary),
+    requestCategory: String(row.request_category),
+    lifecycleStatus: String(row.lifecycle_status),
+    urgency: String(row.urgency),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  }));
+}
+
+async function loadProtectionExtractions(
+  adviserUserId: string,
+  userRole: "advisor" | "admin",
+  clientIds: string[],
+): Promise<WorkQueueProtectionExtractionRow[]> {
+  if (clientIds.length === 0) return [];
+  const admin = createAdminSupabaseClient();
+  let query = admin
+    .from("protection_extractions")
+    .select("id, client_id, extracted_fields, adviser_review_status, created_at")
+    .in("client_id", clientIds)
+    .in("adviser_review_status", ["provisional", "awaiting_review"]);
+
+  if (userRole === "advisor") {
+    query = query.eq("adviser_user_id", adviserUserId);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(`Failed to load protection extractions for work queue: ${error.message}`);
+  }
+
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => {
+    const fields = row.extracted_fields as Record<string, unknown> | null;
+    const displayName = fields?.displayName ? String(fields.displayName) : "Provisional extraction";
+    return {
+      id: String(row.id),
+      clientId: String(row.client_id),
+      title: displayName,
+      reviewStatus: String(row.adviser_review_status),
+      createdAt: String(row.created_at),
+    };
+  });
+}
+
+async function loadProtectionPolicyServicing(
+  adviserUserId: string,
+  userRole: "advisor" | "admin",
+  clientIds: string[],
+): Promise<WorkQueueProtectionPolicyServicingRow[]> {
+  if (clientIds.length === 0) return [];
+  const admin = createAdminSupabaseClient();
+  let query = admin
+    .from("protection_policies")
+    .select(
+      "id, client_id, display_name, source_document_id, maturity_or_expiry_date, current_confirmed_version_id",
+    )
+    .in("client_id", clientIds)
+    .is("archived_at", null);
+
+  if (userRole === "advisor") {
+    query = query.eq("adviser_user_id", adviserUserId);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(`Failed to load protection policies for work queue: ${error.message}`);
+  }
+
+  const rows: WorkQueueProtectionPolicyServicingRow[] = [];
+  const now = Date.now();
+  const horizon = now + 90 * 24 * 60 * 60 * 1000;
+
+  for (const row of (data ?? []) as Record<string, unknown>[]) {
+    const id = String(row.id);
+    const clientId = String(row.client_id);
+    const title = String(row.display_name);
+    if (!row.source_document_id) {
+      rows.push({
+        id: `${id}:missing_source`,
+        clientId,
+        title,
+        servicingReason: "missing_source_document",
+        dueAt: null,
+      });
+    }
+    const expiry = row.maturity_or_expiry_date ? String(row.maturity_or_expiry_date) : null;
+    if (expiry) {
+      const expiryMs = new Date(expiry).getTime();
+      if (!Number.isNaN(expiryMs) && expiryMs <= horizon) {
+        rows.push({
+          id: `${id}:expiry`,
+          clientId,
+          title,
+          servicingReason: "policy_expiry_approaching",
+          dueAt: expiry,
+        });
+      }
+    }
+    if (!row.current_confirmed_version_id) {
+      rows.push({
+        id: `${id}:unverified`,
+        clientId,
+        title,
+        servicingReason: "policy_status_unconfirmed",
+        dueAt: null,
+      });
+    }
+  }
+
+  return rows;
+}
+
 export async function loadWorkQueueBatchData(input: {
   authUserId: string;
   userRole: "advisor" | "admin";
@@ -253,6 +434,10 @@ export async function loadWorkQueueBatchData(input: {
     planningOutputs,
     binderExports,
     qualityContexts,
+    serviceCommitments,
+    clientServiceRequests,
+    protectionExtractions,
+    protectionPolicyServicing,
   ] = await Promise.all([
     loadTasksForClients(input.authUserId, input.userRole, clientIds),
     loadRoadmapItems(clientIds),
@@ -268,6 +453,10 @@ export async function loadWorkQueueBatchData(input: {
     loadAdvisorClientQualityContexts(
       input.clients.filter((c) => clientIds.includes(c.id)),
     ),
+    loadServiceCommitments(input.authUserId, input.userRole, clientIds),
+    loadClientServiceRequests(input.authUserId, input.userRole, clientIds),
+    loadProtectionExtractions(input.authUserId, input.userRole, clientIds),
+    loadProtectionPolicyServicing(input.authUserId, input.userRole, clientIds),
   ]);
 
   const reviewPipeline = buildAdvisorReviewPipelineFromContexts(reviewContexts);
@@ -291,6 +480,10 @@ export async function loadWorkQueueBatchData(input: {
     meetingSessions,
     planningOutputs,
     binderExports,
+    serviceCommitments,
+    clientServiceRequests,
+    protectionExtractions,
+    protectionPolicyServicing,
     fileQualityByClientId,
   };
 }

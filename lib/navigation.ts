@@ -74,6 +74,24 @@ export const ACTIVE_CLIENT_NAV_SECTIONS: NavSection[] = [
         clientOnly: true,
       },
       {
+        label: "Actions",
+        href: "/actions",
+        description: "Commitments and documents assigned to you",
+        clientOnly: true,
+      },
+      {
+        label: "Requests",
+        href: "/requests",
+        description: "Service requests to your adviser",
+        clientOnly: true,
+      },
+      {
+        label: "Protection",
+        href: "/protection",
+        description: "Confirmed protection policy summary",
+        clientOnly: true,
+      },
+      {
         label: "Insights & Updates",
         href: "/insights",
         description: "Educational updates from your adviser",

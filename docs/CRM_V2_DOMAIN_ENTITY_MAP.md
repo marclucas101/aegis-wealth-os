@@ -3,6 +3,14 @@
 - Added `crm_google_calendar_event_mappings` as the authoritative provider-mapping table for appointment sync status/history.
 - Existing `adviser_appointments.google_*` fields remain compatibility projection fields and are not treated as lifecycle authority.
 - Added `crm_google_oauth_states` for short-lived OAuth state persistence metadata.
+
+### Phase 06 extension — Service authorities (**implemented, migrations not applied**)
+
+- `service_commitments` — canonical CRM commitments (`adviser_commitment`, `client_commitment`, `shared_commitment`, `document_request`, `appointment_follow_up_item`).
+- `client_service_requests` — separate authority for client-initiated requests (not a commitment type duplicate).
+- `service_commitment_events`, `client_service_request_events` — immutable audit.
+- `advisor_tasks` retained; work-queue adapters extended (`serviceCommitmentAdapter`, `clientServiceRequestAdapter`).
+- Migrations: `202606290008` (feature seeds), `202606290009` (core schema).
 # CRM V2 — Domain Entity Map
 
 **Phase:** 00
@@ -112,17 +120,29 @@ CRM V2 flags added via seed migrations per phase; code defaults in `featureFlags
 
 ## 3. New entities (approved — NEW tables)
 
-### 3.1 `service_commitments` (Phase 06)
+### 3.1 `service_commitments` (Phase 06 — **implemented**)
 
 | Field group | Purpose |
 |-------------|---------|
 | Identity | `id`, `client_id`, `adviser_user_id` |
-| Type | commitment_type enum |
+| Type | `commitment_type` enum |
 | Ownership | `owner` (adviser, client, shared) |
-| Lifecycle | status, due_at, completed_at |
-| Visibility | `client_visible`, `internal_note` |
-| Links | `source_type`, `source_id` (appointment, meeting_session, etc.) |
-| Audit | `created_at`, `updated_at`, `created_by_user_id` |
+| Lifecycle | `lifecycle_status`, `due_at`, `completed_at` |
+| Visibility | `client_visible`, `visibility`, `internal_note` |
+| Links | `source_type`, `source_id`, `appointment_id` |
+| Concurrency | `version`, `idempotency_key` |
+| Audit | `service_commitment_events` (immutable) |
+
+### 3.1b `client_service_requests` (Phase 06 — **implemented**)
+
+| Field group | Purpose |
+|-------------|---------|
+| Identity | `id`, `client_id`, `adviser_user_id` |
+| Request | `request_category`, `summary`, `details`, `urgency` |
+| Lifecycle | `lifecycle_status`, `client_visible_status` |
+| Resolution | `acknowledged_at`, `resolution_summary`, `resolved_at` |
+| Concurrency | `version`, `idempotency_key` |
+| Audit | `client_service_request_events` (immutable) |
 
 ### 3.2 `crm_appointment_participants` (Phase 03)
 

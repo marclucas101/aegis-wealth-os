@@ -1,11 +1,52 @@
-import CrmV2FoundationPlaceholderPage from "@/components/aegis/advisor-v2/CrmV2FoundationPlaceholderPage";
+import ServiceWorkspaceClient from "@/components/aegis/advisor-v2/service/ServiceWorkspaceClient";
+import CrmV2AccessDenied from "@/components/aegis/advisor-v2/CrmV2AccessDenied";
+import { assertCrmV2ServiceAccess } from "@/lib/crm-v2/access";
+import {
+  loadServiceWorkspaceCompleted,
+  loadServiceWorkspaceDocumentRequests,
+  loadServiceWorkspaceMyWork,
+  loadServiceWorkspaceReviews,
+  parseServiceWorkspaceView,
+} from "@/lib/crm-v2/service/listQueries";
+import { listAdviserCommitments, listAdviserServiceRequests } from "@/lib/crm-v2/service/service";
 
-export default function CrmV2ServicePage() {
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export default async function CrmV2ServicePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  const access = await assertCrmV2ServiceAccess();
+  if (!access.allowed) {
+    return <CrmV2AccessDenied />;
+  }
+
+  const params = await searchParams;
+  const view = parseServiceWorkspaceView(params.view ?? null);
+  const role = access.user.role as "advisor" | "admin";
+  const authUserId = access.authUser.id;
+
+  const [myWorkResult, requests, commitments, reviews, documents, completed] =
+    await Promise.all([
+      loadServiceWorkspaceMyWork({ authUserId, userRole: role }),
+      listAdviserServiceRequests({ authUserId, userRole: role, openOnly: true }),
+      listAdviserCommitments({ authUserId, userRole: role, openOnly: true }),
+      loadServiceWorkspaceReviews({ authUserId, userRole: role }),
+      loadServiceWorkspaceDocumentRequests({ authUserId, userRole: role }),
+      loadServiceWorkspaceCompleted({ authUserId, userRole: role }),
+    ]);
+
   return (
-    <CrmV2FoundationPlaceholderPage
-      title="Service"
-      phase="Phase 06"
-      message="Commitments, requests and servicing workflows will be introduced in Phase 06."
+    <ServiceWorkspaceClient
+      initialView={view}
+      initialMyWork={myWorkResult.items}
+      initialRequests={requests}
+      initialCommitments={commitments}
+      initialReviews={reviews}
+      initialDocuments={documents}
+      initialCompleted={completed}
     />
   );
 }

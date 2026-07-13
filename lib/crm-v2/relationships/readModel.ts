@@ -17,6 +17,10 @@ import {
   CRM_SERVICE_PHASE_NOTICE,
   loadCrmServiceProjection,
 } from "@/lib/crm-v2/relationships/serviceProjection";
+import {
+  loadCrmProtectionFinancialPlanLink,
+  loadCrmProtectionOverviewSummary,
+} from "@/lib/crm-v2/relationships/protectionProjection";
 import { loadCrmTimelineProjection } from "@/lib/crm-v2/relationships/timelineProjection";
 import type {
   CrmFinancialPlanLink,
@@ -326,6 +330,7 @@ function buildOverviewPanels(
 function buildFinancialPlanLinks(
   clientId: string,
   context: Awaited<ReturnType<typeof loadSupplementaryContext>>,
+  protectionLink: CrmFinancialPlanLink,
 ): CrmFinancialPlanLink[] {
   return [
     {
@@ -351,10 +356,11 @@ function buildFinancialPlanLinks(
           ? `${context.roadmapOpenCount} open actions`
           : CRM_NOT_ESTABLISHED_LABEL,
     },
+    protectionLink,
     {
-      label: "Protection report",
-      href: buildLegacyClientHref(clientId, "protection"),
-      statusLabel: CRM_UNKNOWN_LABEL,
+      label: "Protection report (legacy generator)",
+      href: "/advisor/protection-report",
+      statusLabel: "Standalone tool — feeds extraction",
     },
     {
       label: "Meeting studio",
@@ -427,7 +433,8 @@ export async function loadCrmRelationship360(
   const context = await loadSupplementaryContext(client.id, client.advisor_user_id);
   const warnings: string[] = [...context.warnings];
 
-  const [timelineResult, serviceResult, documentsResult] = await Promise.all([
+  const [timelineResult, serviceResult, documentsResult, protectionLink, protectionNotice] =
+    await Promise.all([
     loadCrmTimelineProjection(client.id).catch(() => {
       warnings.push("timeline_unavailable");
       return { timeline: [], bounded: false };
@@ -444,6 +451,14 @@ export async function loadCrmRelationship360(
         vaultHref: buildLegacyDocumentVaultHref(client.id),
       };
     }),
+    loadCrmProtectionFinancialPlanLink(client.id).catch(() => ({
+      label: "Protection portfolio",
+      href: `/advisor-v2/relationships/${client.id}/protection`,
+      statusLabel: CRM_NOT_ESTABLISHED_LABEL,
+    })),
+    loadCrmProtectionOverviewSummary(client.id).catch(
+      () => "Protection portfolio unavailable",
+    ),
   ]);
 
   const header = buildHeader(client, context, context.adviserName);
@@ -454,11 +469,10 @@ export async function loadCrmRelationship360(
     activeTab,
     overview: {
       panels: buildOverviewPanels(client, context),
-      protectionNotice:
-        "Structured protection portfolio will be introduced in Phase 07.",
+      protectionNotice,
     },
     financialPlan: {
-      links: buildFinancialPlanLinks(client.id, context),
+      links: buildFinancialPlanLinks(client.id, context, protectionLink),
     },
     engagement: timelineResult,
     service: {

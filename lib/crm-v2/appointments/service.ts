@@ -6,6 +6,7 @@ import {
   CRM_V2_APPOINTMENTS_MAX_PARTICIPANTS,
   CRM_V2_APPOINTMENTS_MAX_TITLE_LENGTH,
 } from "@/lib/crm-v2/constants";
+import { loadProtectionAppointmentPreparation } from "@/lib/crm-v2/protection/protection";
 import { resolveEffectiveLifecycleStatus } from "@/lib/crm-v2/appointments/legacyMapping";
 import { isValidIanaTimezone } from "@/lib/crm-v2/appointments/timezone";
 import {
@@ -883,6 +884,10 @@ export async function loadCrmAppointmentDetail(
     sort_order: number;
   }>;
 
+  const protectionPreparation = await loadProtectionAppointmentPreparation(
+    appointment.client_id,
+  ).catch(() => null);
+
   return {
     appointmentId,
     relationshipId: appointment.client_id,
@@ -968,6 +973,7 @@ export async function loadCrmAppointmentDetail(
       occurredAt: e.occurred_at,
       reasonCode: e.reason_code,
     })),
+    protectionPreparation,
     sourceWarnings,
   };
 }

@@ -1,5 +1,6 @@
 import type { CalendarLocationType } from "@/lib/aegis/calendar";
 
+import type { CrmProtectionAppointmentPreparationDto } from "@/lib/crm-v2/protection/types";
 import type { CrmAppointmentLifecycleStatus } from "./lifecycle";
 import type { CrmAppointmentTemplateKey } from "./templates";
 
@@ -128,6 +129,7 @@ export type CrmAppointmentDetail = {
   detailHref: string;
   relationshipHref: string;
   recentEvents: CrmAppointmentStateEventDto[];
+  protectionPreparation: CrmProtectionAppointmentPreparationDto | null;
   sourceWarnings: string[];
 };
 

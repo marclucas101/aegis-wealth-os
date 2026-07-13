@@ -42,6 +42,10 @@ Primary nav labels: **Today**, **Relationships**, **Appointments**, **Service**,
 
 **Phase 01 shell (implemented):** Nine placeholder pages at `/advisor-v2` plus `GET /api/advisor-v2/shell`. Settings links to `/advisor/my-profile`. Access via `assertCrmV2Access()` in layout.
 
+**Phase 06 status:** Service workspace implemented at `/advisor-v2/service` with views: My Work, Client Requests, Reviews, Commitments, Documents Required, Workflow Cases, Completed. Gated by `crm_v2_service` in addition to master + pilot. Client routes: `/actions`, `/requests`, `/requests/[requestId]` gated by `crm_v2_client_service`.
+
+**Phase 07 status:** Protection portfolio at `/advisor-v2/relationships/[relationshipId]/protection` (Financial Plan integration). Verification workspace for provisional extractions. Client summary at `/protection` and `/protection/[policyId]` gated by `crm_v2_protection_portfolio`. Correction/review requests use Phase 06 `client_service_requests` (requires `crm_v2_client_service` for writes).
+
 ---
 
 ## 2. Relationship 360 tabs
@@ -94,8 +98,12 @@ Route: `/advisor-v2/relationships/[relationshipId]?tab=`
 | `/appointments/request` | Client appointment request form | 04 | `crm_v2_appointments_client` |
 | `/appointments/[appointmentId]` | Client appointment detail/actions | 04 | `crm_v2_appointments_client` |
 | `/meeting-preparation` | Prep questions from appointment | 04 | `crm_v2_client_appointments` |
-| `/document-vault` | Document requests from service | 06 | `crm_v2_client_service` |
-| `/profile` | Ethnicity (optional), moments | 08 | `crm_v2_client_profile` |
+| `/actions` | Client commitments and document actions | 06 | `crm_v2_client_service` |
+| `/requests` | Client service request list and submit | 06 | `crm_v2_client_service` |
+| `/requests/[requestId]` | Request detail, respond, cancel | 06 | `crm_v2_client_service` |
+| `/document-vault` | Document upload for document requests | 06 | `crm_v2_client_service` (vault existing) |
+| `/protection` | Client protection summary (confirmed only) | 07 | `crm_v2_protection_portfolio` |
+| `/protection/[policyId]` | Policy detail + correction request | 07 | `crm_v2_protection_portfolio` |
 | `/insights` | Unchanged governed feed | — | existing |
 | `/dashboard`, `/my-plan`, `/roadmap`, etc. | Unchanged | — | existing |
 
@@ -125,8 +133,11 @@ Route: `/advisor-v2/relationships/[relationshipId]?tab=`
 | `/api/advisor-v2/appointments/[id]/google-calendar/sync` | POST | 05 | Explicit sync |
 | `/api/advisor-v2/appointments/[id]/google-calendar/retry` | POST | 05 | Retry failed sync |
 | `/api/advisor-v2/appointments/[id]/google-calendar/status` | GET | 05 | Per-appointment sync status |
-| `/api/advisor-v2/service/commitments` | GET, POST | 06 | Service layer |
-| `/api/advisor-v2/service/commitments/[id]` | PATCH | 06 | Complete/update |
+| `/api/advisor-v2/service/commitments` | GET, POST | 06 | List/create commitments |
+| `/api/advisor-v2/service/commitments/[id]` | GET | 06 | Detail + event history |
+| `/api/advisor-v2/service/commitments/[id]/transition` | POST | 06 | Lifecycle transition |
+| `/api/advisor-v2/service/requests` | GET | 06 | Open client requests |
+| `/api/advisor-v2/service/requests/[id]/transition` | POST | 06 | Request lifecycle |
 | `/api/advisor-v2/protection/**` | * | 07 | Portfolio, verification |
 | `/api/advisor-v2/moments/**` | * | 08 | Moments engine |
 | `/api/advisor-v2/advocacy/**` | * | 09 | Events, scores |
@@ -142,7 +153,12 @@ Route: `/advisor-v2/relationships/[relationshipId]?tab=`
 |-----|-------|------|
 | `/api/client/appointments/**` | 04 (legacy note) | `crm_v2_appointments_client` |
 | `/api/appointments/**` | 04 | `crm_v2_appointments_client` |
-| `/api/client/service/**` | 06 | `crm_v2_client_service` |
+| `/api/actions` | GET | 06 | `crm_v2_client_service` |
+| `/api/actions/[commitmentId]` | PATCH | 06 | `crm_v2_client_service` |
+| `/api/requests` | GET, POST | 06 | `crm_v2_client_service` |
+| `/api/requests/[requestId]` | GET | 06 | `crm_v2_client_service` |
+| `/api/requests/[requestId]/respond` | POST | 06 | `crm_v2_client_service` |
+| `/api/requests/[requestId]/cancel` | POST | 06 | `crm_v2_client_service` |
 
 **Phase 05 adviser routes:**
 
