@@ -13,11 +13,12 @@ export default async function AppointmentsPage() {
   return (
     <AuthenticatedAppShell
       title="Appointments"
-      subtitle="Upcoming meetings, preparation and follow-up"
+      subtitle="View your meetings and request time with your adviser"
     >
       {!access.allowed ? (
         <p className="text-sm text-[#F3F1EA]/70">
-          Appointments are currently unavailable.
+          Appointments are currently unavailable. Please contact your adviser if you need to schedule
+          a meeting.
         </p>
       ) : (
         <ClientAppointmentsDashboard />

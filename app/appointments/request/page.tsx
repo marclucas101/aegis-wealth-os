@@ -12,12 +12,13 @@ export default async function AppointmentsRequestPage() {
   const access = await assertCrmV2ClientAppointmentsAccess();
   return (
     <AuthenticatedAppShell
-      title="Request appointment"
-      subtitle="Share your preferred schedule and discussion topics"
+      title="Request an appointment"
+      subtitle="Share your preferred timing and what you would like to discuss"
     >
       {!access.allowed ? (
         <p className="text-sm text-[#F3F1EA]/70">
-          Appointment requests are currently unavailable.
+          Appointment requests are currently unavailable. Please contact your adviser to schedule a
+          meeting.
         </p>
       ) : (
         <ClientAppointmentRequestForm />

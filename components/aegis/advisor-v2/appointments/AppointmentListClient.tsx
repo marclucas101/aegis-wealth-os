@@ -86,7 +86,7 @@ export default function AppointmentListClient({ initialPage }: AppointmentListCl
 
   const emptyMessage =
     view === "requests"
-      ? "No client appointment requests yet. Requests appear here when clients collaborate on scheduling."
+      ? "No client appointment requests yet. When a client submits a request, it appears here for your review."
       : view === "upcoming"
         ? "No upcoming appointments in this window. Schedule one from Relationships or New appointment."
         : view === "preparation"
@@ -178,6 +178,11 @@ export default function AppointmentListClient({ initialPage }: AppointmentListCl
             >
               <div className="font-medium text-slate-900">{item.clientDisplayName}</div>
               <div className="text-sm text-slate-600">{item.templateLabel}</div>
+              {item.lifecycleStatus === "requested" ? (
+                <p className="mt-1 text-xs font-medium uppercase tracking-wide text-amber-800">
+                  Client request
+                </p>
+              ) : null}
               <div className="mt-2 text-sm text-slate-700">
                 <span className="font-medium">Status:</span> {item.lifecycleLabel}
               </div>
@@ -209,7 +214,14 @@ export default function AppointmentListClient({ initialPage }: AppointmentListCl
           <tbody className="divide-y divide-slate-100">
             {appointments.map((item) => (
               <tr key={item.appointmentId}>
-                <td className="px-3 py-3 font-medium text-slate-900">{item.clientDisplayName}</td>
+                <td className="px-3 py-3 font-medium text-slate-900">
+                  {item.clientDisplayName}
+                  {item.lifecycleStatus === "requested" ? (
+                    <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
+                      Client request
+                    </span>
+                  ) : null}
+                </td>
                 <td className="px-3 py-3 text-slate-700">{item.templateLabel}</td>
                 <td className="px-3 py-3 text-slate-700">
                   {new Date(item.startsAt).toLocaleString(undefined, {

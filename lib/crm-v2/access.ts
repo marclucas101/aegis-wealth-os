@@ -247,7 +247,7 @@ export type CrmV2ClientAppointmentsAccessResult =
 
 /**
  * Central gate for CRM V2 client appointment collaboration.
- * Server-derived client identity only; fail-closed on flag visibility.
+ * Server-derived client identity only; fail-closed on master + client flag visibility.
  */
 export async function assertCrmV2ClientAppointmentsAccess(): Promise<CrmV2ClientAppointmentsAccessResult> {
   const requestId = createShellRequestId();
@@ -258,6 +258,11 @@ export async function assertCrmV2ClientAppointmentsAccess(): Promise<CrmV2Client
 
   if (session.user.role !== "client") {
     return { allowed: false, reason: "forbidden", requestId };
+  }
+
+  const masterEnabled = await isFeatureEnabled(CRM_V2_MASTER_FEATURE_KEY);
+  if (!masterEnabled) {
+    return { allowed: false, reason: "feature_disabled", requestId };
   }
 
   const controls = await loadFeatureControls();

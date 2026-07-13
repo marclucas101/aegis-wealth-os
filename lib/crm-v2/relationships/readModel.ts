@@ -1,5 +1,6 @@
 import "server-only";
 
+import { buildAppointmentListHref } from "@/lib/crm-v2/appointments/routes";
 import { buildRelationshipCommunicationsHref } from "@/lib/crm-v2/communications/routes";
 import { buildAdvocacyWorkspaceHref } from "@/lib/crm-v2/advocacy/routes";
 import { buildMomentsWorkspaceHref } from "@/lib/crm-v2/moments/routes";
@@ -289,7 +290,7 @@ function buildOverviewPanels(
       value: context.nextAppointmentAt
         ? formatDateLabel(context.nextAppointmentAt)
         : CRM_NOT_SCHEDULED_LABEL,
-      detailHref: "/advisor/appointments",
+      detailHref: buildAppointmentListHref("upcoming"),
     },
     {
       panelId: "review_readiness",

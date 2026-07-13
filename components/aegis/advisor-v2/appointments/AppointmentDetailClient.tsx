@@ -132,6 +132,13 @@ export default function AppointmentDetailClient({
         </Link>
       </div>
 
+      {appointment.lifecycleStatus === "requested" ? (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status">
+          Client appointment request — review preferred timing and topics below. Confirm or propose
+          another time when ready. No message or calendar invite is sent automatically.
+        </p>
+      ) : null}
+
       {appointment.sourceWarnings.length > 0 ? (
         <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status">
           Some appointment details are temporarily unavailable.

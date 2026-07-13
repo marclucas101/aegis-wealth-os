@@ -3,10 +3,10 @@ import "server-only";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { writeAuditLog } from "@/lib/supabase/auditLog";
 import {
-  lifecycleStatusLabel,
   mapLifecycleToLegacyStatus,
   type CrmAppointmentLifecycleStatus,
 } from "@/lib/crm-v2/appointments/lifecycle";
+import { clientLifecycleDisplayLabel } from "@/lib/crm-v2/client-appointments/labels";
 import { dbCreateClientNotification } from "@/lib/supabase/clientNotificationsPersistence";
 import type {
   ClientAppointmentAction,
@@ -127,7 +127,7 @@ export async function listClientAppointmentSummaries(
     return {
       appointmentId: row.id,
       lifecycleStatus: status,
-      lifecycleLabel: lifecycleStatusLabel(status),
+      lifecycleLabel: clientLifecycleDisplayLabel(status),
       startsAt: row.starts_at,
       endsAt: row.ends_at,
       timezone: row.timezone,
@@ -166,7 +166,7 @@ export async function loadClientAppointmentDetail(
   return {
     appointmentId: row.id,
     lifecycleStatus: status,
-    lifecycleLabel: lifecycleStatusLabel(status),
+    lifecycleLabel: clientLifecycleDisplayLabel(status),
     startsAt: row.starts_at,
     endsAt: row.ends_at,
     timezone: row.timezone,

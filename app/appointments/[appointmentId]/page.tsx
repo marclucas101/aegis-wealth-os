@@ -17,8 +17,8 @@ export default async function AppointmentDetailPage({
   const { appointmentId } = await params;
   return (
     <AuthenticatedAppShell
-      title="Appointment detail"
-      subtitle="Confirm proposals, complete preparation and review outcomes"
+      title="Appointment details"
+      subtitle="Review timing, preparation, and next steps"
     >
       {!access.allowed ? (
         <p className="text-sm text-[#F3F1EA]/70">

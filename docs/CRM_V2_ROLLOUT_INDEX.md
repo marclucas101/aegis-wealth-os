@@ -46,6 +46,7 @@ Today | Relationships | Appointments | Service | Communications | More
 | **15.1** | `crm-v2-15-1-qa-alignment` | Shell/Today validation aligned with Phase 15 routing | **Complete** — see Phase 15 docs § 15.1 |
 | **16** | `crm-v2-16-route-consolidation` | Adviser-native `/advisor` routes + `/advisor-v2` compatibility redirects | **Complete** — see Phase 16 docs |
 | **17** | `crm-v2-17-burn-in-hardening` | Adviser burn-in regression hardening + client-safe preflight | **Ready for adviser-only burn-in after QA passes** — see Phase 17 docs |
+| **18A** | `crm-v2-18a-client-appointment-request` | Client appointment request reintroduction + safety hardening | **Ready for controlled pilot after QA passes** — see Phase 18A docs |
 | **18** | `crm-v2-18-legacy-retirement` | Legacy adviser portal retirement (conditional) | Deferred |
 
 ---
@@ -253,6 +254,7 @@ Today | Relationships | Appointments | Service | Communications | More
 | `npm run qa:crm-v2-reports-operations` | 12 |
 | `npm run qa:crm-v2-pilot-readiness` | 13 |
 | `npm run qa:adviser-workspace-regression` | 17 |
+| `npm run qa:client-appointment-request` | 18A |
 
 ---
 
@@ -319,6 +321,13 @@ Today | Relationships | Appointments | Service | Communications | More
 | Document | Purpose |
 |----------|---------|
 | [CRM_V2_PHASE_17_ADVISER_BURN_IN_HARDENING.md](./CRM_V2_PHASE_17_ADVISER_BURN_IN_HARDENING.md) | Burn-in runbook, client safety freeze, regression QA, go/no-go |
+
+### Phase 18A — client appointment request reintroduction
+
+| Document | Purpose |
+|----------|---------|
+| [CRM_V2_PHASE_18A_CLIENT_APPOINTMENT_REQUEST_AUDIT.md](./CRM_V2_PHASE_18A_CLIENT_APPOINTMENT_REQUEST_AUDIT.md) | Code audit — routes, gates, privacy, lifecycle |
+| [CRM_V2_PHASE_18A_CLIENT_APPOINTMENT_REQUEST_REINTRODUCTION.md](./CRM_V2_PHASE_18A_CLIENT_APPOINTMENT_REQUEST_REINTRODUCTION.md) | Scope, flags, client/adviser scripts, rollback, no-go |
 
 ---
 

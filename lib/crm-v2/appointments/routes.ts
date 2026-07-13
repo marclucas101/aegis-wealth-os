@@ -73,7 +73,7 @@ export function listViewLabel(view: CrmAppointmentListView): string {
     case "upcoming":
       return "Upcoming";
     case "requests":
-      return "Requests";
+      return "Client requests";
     case "preparation":
       return "Preparation";
     case "follow_up":

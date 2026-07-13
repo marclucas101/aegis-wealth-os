@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { clientAppointmentActionErrorMessage } from "@/lib/crm-v2/client-appointments/labels";
 import type { ClientAppointmentDetailDto } from "@/lib/crm-v2/client-appointments/types";
 
 type Props = {
@@ -26,8 +28,11 @@ export default function ClientAppointmentDetail({ appointmentId }: Props) {
       if (!response.ok || !payload.ok) {
         setError(
           payload.ok
-            ? "Failed to load details"
-            : payload.error ?? payload.reason ?? "Failed to load details",
+            ? "Unable to load details right now."
+            : clientAppointmentActionErrorMessage(
+                payload.reason,
+                payload.error ?? "Unable to load details right now.",
+              ),
         );
         setDetail(null);
         setLoading(false);
@@ -101,9 +106,11 @@ export default function ClientAppointmentDetail({ appointmentId }: Props) {
     setReloadToken((value) => value + 1);
   }
 
-  if (loading) return <p className="text-sm text-[#F3F1EA]/70">Loading appointment...</p>;
+  if (loading) return <p className="text-sm text-[#F3F1EA]/70">Loading appointment…</p>;
   if (error && !detail) return <p className="text-sm text-[#F3F1EA]/70">{error}</p>;
   if (!detail) return <p className="text-sm text-[#F3F1EA]/70">Appointment not found.</p>;
+
+  const isAwaitingAdviser = detail.lifecycleStatus === "requested";
 
   return (
     <section aria-labelledby="appointment-detail-heading" className="space-y-4">
@@ -116,6 +123,13 @@ export default function ClientAppointmentDetail({ appointmentId }: Props) {
           {new Date(detail.startsAt).toLocaleString()} ({detail.timezone})
         </p>
       </header>
+
+      {isAwaitingAdviser ? (
+        <p className="rounded border border-[#D1A866]/25 px-4 py-3 text-sm text-[#F3F1EA]/80">
+          Your request has been submitted. Your adviser will review it and follow up — this is not a
+          confirmed appointment until they confirm a time with you.
+        </p>
+      ) : null}
 
       {error && <p className="text-sm text-[#F3F1EA]/75">{error}</p>}
 
@@ -184,7 +198,7 @@ export default function ClientAppointmentDetail({ appointmentId }: Props) {
       </section>
 
       <section>
-        <h3 className="text-base text-[#F3F1EA]">Preparation checklist</h3>
+        <h3 className="text-base text-[#F3F1EA]">Preparation</h3>
         <ul className="mt-2 space-y-2">
           {detail.checklistItems.map((item) => (
             <li key={item.itemId} className="flex items-center gap-2 text-sm">
@@ -201,6 +215,10 @@ export default function ClientAppointmentDetail({ appointmentId }: Props) {
           ))}
         </ul>
       </section>
+
+      <Link href="/appointments" className="inline-block text-sm text-[#D1A866] underline">
+        Back to appointments
+      </Link>
     </section>
   );
 }
