@@ -257,6 +257,8 @@ Today | Relationships | Appointments | Service | Communications | More
 |----------|---------|
 | [CRM_V2_PHASE_13_EXISTING_PILOT_READINESS_AUDIT.md](./CRM_V2_PHASE_13_EXISTING_PILOT_READINESS_AUDIT.md) | Readiness audit after Phases 01–12 |
 | [CRM_V2_PHASE_13_FEATURE_ACTIVATION_ORDER.md](./CRM_V2_PHASE_13_FEATURE_ACTIVATION_ORDER.md) | Exact flag activation sequence |
+| [CRM_V2_PHASE_13_PILOT_OPERATING_NOTE.md](./CRM_V2_PHASE_13_PILOT_OPERATING_NOTE.md) | Day-to-day pilot scope, routes, rules |
+| [CRM_V2_PHASE_13_DEPLOYMENT_READINESS.md](./CRM_V2_PHASE_13_DEPLOYMENT_READINESS.md) | Pre-deploy checklist, no-go, secret rotation |
 | [CRM_V2_PHASE_13_STAGING_ACTIVATION_RUNBOOK.md](./CRM_V2_PHASE_13_STAGING_ACTIVATION_RUNBOOK.md) | Staging operator activation steps |
 | [CRM_V2_PHASE_13_ROLLBACK_RUNBOOK.md](./CRM_V2_PHASE_13_ROLLBACK_RUNBOOK.md) | Flag-disable rollback (no data deletion) |
 | [CRM_V2_PHASE_13_MASTER_MANUAL_ACCEPTANCE.md](./CRM_V2_PHASE_13_MASTER_MANUAL_ACCEPTANCE.md) | Aggregated manual tests (422) |
