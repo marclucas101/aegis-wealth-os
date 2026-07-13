@@ -21,6 +21,7 @@ import {
 } from "@/lib/crm-v2/appointments/lifecycle";
 import { resolveAuthorizedAppointment } from "@/lib/crm-v2/appointments/identity";
 import {
+  buildAppointmentDetailHref,
   buildMeetingStudioHref,
   buildRelationshipHref,
 } from "@/lib/crm-v2/appointments/routes";
@@ -956,7 +957,7 @@ export async function loadCrmAppointmentDetail(
     binderHref: binder.href,
     allowedActions: deriveAdviserActions(lifecycleStatus),
     version: appointment.version,
-    detailHref: `/advisor-v2/appointments/${appointmentId}`,
+    detailHref: buildAppointmentDetailHref(appointmentId),
     relationshipHref: buildRelationshipHref(appointment.client_id),
     recentEvents: ((eventsResult.data ?? []) as Array<{
       id: string;

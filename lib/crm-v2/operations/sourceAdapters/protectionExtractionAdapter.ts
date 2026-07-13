@@ -1,5 +1,6 @@
 import "server-only";
 
+import { CRM_V2_RELATIONSHIPS_PATH } from "@/lib/crm-v2/navigation";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 import type { OperationsPanelDto } from "../types";
@@ -25,7 +26,7 @@ export async function loadProtectionExtractionOperationsPanels(input: {
         statusLevel: "healthy",
         safeCount: 0,
         sourceModule: "protection",
-        routeHref: "/advisor-v2/relationships",
+        routeHref: CRM_V2_RELATIONSHIPS_PATH,
         actionLabel: null,
         freshnessAt: input.freshnessAt,
         partialDataWarning: false,
@@ -47,7 +48,7 @@ export async function loadProtectionExtractionOperationsPanels(input: {
       statusLevel: (count ?? 0) > 0 ? "warning" : "healthy",
       safeCount: count ?? 0,
       sourceModule: "protection",
-      routeHref: "/advisor-v2/relationships",
+      routeHref: CRM_V2_RELATIONSHIPS_PATH,
       actionLabel: (count ?? 0) > 0 ? "Review protection workspace" : null,
       freshnessAt: input.freshnessAt,
       partialDataWarning: Boolean(error),

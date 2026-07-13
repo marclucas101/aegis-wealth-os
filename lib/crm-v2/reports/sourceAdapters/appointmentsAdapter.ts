@@ -1,5 +1,6 @@
 import "server-only";
 
+import { CRM_V2_APPOINTMENTS_PATH } from "@/lib/crm-v2/navigation";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 import type { ReportCardDto } from "../types";
@@ -43,7 +44,7 @@ export async function loadAppointmentReportCards(input: {
       safePercentage: null,
       trendDirection: "unknown",
       sourceModule: "appointments",
-      routeHref: "/advisor-v2/appointments",
+      routeHref: CRM_V2_APPOINTMENTS_PATH,
       freshnessAt: input.freshnessAt,
       partialDataWarning: Boolean(upcomingResult.error),
     },
@@ -56,7 +57,7 @@ export async function loadAppointmentReportCards(input: {
       safePercentage: null,
       trendDirection: "unknown",
       sourceModule: "appointments",
-      routeHref: "/advisor-v2/appointments",
+      routeHref: CRM_V2_APPOINTMENTS_PATH,
       freshnessAt: input.freshnessAt,
       partialDataWarning: Boolean(prepResult.error),
     },
@@ -69,7 +70,7 @@ export async function loadAppointmentReportCards(input: {
       safePercentage: null,
       trendDirection: (followUpResult.count ?? 0) > 0 ? "up" : "flat",
       sourceModule: "appointments",
-      routeHref: "/advisor-v2/appointments",
+      routeHref: CRM_V2_APPOINTMENTS_PATH,
       freshnessAt: input.freshnessAt,
       partialDataWarning: Boolean(followUpResult.error),
     },

@@ -2,7 +2,10 @@ import "server-only";
 
 import {
   buildLegacyMeetingStudioHref,
+  buildRelationshipDetailHref,
 } from "@/lib/crm-v2/relationships/routes";
+import { buildAppointmentDetailHref } from "@/lib/crm-v2/appointments/routes";
+import { CRM_V2_SERVICE_PATH } from "@/lib/crm-v2/navigation";
 import type { CrmServiceMyWorkItem, CrmServiceWorkspaceView } from "@/lib/crm-v2/service/types";
 import { CRM_V2_SERVICE_MAX_ITEMS } from "@/lib/crm-v2/constants";
 import { listAdviserCommitments, listAdviserServiceRequests } from "@/lib/crm-v2/service/service";
@@ -66,7 +69,7 @@ export async function loadServiceWorkspaceMyWork(input: {
       summary: c.title,
       statusLabel: c.lifecycleLabel,
       dueAt: c.dueAt,
-      workflowHref: `/advisor-v2/service?view=commitments`,
+      workflowHref: `${CRM_V2_SERVICE_PATH}?view=commitments`,
     });
   }
 
@@ -79,7 +82,7 @@ export async function loadServiceWorkspaceMyWork(input: {
       summary: r.summary,
       statusLabel: r.clientVisibleStatus,
       dueAt: null,
-      workflowHref: `/advisor-v2/service?view=client_requests`,
+      workflowHref: `${CRM_V2_SERVICE_PATH}?view=client_requests`,
     });
   }
 
@@ -109,7 +112,7 @@ export async function loadServiceWorkspaceMyWork(input: {
       summary: String(row.title ?? "Follow-up required"),
       statusLabel: "Follow-up required",
       dueAt: (row.starts_at as string | null) ?? null,
-      workflowHref: `/advisor-v2/appointments/${String(row.id)}`,
+      workflowHref: buildAppointmentDetailHref(String(row.id)),
     });
   }
 
@@ -165,7 +168,7 @@ export async function loadServiceWorkspaceDocumentRequests(input: {
       summary: c.title,
       statusLabel: c.lifecycleLabel,
       dueAt: c.dueAt,
-      workflowHref: `/advisor-v2/relationships/${c.relationshipId}?tab=documents`,
+      workflowHref: buildRelationshipDetailHref(c.relationshipId, "documents"),
     }));
 }
 
@@ -196,7 +199,7 @@ export async function loadServiceWorkspaceCompleted(input: {
       summary: String(row.title),
       statusLabel: "Completed",
       dueAt: (row.completed_at as string | null) ?? null,
-      workflowHref: `/advisor-v2/service?view=commitments`,
+      workflowHref: `${CRM_V2_SERVICE_PATH}?view=commitments`,
     };
   });
 }

@@ -43,7 +43,7 @@ const REQUIRED_FILES = [
   "app/api/advisor-v2/today/route.ts",
   "app/api/advisor-v2/today/section/[sectionKey]/route.ts",
   "app/api/advisor-v2/work-queue/route.ts",
-  "app/advisor-v2/today/page.tsx",
+  "app/advisor/(crm-v2)/today/page.tsx",
   "components/aegis/advisor-v2/today/AdviserTodayClient.tsx",
   "supabase/migrations/202606290018_phase11_crm_v2_today_feature_control.sql",
 ] as const;
@@ -159,8 +159,8 @@ check("work queue panel read only", () => {
 
 check("crm v2 route builders", () => {
   const source = read("lib/crm-v2/today/routes.ts");
-  assert(source.includes("/advisor-v2/appointments"), "appointment routes");
-  assert(source.includes("/advisor-v2/service"), "service routes");
+  assert(source.includes("CRM_V2_APPOINTMENTS_PATH") || source.includes("/advisor/workspace/appointments"), "appointment routes");
+  assert(source.includes("CRM_V2_SERVICE_PATH") || source.includes("/advisor/service"), "service routes");
   assert(source.includes("isAllowlistedTodayHref"), "allowlist");
 });
 
@@ -209,7 +209,8 @@ check("landing dashboard uses real projection data", () => {
 
 check("navigation today href", () => {
   const source = read("lib/crm-v2/navigation.ts");
-  assert(source.includes('href: "/advisor-v2/today"'), "nav href");
+  assert(source.includes("CRM_V2_TODAY_PATH"), "today path constant");
+  assert(source.includes('href: CRM_V2_TODAY_PATH'), "nav uses canonical today path");
 });
 
 check("navigation Communications under More not primary", () => {

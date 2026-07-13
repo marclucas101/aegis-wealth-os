@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { buildRelationshipDetailHref } from "@/lib/crm-v2/relationships/routes";
 import type {
   AdviserProtectionExtractionDetailDto,
   AdviserProtectionPortfolioDto,
@@ -101,7 +102,7 @@ export function ProtectionPortfolioClient({
   return (
     <div className="space-y-6 p-4 md:p-6">
       <header className="space-y-2">
-        <Link href={`/advisor-v2/relationships/${relationshipId}?tab=financial-plan`} className="text-sm text-muted-foreground hover:underline">
+        <Link href={buildRelationshipDetailHref(relationshipId, "financial-plan")} className="text-sm text-muted-foreground hover:underline">
           ← Financial Plan
         </Link>
         <h1 className="text-2xl font-semibold">Protection Portfolio</h1>

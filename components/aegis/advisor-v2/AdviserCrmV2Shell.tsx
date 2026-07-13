@@ -79,7 +79,7 @@ export default function AdviserCrmV2Shell({
 
   const resolvedTitle =
     pageTitle ??
-    (pathname === CRM_V2_HOME_PATH || pathname === "/advisor-v2"
+    ((pathname === CRM_V2_HOME_PATH || pathname === "/advisor-v2")
       ? "AEGIS Adviser Workspace"
       : allNavItems.find((item) => isCrmV2NavActive(pathname, item.href))
           ?.label ?? "AEGIS Adviser Workspace");

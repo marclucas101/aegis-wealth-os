@@ -1,11 +1,6 @@
-import CrmV2FoundationPlaceholderPage from "@/components/aegis/advisor-v2/CrmV2FoundationPlaceholderPage";
+import { redirectToCanonicalAdviserRoute } from "@/lib/crm-v2/aliasRedirects";
+import { CRM_V2_TEMPLATES_PATH } from "@/lib/crm-v2/navigation";
 
-export default function CrmV2TemplatesPage() {
-  return (
-    <CrmV2FoundationPlaceholderPage
-      title="Templates"
-      phase="Phase 10"
-      message="Communication templates will be introduced with CRM communications in Phase 10."
-    />
-  );
+export default function AdviserV2TemplatesAliasPage() {
+  redirectToCanonicalAdviserRoute(CRM_V2_TEMPLATES_PATH);
 }

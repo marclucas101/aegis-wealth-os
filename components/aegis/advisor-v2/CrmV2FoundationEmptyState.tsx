@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import CrmV2PhaseNotice from "@/components/aegis/advisor-v2/CrmV2PhaseNotice";
-import { CRM_V2_CLASSIC_ADVISER_PATH } from "@/lib/crm-v2/navigation";
+import { CRM_V2_CLASSIC_ADVISER_PATH, CRM_V2_TODAY_PATH } from "@/lib/crm-v2/navigation";
 
 interface CrmV2FoundationEmptyStateProps {
   moduleName: string;
@@ -52,7 +52,7 @@ export default function CrmV2FoundationEmptyState({
       {variant !== "foundation" ? (
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
-            href="/advisor-v2/today"
+            href={CRM_V2_TODAY_PATH}
             className="inline-flex rounded-sm border border-[#D1A866]/25 px-4 py-2 text-[10px] font-medium uppercase tracking-[0.14em] text-[#D1A866]/85 transition-colors hover:border-[#D1A866]/40 hover:bg-[#D1A866]/8"
           >
             Go to Today

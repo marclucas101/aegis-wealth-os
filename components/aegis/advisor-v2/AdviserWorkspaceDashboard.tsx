@@ -2,7 +2,15 @@ import Link from "next/link";
 
 import type { CrmRelationshipListItem } from "@/lib/crm-v2/relationships/types";
 import {
+  CRM_V2_APPOINTMENTS_PATH,
+  CRM_V2_OPERATIONS_GOOGLE_CALENDAR_PATH,
+  CRM_V2_OPERATIONS_PATH,
   CRM_V2_PRIMARY_NAV,
+  CRM_V2_RELATIONSHIPS_PATH,
+  CRM_V2_REPORTS_PATH,
+  CRM_V2_SERVICE_PATH,
+  CRM_V2_TEMPLATES_PATH,
+  CRM_V2_TODAY_PATH,
   CRM_V2_TOOLS_NAV_GROUPS,
   type CrmV2NavItem,
 } from "@/lib/crm-v2/navigation";
@@ -164,7 +172,7 @@ export default function AdviserWorkspaceDashboard({
         <DashboardSection
           title="Today"
           description="Upcoming appointments, preparation, requests, follow-ups, reviews, and operations alerts."
-          workspaceHref="/advisor-v2/today"
+          workspaceHref={CRM_V2_TODAY_PATH}
           workspaceLabel="Open Today"
         >
           {todayUnavailable ? (
@@ -198,7 +206,7 @@ export default function AdviserWorkspaceDashboard({
         <DashboardSection
           title="Relationships"
           description="Client roster entry, recently viewed clients, and relationship health signals."
-          workspaceHref="/advisor-v2/relationships"
+          workspaceHref={CRM_V2_RELATIONSHIPS_PATH}
           workspaceLabel="Open relationships"
         >
           {relationshipsUnavailable ? (
@@ -248,7 +256,7 @@ export default function AdviserWorkspaceDashboard({
         <DashboardSection
           title="Appointments"
           description="Upcoming appointments, create appointment, and appointment requests."
-          workspaceHref="/advisor-v2/appointments"
+          workspaceHref={CRM_V2_APPOINTMENTS_PATH}
           workspaceLabel="Open appointments"
         >
           {!appointmentsSection || appointmentsSection.cards.length === 0 ? (
@@ -266,7 +274,7 @@ export default function AdviserWorkspaceDashboard({
           )}
           <div className="mt-3 flex flex-wrap gap-2">
             <Link
-              href="/advisor-v2/appointments/new"
+              href={`${CRM_V2_APPOINTMENTS_PATH}/new`}
               className="text-xs text-[#D1A866]/80 underline-offset-4 hover:underline"
             >
               Create appointment
@@ -283,7 +291,7 @@ export default function AdviserWorkspaceDashboard({
         <DashboardSection
           title="Service"
           description="Open service commitments, client requests, and follow-ups."
-          workspaceHref="/advisor-v2/service"
+          workspaceHref={CRM_V2_SERVICE_PATH}
           workspaceLabel="Open service"
         >
           {!serviceSections || serviceSections.every((section) => section.cards.length === 0) ? (
@@ -339,16 +347,16 @@ export default function AdviserWorkspaceDashboard({
         <DashboardSection
           title="Operations"
           description="Reports, Google Calendar operations, templates, adviser profile, and classic fallback."
-          workspaceHref="/advisor-v2/operations"
+          workspaceHref={CRM_V2_OPERATIONS_PATH}
           workspaceLabel="Open operations"
         >
           <div className="grid gap-2 sm:grid-cols-2">
-            <ToolLink item={{ label: "Reports", href: "/advisor-v2/reports" }} />
-            <ToolLink item={{ label: "Templates", href: "/advisor-v2/templates" }} />
+            <ToolLink item={{ label: "Reports", href: CRM_V2_REPORTS_PATH }} />
+            <ToolLink item={{ label: "Templates", href: CRM_V2_TEMPLATES_PATH }} />
             <ToolLink
               item={{
                 label: "Google Calendar Operations",
-                href: "/advisor-v2/operations/google-calendar",
+                href: CRM_V2_OPERATIONS_GOOGLE_CALENDAR_PATH,
               }}
             />
             <ToolLink

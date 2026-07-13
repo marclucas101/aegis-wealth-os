@@ -1,5 +1,6 @@
 import "server-only";
 
+import { CRM_V2_RELATIONSHIPS_PATH } from "@/lib/crm-v2/navigation";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 import type { ReportCardDto } from "../types";
@@ -44,7 +45,7 @@ export async function loadRelationshipCoverageReportCards(input: {
       safePercentage: null,
       trendDirection: "unknown",
       sourceModule: "relationships",
-      routeHref: "/advisor-v2/relationships",
+      routeHref: CRM_V2_RELATIONSHIPS_PATH,
       freshnessAt: input.freshnessAt,
       partialDataWarning: Boolean(totalResult.error || activeResult.error || reviewDueResult.error),
     },
@@ -57,7 +58,7 @@ export async function loadRelationshipCoverageReportCards(input: {
       safePercentage: total > 0 ? Math.round((active / total) * 100) : null,
       trendDirection: "unknown",
       sourceModule: "relationships",
-      routeHref: "/advisor-v2/relationships",
+      routeHref: CRM_V2_RELATIONSHIPS_PATH,
       freshnessAt: input.freshnessAt,
       partialDataWarning: false,
     },
@@ -70,7 +71,7 @@ export async function loadRelationshipCoverageReportCards(input: {
       safePercentage: null,
       trendDirection: reviewDue > 0 ? "up" : "flat",
       sourceModule: "relationships",
-      routeHref: "/advisor-v2/relationships",
+      routeHref: CRM_V2_RELATIONSHIPS_PATH,
       freshnessAt: input.freshnessAt,
       partialDataWarning: false,
     },

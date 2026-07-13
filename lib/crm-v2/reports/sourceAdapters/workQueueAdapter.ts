@@ -1,5 +1,6 @@
 import "server-only";
 
+import { CRM_V2_TODAY_PATH } from "@/lib/crm-v2/navigation";
 import { buildAdviserWorkQueue } from "@/lib/work-queue/buildAdviserWorkQueue";
 
 import type { ReportCardDto } from "../types";
@@ -31,7 +32,7 @@ export async function loadWorkQueueSummaryReportCards(input: {
           safePercentage: null,
           trendDirection: "unknown",
           sourceModule: "work_queue",
-          routeHref: "/advisor-v2/today",
+          routeHref: CRM_V2_TODAY_PATH,
           freshnessAt: input.freshnessAt,
           partialDataWarning: failedAdapters > 0,
         },
@@ -44,7 +45,7 @@ export async function loadWorkQueueSummaryReportCards(input: {
           safePercentage: null,
           trendDirection: queue.summary.overdue > 0 ? "up" : "flat",
           sourceModule: "work_queue",
-          routeHref: "/advisor-v2/today",
+          routeHref: CRM_V2_TODAY_PATH,
           freshnessAt: input.freshnessAt,
           partialDataWarning: false,
         },
@@ -57,7 +58,7 @@ export async function loadWorkQueueSummaryReportCards(input: {
           safePercentage: null,
           trendDirection: "unknown",
           sourceModule: "work_queue",
-          routeHref: "/advisor-v2/today",
+          routeHref: CRM_V2_TODAY_PATH,
           freshnessAt: input.freshnessAt,
           partialDataWarning: false,
         },

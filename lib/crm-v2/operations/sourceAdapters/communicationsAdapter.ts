@@ -1,5 +1,6 @@
 import "server-only";
 
+import { CRM_V2_COMMUNICATIONS_PATH } from "@/lib/crm-v2/navigation";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 import type { OperationsPanelDto } from "../types";
@@ -32,7 +33,7 @@ export async function loadCommunicationsOperationsPanels(input: {
       statusLevel: (failedResult.count ?? 0) > 0 ? "warning" : "healthy",
       safeCount: failedResult.count ?? 0,
       sourceModule: "communications",
-      routeHref: "/advisor-v2/communications",
+      routeHref: CRM_V2_COMMUNICATIONS_PATH,
       actionLabel: "Open communications",
       freshnessAt: input.freshnessAt,
       partialDataWarning: Boolean(failedResult.error),
@@ -44,7 +45,7 @@ export async function loadCommunicationsOperationsPanels(input: {
       statusLevel: (draftStuckResult.count ?? 0) > 0 ? "attention" : "healthy",
       safeCount: draftStuckResult.count ?? 0,
       sourceModule: "communications",
-      routeHref: "/advisor-v2/communications",
+      routeHref: CRM_V2_COMMUNICATIONS_PATH,
       actionLabel: "Review drafts",
       freshnessAt: input.freshnessAt,
       partialDataWarning: Boolean(draftStuckResult.error),

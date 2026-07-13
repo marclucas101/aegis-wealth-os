@@ -1,5 +1,9 @@
 import "server-only";
 
+import {
+  CRM_V2_OPERATIONS_GOOGLE_CALENDAR_PATH,
+  CRM_V2_SETTINGS_GOOGLE_CALENDAR_PATH,
+} from "@/lib/crm-v2/navigation";
 import { loadGoogleCalendarIntegrationStatus } from "@/lib/crm-v2/google-calendar/service";
 
 import type { OperationsPanelDto } from "../types";
@@ -18,7 +22,7 @@ export async function loadGoogleCalendarOperationsPanels(input: {
       statusLevel: status.connection.connected ? "healthy" : "attention",
       safeCount: null,
       sourceModule: "google_calendar",
-      routeHref: "/advisor-v2/settings/integrations/google-calendar",
+      routeHref: CRM_V2_SETTINGS_GOOGLE_CALENDAR_PATH,
       actionLabel: status.connection.connected ? "Manage connection" : "Connect calendar",
       freshnessAt: input.freshnessAt,
       partialDataWarning: false,
@@ -30,7 +34,7 @@ export async function loadGoogleCalendarOperationsPanels(input: {
       statusLevel: status.failedSyncCount > 0 ? "warning" : "healthy",
       safeCount: status.failedSyncCount,
       sourceModule: "google_calendar",
-      routeHref: "/advisor-v2/operations/google-calendar",
+      routeHref: CRM_V2_OPERATIONS_GOOGLE_CALENDAR_PATH,
       actionLabel: "View sync status",
       freshnessAt: input.freshnessAt,
       partialDataWarning: false,
@@ -42,7 +46,7 @@ export async function loadGoogleCalendarOperationsPanels(input: {
       statusLevel: status.actionRequiredCount > 0 ? "attention" : "healthy",
       safeCount: status.actionRequiredCount,
       sourceModule: "google_calendar",
-      routeHref: "/advisor-v2/operations/google-calendar",
+      routeHref: CRM_V2_OPERATIONS_GOOGLE_CALENDAR_PATH,
       actionLabel: "Review mappings",
       freshnessAt: input.freshnessAt,
       partialDataWarning: false,

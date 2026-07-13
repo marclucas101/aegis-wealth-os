@@ -11,6 +11,7 @@ import {
   CRM_UNKNOWN_LABEL,
 } from "@/lib/crm-v2/relationships/types";
 import { CRM_V2_SERVICE_MAX_ITEMS } from "@/lib/crm-v2/constants";
+import { CRM_V2_SERVICE_PATH } from "@/lib/crm-v2/navigation";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 const OPEN_TASK_STATUSES = ["open", "in_progress"] as const;
@@ -145,7 +146,7 @@ export async function loadCrmServiceProjection(
       dueDate: row.due_at,
       dueDateLabel: formatDueLabel(row.due_at),
       summary: row.title,
-      workflowHref: `/advisor-v2/service?view=commitments`,
+      workflowHref: `${CRM_V2_SERVICE_PATH}?view=commitments`,
     });
   }
 
@@ -164,7 +165,7 @@ export async function loadCrmServiceProjection(
       dueDate: row.created_at,
       dueDateLabel: formatDueLabel(row.created_at),
       summary: row.summary,
-      workflowHref: `/advisor-v2/service?view=client_requests`,
+      workflowHref: `${CRM_V2_SERVICE_PATH}?view=client_requests`,
     });
   }
 

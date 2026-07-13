@@ -1,4 +1,5 @@
 import type { CrmProtectionWorkspaceView } from "@/lib/crm-v2/protection/types";
+import { CRM_V2_RELATIONSHIPS_PATH } from "@/lib/crm-v2/navigation";
 
 export function parseProtectionWorkspaceView(
   value: string | null | undefined,
@@ -31,5 +32,5 @@ export function buildProtectionPortfolioHref(
     }
   }
   const query = search.toString();
-  return `/advisor-v2/relationships/${relationshipId}/protection${query ? `?${query}` : ""}`;
+  return `${CRM_V2_RELATIONSHIPS_PATH}/${relationshipId}/protection${query ? `?${query}` : ""}`;
 }

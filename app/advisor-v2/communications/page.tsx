@@ -1,37 +1,10 @@
-import { AdviserCommunicationsClient } from "@/components/aegis/advisor-v2/communications/AdviserCommunicationsClient";
-import CrmV2ModuleUnavailablePage from "@/components/aegis/advisor-v2/CrmV2ModuleUnavailablePage";
-import { assertCrmV2CommunicationsAccess } from "@/lib/crm-v2/access";
-import { loadAdviserCommunicationsWorkspace } from "@/lib/crm-v2/communications/communications";
-import { parseCommunicationsWorkspaceView } from "@/lib/crm-v2/communications/routes";
-type PageProps = {
-  searchParams: Promise<{ view?: string }>;
-};
+import { redirectToCanonicalAdviserRoute } from "@/lib/crm-v2/aliasRedirects";
+import { CRM_V2_COMMUNICATIONS_PATH } from "@/lib/crm-v2/navigation";
 
-export default async function CrmV2CommunicationsPage({ searchParams }: PageProps) {
-  const access = await assertCrmV2CommunicationsAccess();
-  if (!access.allowed) {
-    return (
-      <CrmV2ModuleUnavailablePage
-        title="Communications"
-        reason={access.reason}
-        nextStep="When enabled, draft and log adviser communications here — no automatic sending."
-      />
-    );
-  }
-
-  const params = await searchParams;
-  const view = parseCommunicationsWorkspaceView(params.view);
-  const result = await loadAdviserCommunicationsWorkspace({
-    authUserId: access.authUser.id,
-    userRole: access.user.role as "advisor" | "admin",
-    view,
-  });
-
-  return (
-    <AdviserCommunicationsClient
-      initialView={view}
-      initialWorkspace={result.ok ? result.data : null}
-      loadError={result.ok ? null : "Unable to load communications workspace."}
-    />
-  );
+export default async function AdviserV2CommunicationsAliasPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  redirectToCanonicalAdviserRoute(CRM_V2_COMMUNICATIONS_PATH, await searchParams);
 }

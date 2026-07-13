@@ -2,6 +2,13 @@
 
 import Link from "next/link";
 
+import {
+  CRM_V2_APPOINTMENTS_PATH,
+  CRM_V2_COMMUNICATIONS_PATH,
+  CRM_V2_OPERATIONS_PATH,
+  CRM_V2_RELATIONSHIPS_PATH,
+  CRM_V2_SERVICE_PATH,
+} from "@/lib/crm-v2/navigation";
 import type {
   AdviserTodayProjectionDto,
   TodayCardDto,
@@ -9,11 +16,11 @@ import type {
 } from "@/lib/crm-v2/today/types";
 
 const QUICK_LINKS = [
-  { label: "Appointments", href: "/advisor-v2/appointments" },
-  { label: "Relationships", href: "/advisor-v2/relationships" },
-  { label: "Service", href: "/advisor-v2/service" },
-  { label: "Communications", href: "/advisor-v2/communications" },
-  { label: "Operations", href: "/advisor-v2/operations" },
+  { label: "Appointments", href: CRM_V2_APPOINTMENTS_PATH },
+  { label: "Relationships", href: CRM_V2_RELATIONSHIPS_PATH },
+  { label: "Service", href: CRM_V2_SERVICE_PATH },
+  { label: "Communications", href: CRM_V2_COMMUNICATIONS_PATH },
+  { label: "Operations", href: CRM_V2_OPERATIONS_PATH },
 ] as const;
 
 function severityClass(severity: TodayCardDto["severity"]): string {

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { CRM_V2_COMMUNICATIONS_PATH } from "@/lib/crm-v2/navigation";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 import type { ReportCardDto } from "../types";
@@ -46,7 +47,7 @@ export async function loadCommunicationsReportCards(input: {
       safePercentage: null,
       trendDirection: "unknown",
       sourceModule: "communications",
-      routeHref: "/advisor-v2/communications",
+      routeHref: CRM_V2_COMMUNICATIONS_PATH,
       freshnessAt: input.freshnessAt,
       partialDataWarning: Boolean(draftsResult.error),
     },
@@ -59,7 +60,7 @@ export async function loadCommunicationsReportCards(input: {
       safePercentage: null,
       trendDirection: "unknown",
       sourceModule: "communications",
-      routeHref: "/advisor-v2/communications",
+      routeHref: CRM_V2_COMMUNICATIONS_PATH,
       freshnessAt: input.freshnessAt,
       partialDataWarning: Boolean(followUpsResult.error),
     },
@@ -72,7 +73,7 @@ export async function loadCommunicationsReportCards(input: {
       safePercentage: null,
       trendDirection: (failedResult.count ?? 0) > 0 ? "up" : "flat",
       sourceModule: "communications",
-      routeHref: "/advisor-v2/communications",
+      routeHref: CRM_V2_COMMUNICATIONS_PATH,
       freshnessAt: input.freshnessAt,
       partialDataWarning: Boolean(failedResult.error),
     },

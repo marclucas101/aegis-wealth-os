@@ -1,4 +1,5 @@
 import type { CrmCommunicationWorkspaceView } from "@/lib/crm-v2/communications/types";
+import { CRM_V2_COMMUNICATIONS_PATH } from "@/lib/crm-v2/navigation";
 
 const VALID_VIEWS = new Set<CrmCommunicationWorkspaceView>([
   "inbox",
@@ -21,7 +22,7 @@ export function parseCommunicationsWorkspaceView(
 }
 
 export function buildCommunicationsWorkspaceHref(view?: CrmCommunicationWorkspaceView): string {
-  const base = "/advisor-v2/communications";
+  const base = CRM_V2_COMMUNICATIONS_PATH;
   if (!view || view === "drafts") return base;
   return `${base}?view=${view}`;
 }
@@ -31,5 +32,5 @@ export function buildClientMessagesHref(): string {
 }
 
 export function buildRelationshipCommunicationsHref(relationshipId: string): string {
-  return `/advisor-v2/communications?clientId=${relationshipId}`;
+  return `${CRM_V2_COMMUNICATIONS_PATH}?clientId=${relationshipId}`;
 }

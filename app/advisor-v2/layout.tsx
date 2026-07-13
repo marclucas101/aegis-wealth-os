@@ -1,4 +1,3 @@
-import AdviserCrmV2Shell from "@/components/aegis/advisor-v2/AdviserCrmV2Shell";
 import CrmV2AccessDenied from "@/components/aegis/advisor-v2/CrmV2AccessDenied";
 import AuthenticatedAppShell from "@/components/aegis/AuthenticatedAppShell";
 import AdvisorAccessDenied from "@/components/aegis/advisor/AdvisorAccessDenied";
@@ -7,7 +6,10 @@ import { assertCrmV2Access } from "@/lib/crm-v2/access";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function AdviserCrmV2Layout({
+/**
+ * Legacy `/advisor-v2/*` alias layout — access gate only; pages redirect to canonical `/advisor` routes.
+ */
+export default async function AdviserCrmV2AliasLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -30,5 +32,5 @@ export default async function AdviserCrmV2Layout({
     );
   }
 
-  return <AdviserCrmV2Shell>{children}</AdviserCrmV2Shell>;
+  return children;
 }

@@ -1,9 +1,16 @@
 /** Allowlisted internal route builders for CRM V2 relationship workspace. */
 
+import {
+  CRM_V2_APPOINTMENTS_PATH,
+  CRM_V2_RELATIONSHIPS_PATH,
+} from "@/lib/crm-v2/navigation";
+
 const ALLOWED_PREFIXES = [
+  CRM_V2_RELATIONSHIPS_PATH,
   "/advisor-v2/relationships",
   "/advisor/clients",
   "/advisor/appointments",
+  CRM_V2_APPOINTMENTS_PATH,
 ] as const;
 
 export type CrmV2RelationshipTab =
@@ -24,14 +31,14 @@ export const CRM_V2_RELATIONSHIP_TABS: CrmV2RelationshipTab[] = [
 ];
 
 export function buildRelationshipListHref(): string {
-  return "/advisor-v2/relationships";
+  return CRM_V2_RELATIONSHIPS_PATH;
 }
 
 export function buildRelationshipDetailHref(
   relationshipId: string,
   tab?: CrmV2RelationshipTab,
 ): string {
-  const base = `/advisor-v2/relationships/${relationshipId}`;
+  const base = `${CRM_V2_RELATIONSHIPS_PATH}/${relationshipId}`;
   if (!tab || tab === "overview") {
     return base;
   }

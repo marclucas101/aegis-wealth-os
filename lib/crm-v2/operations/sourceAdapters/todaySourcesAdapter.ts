@@ -1,5 +1,6 @@
 import "server-only";
 
+import { CRM_V2_TODAY_PATH } from "@/lib/crm-v2/navigation";
 import { loadAdviserTodayProjection } from "@/lib/crm-v2/today/projection";
 
 import type { OperationsPanelDto } from "../types";
@@ -23,7 +24,7 @@ export async function loadTodaySourcesOperationsPanels(input: {
         statusLevel: "warning",
         safeCount: null,
         sourceModule: "today",
-        routeHref: "/advisor-v2/today",
+        routeHref: CRM_V2_TODAY_PATH,
         actionLabel: "Open Today",
         freshnessAt: input.freshnessAt,
         partialDataWarning: true,
@@ -41,7 +42,7 @@ export async function loadTodaySourcesOperationsPanels(input: {
         statusLevel: "healthy",
         safeCount: today.data.sections.reduce((sum, section) => sum + section.cards.length, 0),
         sourceModule: "today",
-        routeHref: "/advisor-v2/today",
+        routeHref: CRM_V2_TODAY_PATH,
         actionLabel: "Open Today",
         freshnessAt: input.freshnessAt,
         partialDataWarning: false,
@@ -56,7 +57,7 @@ export async function loadTodaySourcesOperationsPanels(input: {
     statusLevel: "warning" as const,
     safeCount: null,
     sourceModule: "today",
-    routeHref: "/advisor-v2/today",
+    routeHref: CRM_V2_TODAY_PATH,
     actionLabel: "Open Today",
     freshnessAt: input.freshnessAt,
     partialDataWarning: true,

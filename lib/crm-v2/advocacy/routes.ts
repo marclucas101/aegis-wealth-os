@@ -1,4 +1,5 @@
 import type { CrmAdvocacyWorkspaceView } from "@/lib/crm-v2/advocacy/types";
+import { CRM_V2_RELATIONSHIPS_PATH } from "@/lib/crm-v2/navigation";
 
 const VALID_VIEWS = new Set<CrmAdvocacyWorkspaceView>([
   "history",
@@ -18,7 +19,7 @@ export function parseAdvocacyWorkspaceView(value: string | undefined): CrmAdvoca
 }
 
 export function buildAdvocacyWorkspaceHref(relationshipId: string, view?: CrmAdvocacyWorkspaceView): string {
-  const base = `/advisor-v2/relationships/${relationshipId}/advocacy`;
+  const base = `${CRM_V2_RELATIONSHIPS_PATH}/${relationshipId}/advocacy`;
   if (!view || view === "history") return base;
   return `${base}?view=${view}`;
 }

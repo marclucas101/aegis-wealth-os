@@ -1,4 +1,5 @@
 import type { CrmMomentsWorkspaceView } from "@/lib/crm-v2/moments/types";
+import { CRM_V2_RELATIONSHIPS_PATH } from "@/lib/crm-v2/navigation";
 
 export function parseMomentsWorkspaceView(
   value: string | null | undefined,
@@ -31,7 +32,7 @@ export function buildMomentsWorkspaceHref(
     }
   }
   const query = search.toString();
-  return `/advisor-v2/relationships/${relationshipId}/moments${query ? `?${query}` : ""}`;
+  return `${CRM_V2_RELATIONSHIPS_PATH}/${relationshipId}/moments${query ? `?${query}` : ""}`;
 }
 
 export function buildClientPreferencesHref(): string {

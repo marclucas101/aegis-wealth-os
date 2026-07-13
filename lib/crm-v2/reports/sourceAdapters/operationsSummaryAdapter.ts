@@ -1,5 +1,9 @@
 import "server-only";
 
+import {
+  CRM_V2_OPERATIONS_GOOGLE_CALENDAR_PATH,
+  CRM_V2_OPERATIONS_PATH,
+} from "@/lib/crm-v2/navigation";
 import { loadGoogleCalendarIntegrationStatus } from "@/lib/crm-v2/google-calendar/service";
 
 import type { ReportCardDto } from "../types";
@@ -24,7 +28,7 @@ export async function loadOperationsSummaryReportCards(input: {
           safePercentage: null,
           trendDirection: status.failedSyncCount > 0 ? "up" : "flat",
           sourceModule: "google_calendar",
-          routeHref: "/advisor-v2/operations",
+          routeHref: CRM_V2_OPERATIONS_PATH,
           freshnessAt: input.freshnessAt,
           partialDataWarning: false,
         },
@@ -37,7 +41,7 @@ export async function loadOperationsSummaryReportCards(input: {
           safePercentage: null,
           trendDirection: "unknown",
           sourceModule: "google_calendar",
-          routeHref: "/advisor-v2/operations/google-calendar",
+          routeHref: CRM_V2_OPERATIONS_GOOGLE_CALENDAR_PATH,
           freshnessAt: input.freshnessAt,
           partialDataWarning: false,
         },

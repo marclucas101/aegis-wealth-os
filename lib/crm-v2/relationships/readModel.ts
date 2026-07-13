@@ -1,5 +1,9 @@
 import "server-only";
 
+import { buildRelationshipCommunicationsHref } from "@/lib/crm-v2/communications/routes";
+import { buildAdvocacyWorkspaceHref } from "@/lib/crm-v2/advocacy/routes";
+import { buildMomentsWorkspaceHref } from "@/lib/crm-v2/moments/routes";
+import { buildProtectionPortfolioHref } from "@/lib/crm-v2/protection/routes";
 import { toRelationshipIdentity } from "@/lib/crm-v2/relationships/identity";
 import { loadCrmMomentsEngagementSummary } from "@/lib/crm-v2/moments/moments";
 import { loadCrmDocumentProjection } from "@/lib/crm-v2/relationships/documentProjection";
@@ -472,7 +476,7 @@ export async function loadCrmRelationship360(
     }),
     loadCrmProtectionFinancialPlanLink(client.id).catch(() => ({
       label: "Protection portfolio",
-      href: `/advisor-v2/relationships/${client.id}/protection`,
+      href: buildProtectionPortfolioHref(client.id),
       statusLabel: CRM_NOT_ESTABLISHED_LABEL,
     })),
     loadCrmProtectionOverviewSummary(client.id).catch(
@@ -480,19 +484,19 @@ export async function loadCrmRelationship360(
     ),
     loadCrmMomentsEngagementLink(client.id).catch(() => ({
       label: "Relationship moments",
-      href: `/advisor-v2/relationships/${client.id}/moments`,
+      href: buildMomentsWorkspaceHref(client.id),
       statusLabel: CRM_NOT_ESTABLISHED_LABEL,
     })),
     loadCrmMomentsEngagementSummary(client.id).catch(() => CRM_NOT_ESTABLISHED_LABEL),
     loadCrmAdvocacyEngagementLink(client.id).catch(() => ({
       label: "Advocacy",
-      href: `/advisor-v2/relationships/${client.id}/advocacy`,
+      href: buildAdvocacyWorkspaceHref(client.id),
       statusLabel: CRM_NOT_ESTABLISHED_LABEL,
     })),
     loadCrmAdvocacyEngagementSummary(client.id).catch(() => CRM_NOT_ESTABLISHED_LABEL),
     loadCrmCommunicationsEngagementLink(client.id).catch(() => ({
       label: "Communications",
-      href: `/advisor-v2/communications?clientId=${client.id}`,
+      href: buildRelationshipCommunicationsHref(client.id),
       statusLabel: CRM_NOT_ESTABLISHED_LABEL,
     })),
     loadCrmCommunicationsEngagementSummary(client.id).catch(() => CRM_NOT_ESTABLISHED_LABEL),

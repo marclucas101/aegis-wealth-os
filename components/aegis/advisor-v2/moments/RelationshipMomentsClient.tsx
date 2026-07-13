@@ -1,5 +1,7 @@
 "use client";
 
+import { buildRelationshipDetailHref } from "@/lib/crm-v2/relationships/routes";
+
 import Link from "next/link";
 import { useState } from "react";
 
@@ -128,7 +130,7 @@ export function RelationshipMomentsClient({
     <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
       <header className="space-y-2">
         <Link
-          href={`/advisor-v2/relationships/${relationshipId}`}
+          href={buildRelationshipDetailHref(relationshipId)}
           className="text-sm text-muted-foreground hover:underline"
         >
           ← Back to Relationship 360

@@ -1,3 +1,10 @@
+import {
+  CRM_V2_COMMUNICATIONS_PATH,
+  CRM_V2_RELATIONSHIPS_PATH,
+  CRM_V2_SETTINGS_GOOGLE_CALENDAR_PATH,
+  CRM_V2_TODAY_PATH,
+} from "@/lib/crm-v2/navigation";
+
 import type { OperationsSectionDto, OperationsSectionKey } from "./types";
 
 export type OperationsSectionDefinition = {
@@ -23,31 +30,31 @@ export const OPERATIONS_SECTION_DEFINITIONS: readonly OperationsSectionDefinitio
   {
     key: "google_calendar",
     label: "Google Calendar",
-    workspaceHref: "/advisor-v2/settings/integrations/google-calendar",
+    workspaceHref: CRM_V2_SETTINGS_GOOGLE_CALENDAR_PATH,
     emptyMessage: "No Google Calendar status available.",
   },
   {
     key: "communications",
     label: "Communications",
-    workspaceHref: "/advisor-v2/communications",
+    workspaceHref: CRM_V2_COMMUNICATIONS_PATH,
     emptyMessage: "No communication exceptions in this scope.",
   },
   {
     key: "work_queue",
     label: "Work Queue",
-    workspaceHref: "/advisor-v2/today",
+    workspaceHref: CRM_V2_TODAY_PATH,
     emptyMessage: "Work queue adapter health unavailable.",
   },
   {
     key: "today_sources",
     label: "Today Sources",
-    workspaceHref: "/advisor-v2/today",
+    workspaceHref: CRM_V2_TODAY_PATH,
     emptyMessage: "Today source adapter health unavailable.",
   },
   {
     key: "protection_extraction",
     label: "Protection Extraction",
-    workspaceHref: "/advisor-v2/relationships",
+    workspaceHref: CRM_V2_RELATIONSHIPS_PATH,
     emptyMessage: "No protection extraction exceptions.",
   },
   {

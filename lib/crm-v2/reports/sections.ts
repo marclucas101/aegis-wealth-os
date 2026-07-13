@@ -1,3 +1,12 @@
+import {
+  CRM_V2_APPOINTMENTS_PATH,
+  CRM_V2_COMMUNICATIONS_PATH,
+  CRM_V2_OPERATIONS_PATH,
+  CRM_V2_RELATIONSHIPS_PATH,
+  CRM_V2_SERVICE_PATH,
+  CRM_V2_TODAY_PATH,
+} from "@/lib/crm-v2/navigation";
+
 import type { ReportSectionDto, ReportSectionKey } from "./types";
 
 export type ReportSectionDefinition = {
@@ -11,49 +20,49 @@ export const REPORT_SECTION_DEFINITIONS: readonly ReportSectionDefinition[] = [
   {
     key: "relationship_coverage",
     label: "Relationship Coverage",
-    workspaceHref: "/advisor-v2/relationships",
+    workspaceHref: CRM_V2_RELATIONSHIPS_PATH,
     emptyMessage: "No relationship coverage metrics for this period.",
   },
   {
     key: "appointments",
     label: "Appointments",
-    workspaceHref: "/advisor-v2/appointments",
+    workspaceHref: CRM_V2_APPOINTMENTS_PATH,
     emptyMessage: "No appointment activity in this period.",
   },
   {
     key: "service",
     label: "Service",
-    workspaceHref: "/advisor-v2/service",
+    workspaceHref: CRM_V2_SERVICE_PATH,
     emptyMessage: "No service commitments or requests in this period.",
   },
   {
     key: "protection",
     label: "Protection",
-    workspaceHref: "/advisor-v2/relationships",
+    workspaceHref: CRM_V2_RELATIONSHIPS_PATH,
     emptyMessage: "No protection verification activity in this period.",
   },
   {
     key: "review_rhythm",
     label: "Review Rhythm",
-    workspaceHref: "/advisor-v2/relationships",
+    workspaceHref: CRM_V2_RELATIONSHIPS_PATH,
     emptyMessage: "No review rhythm signals in this period.",
   },
   {
     key: "communications",
     label: "Communications",
-    workspaceHref: "/advisor-v2/communications",
+    workspaceHref: CRM_V2_COMMUNICATIONS_PATH,
     emptyMessage: "No communications activity in this period.",
   },
   {
     key: "operations_summary",
     label: "Operations Summary",
-    workspaceHref: "/advisor-v2/operations",
+    workspaceHref: CRM_V2_OPERATIONS_PATH,
     emptyMessage: "No operations summary available.",
   },
   {
     key: "work_queue_summary",
     label: "Work Queue Summary",
-    workspaceHref: "/advisor-v2/today",
+    workspaceHref: CRM_V2_TODAY_PATH,
     emptyMessage: "Work queue summary is empty.",
   },
 ] as const;

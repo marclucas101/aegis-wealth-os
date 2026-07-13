@@ -7,6 +7,7 @@ import {
   CRM_V2_PROTECTION_STALE_DAYS,
 } from "@/lib/crm-v2/constants";
 import { buildExtractionConfidenceWarnings } from "@/lib/crm-v2/protection/extractionMapper";
+import { buildProtectionPortfolioHref } from "@/lib/crm-v2/protection/routes";
 import {
   buildVersionHash,
   findDuplicateCandidates,
@@ -439,7 +440,7 @@ export async function loadAdviserProtectionPortfolio(input: {
       ),
       clientCorrectionPending: false,
       isStale: isStaleVerified(version?.confirmed_at ?? null),
-      workflowHref: `/advisor-v2/relationships/${client.id}/protection?policyId=${policy.id}`,
+      workflowHref: buildProtectionPortfolioHref(client.id, undefined, { policyId: policy.id }),
     });
   }
 
@@ -467,7 +468,7 @@ export async function loadAdviserProtectionPortfolio(input: {
         sourceDocumentAvailable: Boolean(e.source_document_id),
         duplicateCandidatePolicyIds: candidates.slice(0, 5),
         createdAt: e.created_at,
-        workflowHref: `/advisor-v2/relationships/${client.id}/protection?extractionId=${e.id}`,
+        workflowHref: buildProtectionPortfolioHref(client.id, undefined, { extractionId: e.id }),
       };
     });
 

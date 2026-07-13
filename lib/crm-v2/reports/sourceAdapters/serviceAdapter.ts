@@ -1,5 +1,6 @@
 import "server-only";
 
+import { CRM_V2_SERVICE_PATH } from "@/lib/crm-v2/navigation";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 import type { ReportCardDto } from "../types";
@@ -46,7 +47,7 @@ export async function loadServiceReportCards(input: {
       safePercentage: null,
       trendDirection: "unknown",
       sourceModule: "service",
-      routeHref: "/advisor-v2/service",
+      routeHref: CRM_V2_SERVICE_PATH,
       freshnessAt: input.freshnessAt,
       partialDataWarning: Boolean(commitmentsResult.error),
     },
@@ -59,7 +60,7 @@ export async function loadServiceReportCards(input: {
       safePercentage: null,
       trendDirection: "unknown",
       sourceModule: "service",
-      routeHref: "/advisor-v2/service",
+      routeHref: CRM_V2_SERVICE_PATH,
       freshnessAt: input.freshnessAt,
       partialDataWarning: Boolean(requestsResult.error),
     },
@@ -72,7 +73,7 @@ export async function loadServiceReportCards(input: {
       safePercentage: null,
       trendDirection: "unknown",
       sourceModule: "service",
-      routeHref: "/advisor-v2/service",
+      routeHref: CRM_V2_SERVICE_PATH,
       freshnessAt: input.freshnessAt,
       partialDataWarning: Boolean(documentsResult.error),
     },

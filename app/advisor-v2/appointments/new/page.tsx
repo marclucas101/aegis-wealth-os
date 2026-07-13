@@ -1,37 +1,13 @@
-import AppointmentNewClient from "@/components/aegis/advisor-v2/appointments/AppointmentNewClient";
-import CrmV2ModuleUnavailablePage from "@/components/aegis/advisor-v2/CrmV2ModuleUnavailablePage";
-import { assertCrmV2AppointmentsAccess } from "@/lib/crm-v2/access";
-import { loadAssignedRelationshipsForAppointments } from "@/lib/crm-v2/appointments/service";
+import { redirectToCanonicalAdviserRoute } from "@/lib/crm-v2/aliasRedirects";
+import { CRM_V2_APPOINTMENTS_PATH } from "@/lib/crm-v2/navigation";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
-export default async function CrmV2NewAppointmentPage({
+export default async function AdviserV2NewAppointmentAliasPage({
   searchParams,
 }: {
   searchParams: Promise<{ relationshipId?: string }>;
 }) {
-  const access = await assertCrmV2AppointmentsAccess();
-  if (!access.allowed) {
-    return (
-      <CrmV2ModuleUnavailablePage
-        title="New appointment"
-        reason={access.reason}
-        nextStep="Return to Appointments when the module is enabled for your workspace."
-      />
-    );
-  }
-
-  const params = await searchParams;
-  const relationships = await loadAssignedRelationshipsForAppointments(
-    access.authUser.id,
-    access.user.role as "advisor" | "admin",
-  );
-
-  return (
-    <AppointmentNewClient
-      relationships={relationships}
-      initialRelationshipId={params.relationshipId}
-    />
+  redirectToCanonicalAdviserRoute(
+    `${CRM_V2_APPOINTMENTS_PATH}/new`,
+    await searchParams,
   );
 }

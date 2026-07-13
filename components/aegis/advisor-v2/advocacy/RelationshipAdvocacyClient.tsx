@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { buildRelationshipDetailHref } from "@/lib/crm-v2/relationships/routes";
 import type {
   AdviserAdvocacyWorkspaceDto,
   CrmAdvocacyEventType,
@@ -138,7 +139,7 @@ export function RelationshipAdvocacyClient({
     <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
       <header className="space-y-2">
         <Link
-          href={`/advisor-v2/relationships/${relationshipId}`}
+          href={buildRelationshipDetailHref(relationshipId)}
           className="text-sm text-muted-foreground underline-offset-4 hover:underline"
         >
           ← Back to Relationship 360

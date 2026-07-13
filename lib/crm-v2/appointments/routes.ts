@@ -1,9 +1,15 @@
 /** Allowlisted internal route builders for CRM V2 appointment workspace. */
 
 import type { CrmAppointmentListView } from "./types";
+import {
+  CRM_V2_APPOINTMENTS_PATH,
+  CRM_V2_RELATIONSHIPS_PATH,
+} from "@/lib/crm-v2/navigation";
 
 const ALLOWED_PREFIXES = [
+  CRM_V2_APPOINTMENTS_PATH,
   "/advisor-v2/appointments",
+  CRM_V2_RELATIONSHIPS_PATH,
   "/advisor-v2/relationships",
   "/advisor/clients",
 ] as const;
@@ -18,7 +24,7 @@ export const CRM_V2_APPOINTMENT_LIST_VIEWS: CrmAppointmentListView[] = [
 ];
 
 export function buildAppointmentListHref(view?: CrmAppointmentListView): string {
-  const base = "/advisor-v2/appointments";
+  const base = CRM_V2_APPOINTMENTS_PATH;
   if (!view || view === "agenda") {
     return base;
   }
@@ -26,11 +32,11 @@ export function buildAppointmentListHref(view?: CrmAppointmentListView): string 
 }
 
 export function buildAppointmentDetailHref(appointmentId: string): string {
-  return `/advisor-v2/appointments/${appointmentId}`;
+  return `${CRM_V2_APPOINTMENTS_PATH}/${appointmentId}`;
 }
 
 export function buildAppointmentNewHref(relationshipId?: string): string {
-  const base = "/advisor-v2/appointments/new";
+  const base = `${CRM_V2_APPOINTMENTS_PATH}/new`;
   if (!relationshipId) {
     return base;
   }
@@ -42,7 +48,7 @@ export function buildMeetingStudioHref(clientId: string): string {
 }
 
 export function buildRelationshipHref(relationshipId: string): string {
-  return `/advisor-v2/relationships/${relationshipId}`;
+  return `${CRM_V2_RELATIONSHIPS_PATH}/${relationshipId}`;
 }
 
 export function isAllowlistedAppointmentLink(href: string): boolean {

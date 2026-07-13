@@ -10,6 +10,10 @@ import {
   CRM_APPOINTMENT_TEMPLATE_KEYS,
   CRM_APPOINTMENT_TEMPLATES,
 } from "@/lib/crm-v2/appointments/templates";
+import {
+  buildAppointmentDetailHref,
+  buildAppointmentListHref,
+} from "@/lib/crm-v2/appointments/routes";
 import type { CrmAssignedRelationshipOption } from "@/lib/crm-v2/appointments/types";
 
 interface AppointmentNewClientProps {
@@ -74,7 +78,7 @@ export default function AppointmentNewClient({
         return;
       }
 
-      router.push(`/advisor-v2/appointments/${payload.appointmentId}`);
+      router.push(buildAppointmentDetailHref(payload.appointmentId));
     } catch {
       setError("Failed to create appointment");
     } finally {
@@ -90,7 +94,7 @@ export default function AppointmentNewClient({
       />
 
       <div className="mb-4">
-        <Link href="/advisor-v2/appointments" className="text-sm font-medium text-slate-700 underline">
+        <Link href={buildAppointmentListHref()} className="text-sm font-medium text-slate-700 underline">
           Back to appointments
         </Link>
       </div>

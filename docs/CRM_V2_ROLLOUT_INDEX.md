@@ -44,7 +44,8 @@ Today | Relationships | Appointments | Service | Communications | More
 | **14** | `crm-v2-14-cutover` | `/advisor` → CRM V2 workspace + legacy parity nav | **Complete** — see Phase 14 docs |
 | **15** | `crm-v2-15-adviser-rebuild` | Adviser workspace rebuild + client-safe cutover | **Complete** — see Phase 15 docs |
 | **15.1** | `crm-v2-15-1-qa-alignment` | Shell/Today validation aligned with Phase 15 routing | **Complete** — see Phase 15 docs § 15.1 |
-| **16** | `crm-v2-16-legacy-retirement` | Legacy adviser portal retirement (conditional) | Deferred |
+| **16** | `crm-v2-16-route-consolidation` | Adviser-native `/advisor` routes + `/advisor-v2` compatibility redirects | **Complete** — see Phase 16 docs |
+| **17** | `crm-v2-17-legacy-retirement` | Legacy adviser portal retirement (conditional) | Deferred |
 
 ---
 
@@ -303,6 +304,13 @@ Today | Relationships | Appointments | Service | Communications | More
 | Document | Purpose |
 |----------|---------|
 | [CRM_V2_PHASE_15_ADVISER_WORKSPACE_REBUILD.md](./CRM_V2_PHASE_15_ADVISER_WORKSPACE_REBUILD.md) | Primary `/advisor` OS, `/advisor-v2` redirect, nav restructure, client safety freeze, QA, rollback |
+
+### Phase 16 — adviser route consolidation
+
+| Document | Purpose |
+|----------|---------|
+| [CRM_V2_PHASE_16_ADVISER_ROUTE_CONSOLIDATION_AUDIT.md](./CRM_V2_PHASE_16_ADVISER_ROUTE_CONSOLIDATION_AUDIT.md) | Route conflict audit and preservation plan |
+| [CRM_V2_PHASE_16_ADVISER_ROUTE_CONSOLIDATION.md](./CRM_V2_PHASE_16_ADVISER_ROUTE_CONSOLIDATION.md) | Canonical routes, redirects, QA, rollback |
 
 ---
 

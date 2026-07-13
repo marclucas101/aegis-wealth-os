@@ -20,7 +20,7 @@ Rework the adviser side so **`/advisor` becomes the single primary AEGIS adviser
 |-------|-----------|
 | **`GET /advisor`** | Primary AEGIS Adviser Workspace — shell + operating dashboard for eligible advisers; classic workspace for non-eligible advisers |
 | **`GET /advisor-v2`** | **Redirects to `/advisor`** — bookmark alias only; no separate pilot home |
-| **`GET /advisor-v2/*`** | Sub-routes unchanged (`/today`, `/relationships`, etc.) — same shell, same access gates |
+| **`GET /advisor-v2/*`** | **Compatibility redirects** to canonical `/advisor/*` paths (Phase 16) |
 | **`GET /advisor/classic`** | Emergency fallback — full `ClassicAdvisorWorkspace`; not promoted in primary UI |
 | **Client routes** | **Unchanged** — `/appointments`, `/actions`, `/requests`, `/protection`, `/preferences`, `/messages`, etc. |
 
@@ -205,7 +205,7 @@ Shell and Today validation scripts were aligned in **Phase 15.1** to expect `/ad
 
 | Gap | Notes |
 |-----|-------|
-| Route prefix unification | Sub-routes still under `/advisor-v2/*` — cosmetic/URL consistency only |
+| Route prefix unification | **Phase 16 complete** — canonical `/advisor/*`; `/advisor-v2/*` redirects; appointments at `/advisor/workspace/appointments` due to legacy conflict |
 | Native book health in workspace | Classic dashboard panels only |
 | Client-context deep links | Roster-first routing; optional relationship-scoped links later |
 | Classic retirement | Conditional on operator approval — not Phase 15 |

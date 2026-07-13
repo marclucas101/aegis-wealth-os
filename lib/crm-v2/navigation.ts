@@ -4,8 +4,24 @@ export const CRM_V2_HOME_PATH = "/advisor";
 /** Classic adviser command centre — emergency fallback; avoids redirect loop for eligible advisers. */
 export const CRM_V2_CLASSIC_ADVISER_PATH = "/advisor/classic";
 
-/** Legacy route alias — `/advisor-v2` home redirects here; sub-routes remain under `/advisor-v2/*`. */
+/** Legacy route alias — `/advisor-v2` and sub-routes redirect to canonical `/advisor` paths. */
 export const CRM_V2_PILOT_ALIAS_HOME_PATH = "/advisor-v2";
+
+/** Canonical CRM V2 adviser module paths (Phase 16). */
+export const CRM_V2_TODAY_PATH = "/advisor/today";
+export const CRM_V2_RELATIONSHIPS_PATH = "/advisor/relationships";
+/** Legacy `/advisor/appointments` preserved — CRM V2 appointments live under workspace prefix. */
+export const CRM_V2_APPOINTMENTS_PATH = "/advisor/workspace/appointments";
+export const CRM_V2_SERVICE_PATH = "/advisor/service";
+export const CRM_V2_REPORTS_PATH = "/advisor/reports";
+export const CRM_V2_OPERATIONS_PATH = "/advisor/operations";
+export const CRM_V2_OPERATIONS_GOOGLE_CALENDAR_PATH =
+  "/advisor/operations/google-calendar";
+export const CRM_V2_COMMUNICATIONS_PATH = "/advisor/communications";
+export const CRM_V2_TEMPLATES_PATH = "/advisor/templates";
+export const CRM_V2_SETTINGS_PATH = "/advisor/settings";
+export const CRM_V2_SETTINGS_GOOGLE_CALENDAR_PATH =
+  "/advisor/settings/integrations/google-calendar";
 
 export type CrmV2NavItem = {
   label: string;
@@ -21,30 +37,30 @@ export type CrmV2NavGroup = {
 };
 
 export const CRM_V2_PRIMARY_NAV: CrmV2NavItem[] = [
-  { label: "Today", href: "/advisor-v2/today", description: "Daily operating dashboard" },
+  { label: "Today", href: CRM_V2_TODAY_PATH, description: "Daily operating dashboard" },
   {
     label: "Relationships",
-    href: "/advisor-v2/relationships",
+    href: CRM_V2_RELATIONSHIPS_PATH,
     description: "Client roster and relationship workspace",
   },
   {
     label: "Appointments",
-    href: "/advisor-v2/appointments",
+    href: CRM_V2_APPOINTMENTS_PATH,
     description: "Appointment workflow",
   },
   {
     label: "Service",
-    href: "/advisor-v2/service",
+    href: CRM_V2_SERVICE_PATH,
     description: "Servicing and commitments",
   },
   {
     label: "Reports",
-    href: "/advisor-v2/reports",
+    href: CRM_V2_REPORTS_PATH,
     description: "Adviser reports and summaries",
   },
   {
     label: "Operations",
-    href: "/advisor-v2/operations",
+    href: CRM_V2_OPERATIONS_PATH,
     description: "Diagnostics and operator tools",
   },
 ];
@@ -52,11 +68,11 @@ export const CRM_V2_PRIMARY_NAV: CrmV2NavItem[] = [
 export const CRM_V2_MORE_NAV: CrmV2MoreNavItem[] = [
   {
     label: "Communications",
-    href: "/advisor-v2/communications",
+    href: CRM_V2_COMMUNICATIONS_PATH,
     description: "Governed communications bridge",
   },
-  { label: "Templates", href: "/advisor-v2/templates", description: "Document templates" },
-  { label: "Settings", href: "/advisor-v2/settings", description: "Workspace settings" },
+  { label: "Templates", href: CRM_V2_TEMPLATES_PATH, description: "Document templates" },
+  { label: "Settings", href: CRM_V2_SETTINGS_PATH, description: "Workspace settings" },
 ];
 
 /**
@@ -179,7 +195,7 @@ export const CRM_V2_TOOLS_NAV_GROUPS: CrmV2NavGroup[] = [
       },
       {
         label: "Google Calendar Operations",
-        href: "/advisor-v2/operations/google-calendar",
+        href: CRM_V2_OPERATIONS_GOOGLE_CALENDAR_PATH,
         description: "Manual sync telemetry and operations",
       },
       {
@@ -210,16 +226,55 @@ function isCrmV2HomePath(pathname: string): boolean {
   );
 }
 
-export function isCrmV2NavActive(pathname: string, href: string): boolean {
-  if (href === CRM_V2_HOME_PATH || href === CRM_V2_PILOT_ALIAS_HOME_PATH) {
-    return isCrmV2HomePath(pathname);
-  }
-  if (href === "/advisor-v2/today") {
-    return pathname === "/advisor-v2/today";
-  }
+/** Paths that resolve to the same nav item (canonical + legacy alias). */
+const NAV_PATH_ALIASES: Record<string, string[]> = {
+  [CRM_V2_TODAY_PATH]: [CRM_V2_TODAY_PATH, "/advisor-v2/today"],
+  [CRM_V2_RELATIONSHIPS_PATH]: [
+    CRM_V2_RELATIONSHIPS_PATH,
+    "/advisor-v2/relationships",
+  ],
+  [CRM_V2_APPOINTMENTS_PATH]: [
+    CRM_V2_APPOINTMENTS_PATH,
+    "/advisor-v2/appointments",
+  ],
+  [CRM_V2_SERVICE_PATH]: [CRM_V2_SERVICE_PATH, "/advisor-v2/service"],
+  [CRM_V2_REPORTS_PATH]: [CRM_V2_REPORTS_PATH, "/advisor-v2/reports"],
+  [CRM_V2_OPERATIONS_PATH]: [
+    CRM_V2_OPERATIONS_PATH,
+    "/advisor-v2/operations",
+    CRM_V2_OPERATIONS_GOOGLE_CALENDAR_PATH,
+    "/advisor-v2/operations/google-calendar",
+  ],
+  [CRM_V2_COMMUNICATIONS_PATH]: [
+    CRM_V2_COMMUNICATIONS_PATH,
+    "/advisor-v2/communications",
+  ],
+  [CRM_V2_TEMPLATES_PATH]: [CRM_V2_TEMPLATES_PATH, "/advisor-v2/templates"],
+  [CRM_V2_SETTINGS_PATH]: [
+    CRM_V2_SETTINGS_PATH,
+    "/advisor-v2/settings",
+    CRM_V2_SETTINGS_GOOGLE_CALENDAR_PATH,
+    "/advisor-v2/settings/integrations/google-calendar",
+  ],
+};
+
+function pathnameMatchesNavHref(pathname: string, href: string): boolean {
   const hrefPath = (href.split("?")[0] ?? href).split("#")[0] ?? href;
+  const aliases = NAV_PATH_ALIASES[hrefPath];
+  if (aliases) {
+    return aliases.some(
+      (alias) => pathname === alias || pathname.startsWith(`${alias}/`),
+    );
+  }
   if (hrefPath.startsWith("/advisor/") && !hrefPath.startsWith("/advisor-v2")) {
     return pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
   }
   return pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
+}
+
+export function isCrmV2NavActive(pathname: string, href: string): boolean {
+  if (href === CRM_V2_HOME_PATH || href === CRM_V2_PILOT_ALIAS_HOME_PATH) {
+    return isCrmV2HomePath(pathname);
+  }
+  return pathnameMatchesNavHref(pathname, href);
 }

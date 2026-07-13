@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import CrmV2PageHeader from "@/components/aegis/advisor-v2/CrmV2PageHeader";
 import CrmV2SectionPanel from "@/components/aegis/advisor-v2/CrmV2SectionPanel";
+import { buildAppointmentListHref } from "@/lib/crm-v2/appointments/routes";
 import type { CrmAppointmentDetail } from "@/lib/crm-v2/appointments/types";
 
 const ACTION_TRANSITIONS: Record<string, { toStatus: string; reasonCode: string }> = {
@@ -126,7 +127,7 @@ export default function AppointmentDetailClient({
       />
 
       <div className="mb-4">
-        <Link href="/advisor-v2/appointments" className="text-sm font-medium text-slate-700 underline">
+        <Link href={buildAppointmentListHref()} className="text-sm font-medium text-slate-700 underline">
           Back to appointments
         </Link>
       </div>

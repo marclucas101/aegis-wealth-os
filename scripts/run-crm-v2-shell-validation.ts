@@ -27,14 +27,15 @@ const PHASE_01_DOCS = [
 
 const ROUTE_PAGES = [
   { segment: "landing", path: "app/advisor-v2/page.tsx" },
-  { segment: "relationships", path: "app/advisor-v2/relationships/page.tsx" },
-  { segment: "appointments", path: "app/advisor-v2/appointments/page.tsx" },
-  { segment: "service", path: "app/advisor-v2/service/page.tsx" },
-  { segment: "communications", path: "app/advisor-v2/communications/page.tsx" },
-  { segment: "reports", path: "app/advisor-v2/reports/page.tsx" },
-  { segment: "operations", path: "app/advisor-v2/operations/page.tsx" },
-  { segment: "templates", path: "app/advisor-v2/templates/page.tsx" },
-  { segment: "settings", path: "app/advisor-v2/settings/page.tsx" },
+  { segment: "today", path: "app/advisor/(crm-v2)/today/page.tsx" },
+  { segment: "relationships", path: "app/advisor/(crm-v2)/relationships/page.tsx" },
+  { segment: "appointments", path: "app/advisor/(crm-v2)/workspace/appointments/page.tsx" },
+  { segment: "service", path: "app/advisor/(crm-v2)/service/page.tsx" },
+  { segment: "communications", path: "app/advisor/(crm-v2)/communications/page.tsx" },
+  { segment: "reports", path: "app/advisor/(crm-v2)/reports/page.tsx" },
+  { segment: "operations", path: "app/advisor/(crm-v2)/operations/page.tsx" },
+  { segment: "templates", path: "app/advisor/(crm-v2)/templates/page.tsx" },
+  { segment: "settings", path: "app/advisor/(crm-v2)/settings/page.tsx" },
 ] as const;
 
 const CRM_V2_LIB_FILES = [
@@ -108,7 +109,7 @@ check("route shell: error.tsx exists", () => {
 
 check("route guard: relationships/[relationshipId] detail route exists (Phase 02)", () => {
   assert(
-    existsSync("app/advisor-v2/relationships/[relationshipId]/page.tsx"),
+    existsSync("app/advisor/(crm-v2)/relationships/[relationshipId]/page.tsx"),
     "relationship detail route missing",
   );
 });
@@ -120,7 +121,7 @@ check("route guard: no legacy relationships/[id] alias route", () => {
 check("route guard: appointments detail route uses appointmentId param", () => {
   assert(!existsSync("app/advisor-v2/appointments/[id]"), "legacy [id] alias present");
   assert(
-    existsSync("app/advisor-v2/appointments/[appointmentId]/page.tsx"),
+    existsSync("app/advisor/(crm-v2)/workspace/appointments/[appointmentId]/page.tsx"),
     "appointment detail route missing",
   );
 });
@@ -445,8 +446,9 @@ check("ui nav: CRM_V2_TOOLS_NAV_GROUPS exported", () => {
   assert(doc("lib/crm-v2/navigation.ts").includes("CRM_V2_TOOLS_NAV_GROUPS"), "tools groups missing");
 });
 
-check("ui nav: primary href /advisor-v2/today", () => {
-  assert(doc("lib/crm-v2/navigation.ts").includes('href: "/advisor-v2/today"'), "today href missing");
+check("ui nav: primary href /advisor/today", () => {
+  assert(doc("lib/crm-v2/navigation.ts").includes("CRM_V2_TODAY_PATH"), "today path constant");
+  assert(doc("lib/crm-v2/navigation.ts").includes('href: CRM_V2_TODAY_PATH'), "today href uses constant");
 });
 
 check("ui nav: isCrmV2NavActive helper exported", () => {
@@ -534,6 +536,27 @@ check("routing: /advisor-v2 redirects to CRM_V2_HOME_PATH", () => {
   assert(alias.includes("redirect"), "redirect missing");
   assert(alias.includes("CRM_V2_HOME_PATH"), "home path constant used");
   assert(!alias.includes("AdviserCrmV2LandingContent"), "duplicate landing on alias");
+});
+
+check("routing: /advisor-v2 sub-routes redirect to canonical paths", () => {
+  const todayAlias = doc("app/advisor-v2/today/page.tsx");
+  assert(todayAlias.includes("redirectToCanonicalAdviserRoute"), "today alias redirect");
+  assert(todayAlias.includes("CRM_V2_TODAY_PATH"), "today canonical target");
+  const apptsAlias = doc("app/advisor-v2/appointments/page.tsx");
+  assert(apptsAlias.includes("CRM_V2_APPOINTMENTS_PATH"), "appointments workspace path");
+});
+
+check("routing: canonical CRM V2 workspace layout under /advisor", () => {
+  assert(existsSync("app/advisor/(crm-v2)/layout.tsx"), "workspace layout missing");
+  const layout = doc("app/advisor/(crm-v2)/layout.tsx");
+  assert(layout.includes("AdviserCrmV2Shell"), "shell in canonical layout");
+  assert(layout.includes("assertCrmV2Access"), "access gate in canonical layout");
+});
+
+check("routing: /advisor-v2 alias layout does not render shell", () => {
+  const layout = doc("app/advisor-v2/layout.tsx");
+  assert(!layout.includes("AdviserCrmV2Shell"), "shell must not wrap alias redirects");
+  assert(layout.includes("assertCrmV2Access"), "alias layout still gated");
 });
 
 check("routing: /advisor/classic fallback exists", () => {

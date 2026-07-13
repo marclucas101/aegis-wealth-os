@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 
 import CrmV2PageHeader from "@/components/aegis/advisor-v2/CrmV2PageHeader";
 import CrmV2SectionPanel from "@/components/aegis/advisor-v2/CrmV2SectionPanel";
+import { CRM_V2_SERVICE_PATH } from "@/lib/crm-v2/navigation";
 import type { CrmServiceMyWorkItem, CrmServiceWorkspaceView } from "@/lib/crm-v2/service/types";
 import type { AdviserCommitmentDto, AdviserServiceRequestDto } from "@/lib/crm-v2/service/types";
 
@@ -207,7 +208,7 @@ export default function ServiceWorkspaceClient({
         {VIEWS.map((item) => (
           <Link
             key={item.key}
-            href={`/advisor-v2/service?view=${item.key}`}
+            href={`${CRM_V2_SERVICE_PATH}?view=${item.key}`}
             onClick={() => setView(item.key)}
             className={`rounded-full px-3 py-1.5 text-sm ${
               view === item.key

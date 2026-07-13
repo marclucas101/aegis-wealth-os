@@ -1,5 +1,6 @@
 import "server-only";
 
+import { CRM_V2_TODAY_PATH } from "@/lib/crm-v2/navigation";
 import { buildAdviserWorkQueue } from "@/lib/work-queue/buildAdviserWorkQueue";
 
 import type { OperationsPanelDto } from "../types";
@@ -29,7 +30,7 @@ export async function loadWorkQueueOperationsPanels(input: {
     statusLevel: adapter.ok ? ("healthy" as const) : ("warning" as const),
     safeCount: adapter.itemCount,
     sourceModule: "work_queue",
-    routeHref: "/advisor-v2/today",
+    routeHref: CRM_V2_TODAY_PATH,
     actionLabel: "Open Today",
     freshnessAt: input.freshnessAt,
     partialDataWarning: !adapter.ok,
@@ -43,7 +44,7 @@ export async function loadWorkQueueOperationsPanels(input: {
       statusLevel: "attention",
       safeCount: null,
       sourceModule: "work_queue",
-      routeHref: "/advisor-v2/today",
+      routeHref: CRM_V2_TODAY_PATH,
       actionLabel: null,
       freshnessAt: input.freshnessAt,
       partialDataWarning: false,
@@ -58,7 +59,7 @@ export async function loadWorkQueueOperationsPanels(input: {
       statusLevel: "warning",
       safeCount: failedAdapters.length,
       sourceModule: "work_queue",
-      routeHref: "/advisor-v2/today",
+      routeHref: CRM_V2_TODAY_PATH,
       actionLabel: "Review Today",
       freshnessAt: input.freshnessAt,
       partialDataWarning: true,

@@ -1,5 +1,7 @@
 "use client";
 
+import { buildRelationshipDetailHref } from "@/lib/crm-v2/relationships/routes";
+
 import Link from "next/link";
 import { useState } from "react";
 
@@ -215,7 +217,7 @@ export function AdviserCommunicationsClient({
                       )}
                     </div>
                     <Link
-                      href={`/advisor-v2/relationships/${record.clientId}`}
+                      href={buildRelationshipDetailHref(record.clientId)}
                       className="text-sm text-blue-700 hover:underline"
                     >
                       Relationship 360

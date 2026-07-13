@@ -1,6 +1,11 @@
 import { buildAppointmentListHref } from "@/lib/crm-v2/appointments/routes";
 import { buildCommunicationsWorkspaceHref } from "@/lib/crm-v2/communications/routes";
 import { buildRelationshipListHref } from "@/lib/crm-v2/relationships/routes";
+import {
+  CRM_V2_SERVICE_PATH,
+  CRM_V2_SETTINGS_GOOGLE_CALENDAR_PATH,
+  CRM_V2_TODAY_PATH,
+} from "@/lib/crm-v2/navigation";
 
 import type { TodaySectionDto, TodaySectionKey } from "./types";
 
@@ -28,7 +33,7 @@ export const TODAY_SECTION_DEFINITIONS: TodaySectionDefinition[] = [
     key: "client_requests",
     label: "Client Requests",
     emptyMessage: "No client requests awaiting your action.",
-    workspaceHref: "/advisor-v2/service?view=requests",
+    workspaceHref: `${CRM_V2_SERVICE_PATH}?view=requests`,
   },
   {
     key: "follow_ups",
@@ -40,7 +45,7 @@ export const TODAY_SECTION_DEFINITIONS: TodaySectionDefinition[] = [
     key: "service_due",
     label: "Service Due",
     emptyMessage: "No service commitments due or overdue.",
-    workspaceHref: "/advisor-v2/service",
+    workspaceHref: CRM_V2_SERVICE_PATH,
   },
   {
     key: "reviews",
@@ -70,13 +75,13 @@ export const TODAY_SECTION_DEFINITIONS: TodaySectionDefinition[] = [
     key: "sync_operations",
     label: "Sync and Operations",
     emptyMessage: "Calendar sync is healthy.",
-    workspaceHref: "/advisor-v2/settings/integrations/google-calendar",
+    workspaceHref: CRM_V2_SETTINGS_GOOGLE_CALENDAR_PATH,
   },
   {
     key: "recently_completed",
     label: "Recently Completed",
     emptyMessage: "No recently completed items to show.",
-    workspaceHref: "/advisor-v2/today",
+    workspaceHref: CRM_V2_TODAY_PATH,
   },
 ];
 
