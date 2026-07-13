@@ -1,5 +1,5 @@
 import AppointmentNewClient from "@/components/aegis/advisor-v2/appointments/AppointmentNewClient";
-import CrmV2AccessDenied from "@/components/aegis/advisor-v2/CrmV2AccessDenied";
+import CrmV2ModuleUnavailablePage from "@/components/aegis/advisor-v2/CrmV2ModuleUnavailablePage";
 import { assertCrmV2AppointmentsAccess } from "@/lib/crm-v2/access";
 import { loadAssignedRelationshipsForAppointments } from "@/lib/crm-v2/appointments/service";
 
@@ -13,7 +13,13 @@ export default async function CrmV2NewAppointmentPage({
 }) {
   const access = await assertCrmV2AppointmentsAccess();
   if (!access.allowed) {
-    return <CrmV2AccessDenied />;
+    return (
+      <CrmV2ModuleUnavailablePage
+        title="New appointment"
+        reason={access.reason}
+        nextStep="Return to Appointments when the module is enabled for your pilot session."
+      />
+    );
   }
 
   const params = await searchParams;

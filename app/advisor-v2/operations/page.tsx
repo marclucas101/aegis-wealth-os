@@ -1,5 +1,5 @@
 import { AdviserOperationsClient } from "@/components/aegis/advisor-v2/operations/AdviserOperationsClient";
-import CrmV2FoundationPlaceholderPage from "@/components/aegis/advisor-v2/CrmV2FoundationPlaceholderPage";
+import CrmV2ModuleUnavailablePage from "@/components/aegis/advisor-v2/CrmV2ModuleUnavailablePage";
 import CrmV2PageHeader from "@/components/aegis/advisor-v2/CrmV2PageHeader";
 import { assertCrmV2OperationsAccess } from "@/lib/crm-v2/access";
 import { loadAdviserOperationsProjection } from "@/lib/crm-v2/operations/projection";
@@ -8,14 +8,10 @@ export default async function CrmV2OperationsPage() {
   const access = await assertCrmV2OperationsAccess();
   if (!access.allowed) {
     return (
-      <CrmV2FoundationPlaceholderPage
+      <CrmV2ModuleUnavailablePage
         title="Operations"
-        phase="Phase 12"
-        message={
-          access.reason === "feature_disabled"
-            ? "CRM V2 Operations is not enabled."
-            : "CRM V2 Operations access is restricted."
-        }
+        reason={access.reason}
+        nextStep="When enabled, review platform health, sync status, and exceptions here."
       />
     );
   }
@@ -31,7 +27,6 @@ export default async function CrmV2OperationsPage() {
       <CrmV2PageHeader
         title="Operations"
         subtitle="Platform health, sync, migration and exception visibility — safe projections only."
-        phase="Phase 12"
       />
       <AdviserOperationsClient
         initialOperations={result.ok ? result.data : null}

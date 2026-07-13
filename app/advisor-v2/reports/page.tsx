@@ -1,5 +1,5 @@
 import { AdviserReportsClient } from "@/components/aegis/advisor-v2/reports/AdviserReportsClient";
-import CrmV2FoundationPlaceholderPage from "@/components/aegis/advisor-v2/CrmV2FoundationPlaceholderPage";
+import CrmV2ModuleUnavailablePage from "@/components/aegis/advisor-v2/CrmV2ModuleUnavailablePage";
 import CrmV2PageHeader from "@/components/aegis/advisor-v2/CrmV2PageHeader";
 import { assertCrmV2ReportsAccess } from "@/lib/crm-v2/access";
 import { loadAdviserReportsProjection } from "@/lib/crm-v2/reports/projection";
@@ -8,14 +8,10 @@ export default async function CrmV2ReportsPage() {
   const access = await assertCrmV2ReportsAccess();
   if (!access.allowed) {
     return (
-      <CrmV2FoundationPlaceholderPage
+      <CrmV2ModuleUnavailablePage
         title="Reports"
-        phase="Phase 12"
-        message={
-          access.reason === "feature_disabled"
-            ? "CRM V2 Reports is not enabled."
-            : "CRM V2 Reports access is restricted."
-        }
+        reason={access.reason}
+        nextStep="When enabled, review bounded book and servicing insight — projection only."
       />
     );
   }
@@ -31,7 +27,6 @@ export default async function CrmV2ReportsPage() {
       <CrmV2PageHeader
         title="Reports"
         subtitle="Bounded adviser-facing insight from authoritative CRM sources — projection only."
-        phase="Phase 12"
       />
       <AdviserReportsClient
         initialReports={result.ok ? result.data : null}

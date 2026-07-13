@@ -506,8 +506,10 @@ check("ui placeholder: landing has no fake client totals", () => {
   assert(!/\b\d+\s+clients?\b/i.test(landing), "numeric client count");
 });
 
-check("ui placeholder: landing redirects to today", () => {
-  assert(doc("app/advisor-v2/page.tsx").includes("/advisor-v2/today"), "today redirect missing");
+check("ui placeholder: landing is pilot home hub", () => {
+  const landing = doc("app/advisor-v2/page.tsx");
+  assert(landing.includes("CRM_V2_PRIMARY_NAV"), "primary nav links on landing");
+  assert(!landing.includes('redirect("/advisor-v2/today")'), "no blind redirect to today");
 });
 
 // --- Compatibility (10 checks) ---

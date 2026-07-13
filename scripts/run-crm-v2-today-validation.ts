@@ -185,9 +185,11 @@ check("today UI accessibility", () => {
   assert(source.includes("Quick links"), "quick links");
 });
 
-check("landing redirects to today", () => {
+check("landing is pilot home hub", () => {
   const source = read("app/advisor-v2/page.tsx");
-  assert(source.includes("/advisor-v2/today"), "redirect");
+  assert(source.includes("Adviser workspace") || source.includes("AdviserCrmV2LandingPage"), "home hub");
+  assert(source.includes("CRM_V2_PRIMARY_NAV"), "primary nav links");
+  assert(!source.includes('redirect("/advisor-v2/today")'), "no blind redirect");
 });
 
 check("navigation today href", () => {
