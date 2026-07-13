@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import AuthStatus from "@/components/aegis/auth/AuthStatus";
+import CrmV2PilotBadge from "@/components/aegis/advisor-v2/CrmV2PilotBadge";
 import {
   CRM_V2_MORE_NAV,
   CRM_V2_PRIMARY_NAV,
@@ -66,24 +67,37 @@ export default function AdviserCrmV2Shell({
 
   const resolvedTitle =
     pageTitle ??
-    [...CRM_V2_PRIMARY_NAV, ...CRM_V2_MORE_NAV].find((item) =>
-      isCrmV2NavActive(pathname, item.href),
-    )?.label ??
-    "Adviser CRM V2";
+    (pathname === "/advisor-v2"
+      ? "Adviser workspace"
+      : [...CRM_V2_PRIMARY_NAV, ...CRM_V2_MORE_NAV].find((item) =>
+          isCrmV2NavActive(pathname, item.href),
+        )?.label ?? "Adviser CRM V2");
 
   const moreActive = CRM_V2_MORE_NAV.some((item) =>
     isCrmV2NavActive(pathname, item.href),
   );
 
   const sidebar = (
-  <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col">
       <div className="border-b border-[#D1A866]/10 px-4 py-5">
         <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-[#D1A866]/75">
-          Adviser CRM V2
+          AEGIS Adviser CRM V2
         </p>
-        <p className="mt-1 text-xs font-light text-[#F3F1EA]/40">Foundation pilot</p>
+        <div className="mt-2">
+          <CrmV2PilotBadge />
+        </div>
+        <p className="mt-2 text-xs font-light leading-relaxed text-[#F3F1EA]/40">
+          Limited pilot workspace for relationships, service, and daily
+          operations.
+        </p>
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label="CRM V2 primary">
+        <NavLink
+          href="/advisor-v2"
+          label="Home"
+          active={pathname === "/advisor-v2"}
+          onNavigate={() => setMenuOpen(false)}
+        />
         {CRM_V2_PRIMARY_NAV.map((item) => (
           <NavLink
             key={item.href}
@@ -124,7 +138,13 @@ export default function AdviserCrmV2Shell({
           ) : null}
         </div>
       </nav>
-      <div className="border-t border-[#D1A866]/10 p-3">
+      <div className="space-y-2 border-t border-[#D1A866]/10 p-3">
+        <Link
+          href="/advisor"
+          className="block rounded-sm px-3 py-2 text-xs font-light text-[#F3F1EA]/45 transition-colors hover:bg-[#10283A]/50 hover:text-[#F3F1EA]/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D1A866]/60"
+        >
+          ← Back to classic adviser workspace
+        </Link>
         <AuthStatus />
       </div>
     </div>
@@ -163,11 +183,22 @@ export default function AdviserCrmV2Shell({
               >
                 <span className="text-lg leading-none">≡</span>
               </button>
-              <h1 className="text-sm font-light tracking-wide text-[#F3F1EA] sm:text-base">
-                {resolvedTitle}
-              </h1>
+              <div className="min-w-0">
+                <h1 className="truncate text-sm font-light tracking-wide text-[#F3F1EA] sm:text-base">
+                  {resolvedTitle}
+                </h1>
+                <p className="hidden text-[10px] font-light uppercase tracking-[0.14em] text-[#F3F1EA]/30 sm:block">
+                  CRM V2 Limited Pilot
+                </p>
+              </div>
             </div>
-            <div className="hidden lg:block">
+            <div className="hidden items-center gap-4 lg:flex">
+              <Link
+                href="/advisor"
+                className="text-xs font-light text-[#F3F1EA]/40 transition-colors hover:text-[#F3F1EA]/65"
+              >
+                Classic workspace
+              </Link>
               <AuthStatus />
             </div>
           </header>

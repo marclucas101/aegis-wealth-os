@@ -23,7 +23,7 @@ export default function CrmV2AccessDenied() {
             href="/advisor"
             className="inline-flex rounded-sm border border-[#D1A866]/40 bg-[#D1A866]/10 px-6 py-2.5 text-[11px] font-medium uppercase tracking-[0.14em] text-[#D1A866] transition-colors hover:bg-[#D1A866]/20"
           >
-            Open adviser portal
+            Open classic adviser workspace
           </Link>
           <Link
             href="/dashboard"

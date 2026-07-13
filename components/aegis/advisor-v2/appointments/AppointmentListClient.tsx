@@ -86,9 +86,9 @@ export default function AppointmentListClient({ initialPage }: AppointmentListCl
 
   const emptyMessage =
     view === "requests"
-      ? "No client requests yet. Client appointment collaboration arrives in Phase 04."
+      ? "No client appointment requests yet. Requests appear here when clients collaborate on scheduling."
       : view === "upcoming"
-        ? "No upcoming appointments in this window."
+        ? "No upcoming appointments in this window. Schedule one from Relationships or New appointment."
         : view === "preparation"
           ? "No appointments currently in preparation."
           : view === "follow_up"

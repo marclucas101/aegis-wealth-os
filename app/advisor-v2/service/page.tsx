@@ -1,5 +1,5 @@
 import ServiceWorkspaceClient from "@/components/aegis/advisor-v2/service/ServiceWorkspaceClient";
-import CrmV2AccessDenied from "@/components/aegis/advisor-v2/CrmV2AccessDenied";
+import CrmV2ModuleUnavailablePage from "@/components/aegis/advisor-v2/CrmV2ModuleUnavailablePage";
 import { assertCrmV2ServiceAccess } from "@/lib/crm-v2/access";
 import {
   loadServiceWorkspaceCompleted,
@@ -20,7 +20,13 @@ export default async function CrmV2ServicePage({
 }) {
   const access = await assertCrmV2ServiceAccess();
   if (!access.allowed) {
-    return <CrmV2AccessDenied />;
+    return (
+      <CrmV2ModuleUnavailablePage
+        title="Service"
+        reason={access.reason}
+        nextStep="When enabled, track commitments, client requests, reviews, and document follow-ups here."
+      />
+    );
   }
 
   const params = await searchParams;

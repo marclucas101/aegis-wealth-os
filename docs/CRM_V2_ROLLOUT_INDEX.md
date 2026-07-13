@@ -277,6 +277,12 @@ Today | Relationships | Appointments | Service | Communications | More
 | [CRM_V2_PHASE_13_DAY_1_GO_NO_GO.md](./CRM_V2_PHASE_13_DAY_1_GO_NO_GO.md) | Pre-invite / live / post-test checklist and decision |
 | [CRM_V2_PHASE_13_PILOT_ISSUE_LOG.md](./CRM_V2_PHASE_13_PILOT_ISSUE_LOG.md) | Pilot incident log (operator-maintained) |
 
+### Phase 13.5 — pilot navigation and polish
+
+| Document | Purpose |
+|----------|---------|
+| [CRM_V2_PHASE_13_5_PILOT_NAVIGATION_POLISH.md](./CRM_V2_PHASE_13_5_PILOT_NAVIGATION_POLISH.md) | Entry point, shell polish, empty states, gating, QA, rollback |
+
 ---
 
 ## Hard restrictions (all phases until operator approval)

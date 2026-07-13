@@ -45,8 +45,11 @@ export const CRM_V2_DOMAIN_PILLARS = [
 ] as const;
 
 export function isCrmV2NavActive(pathname: string, href: string): boolean {
+  if (href === "/advisor-v2") {
+    return pathname === "/advisor-v2";
+  }
   if (href === "/advisor-v2/today") {
-    return pathname === "/advisor-v2/today" || pathname === "/advisor-v2";
+    return pathname === "/advisor-v2/today";
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
