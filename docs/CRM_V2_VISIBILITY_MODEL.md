@@ -102,14 +102,22 @@
 | Adviser override | Yes | No | N/A |
 | Travel away/return dates | Yes | Optional client entry | No client names |
 
-### 2.7 Advocacy
+### 2.7 Advocacy (Phase 09)
 
 | Data | Adviser | Client |
 |------|---------|--------|
-| Individual events | Yes | **No** (unless separate approval) |
-| Current-year score | Yes | **No** |
-| Thank-you outstanding | Yes | No |
-| Referral consent state | Yes | Own consent only |
+| Individual events (`advocacy_events`) | Yes — workspace | **No** (Phase 09 default) |
+| Event `notes`, `referred_person_label` | Yes | **No** |
+| Current-year score (`yearlyScore`) | Yes — workspace summary | **No** |
+| Thank-you / follow-up outstanding | Yes | No |
+| Referral consent aggregate | Yes — summary | Own preferences only |
+| `crm_client_advocacy_preferences` | Read summary flags | Read/write via `/api/preferences/advocacy` |
+| `safeAcknowledgementHistory` | No | Yes (bounded) |
+| Work queue advocacy items | Yes — `priority: normal` always | N/A |
+
+**Feature key:** `crm_v2_advocacy` — single key with `client_visible=true` for client preferences. No `crm_v2_client_advocacy`.
+
+**Prohibited:** advocacy score in relationship list, client DTOs, queue priority, sales leaderboards, Promotions Stage 6 integration.
 
 ### 2.8 Communications
 

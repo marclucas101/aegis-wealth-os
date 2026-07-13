@@ -17,6 +17,7 @@ export const WORK_ITEM_SOURCE_TYPES = [
   "relationship_moment",
   "crm_review_rhythm",
   "client_preference_update",
+  "advocacy_event",
 ] as const;
 
 export type WorkItemSourceType = (typeof WORK_ITEM_SOURCE_TYPES)[number];
@@ -257,6 +258,19 @@ export const WORK_ITEM_SOURCE_REGISTRY: Record<
     routeBuilderKey: "adviserMoments",
     queueSuitability: "include",
     suitabilityReason: "client preference updates requiring adviser review",
+  },
+  advocacy_event: {
+    sourceType: "advocacy_event",
+    category: "task",
+    sourceOwner: "persisted",
+    supportedLifecycleStates: ["pending", "overdue"],
+    adapterName: "advocacyEventAdapter",
+    mayBeBlocking: false,
+    supportsDueDate: true,
+    informationalOnly: false,
+    routeBuilderKey: "adviserAdvocacy",
+    queueSuitability: "include",
+    suitabilityReason: "action-based advocacy follow-ups — never score-ranked",
   },
 };
 

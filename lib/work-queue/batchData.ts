@@ -121,6 +121,17 @@ export type WorkQueueClientPreferenceUpdateRow = {
   createdAt: string;
 };
 
+export type WorkQueueAdvocacyEventRow = {
+  id: string;
+  clientId: string;
+  safeTitle: string;
+  followUpStatus: string;
+  nextFollowUpDate: string | null;
+  consentState: string;
+  requiresAction: boolean;
+  updatedAt: string;
+};
+
 /** Preloaded batch payload — populated once per queue build (no per-item queries). */
 export type WorkQueueBatchData = {
   tasks: AdvisorTaskRecord[];
@@ -137,6 +148,7 @@ export type WorkQueueBatchData = {
   relationshipMoments: WorkQueueRelationshipMomentRow[];
   crmReviewRhythms: WorkQueueCrmReviewRhythmRow[];
   clientPreferenceUpdates: WorkQueueClientPreferenceUpdateRow[];
+  advocacyEvents: WorkQueueAdvocacyEventRow[];
   fileQualityByClientId: Record<string, ClientFileQuality>;
 };
 
@@ -156,6 +168,7 @@ export function createEmptyWorkQueueBatchData(): WorkQueueBatchData {
     relationshipMoments: [],
     crmReviewRhythms: [],
     clientPreferenceUpdates: [],
+    advocacyEvents: [],
     fileQualityByClientId: {},
   };
 }

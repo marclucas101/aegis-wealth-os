@@ -106,6 +106,10 @@ export type ClientNotificationType =
   | "preference_update_submitted"
   | "important_date_approaching"
   | "preference_confirmed"
+  | "advocacy_consent_withdrawn"
+  | "advocacy_referral_follow_up_due"
+  | "advocacy_feedback_submitted"
+  | "testimonial_permission_updated"
   | "adviser_message"
   | "publication_approval_result";
 

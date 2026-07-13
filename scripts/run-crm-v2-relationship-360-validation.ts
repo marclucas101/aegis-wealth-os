@@ -81,6 +81,11 @@ const PHASE08_MOMENTS_MIGRATIONS = [
   "202606290013_phase08_crm_v2_relationship_moments_core.sql",
 ] as const;
 
+const PHASE09_ADVOCACY_MIGRATIONS = [
+  "202606290014_phase09_crm_v2_advocacy_feature_control.sql",
+  "202606290015_phase09_crm_v2_advocacy_core.sql",
+] as const;
+
 const PHASE02_FORBIDDEN_MIGRATION_PATTERNS = [
   /household/i,
   /service_commitments/i,
@@ -1245,6 +1250,7 @@ check("compat: no forbidden phase02 migration patterns in new migrations", () =>
     ...(PHASE06_SERVICE_MIGRATIONS as readonly string[]),
     ...(PHASE07_PROTECTION_MIGRATIONS as readonly string[]),
     ...(PHASE08_MOMENTS_MIGRATIONS as readonly string[]),
+    ...(PHASE09_ADVOCACY_MIGRATIONS as readonly string[]),
   ];
   for (const file of newMigrations) {
     if (phaseScopedMigrations.includes(file)) continue;

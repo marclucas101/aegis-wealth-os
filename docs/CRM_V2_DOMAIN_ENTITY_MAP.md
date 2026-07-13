@@ -173,11 +173,29 @@ Policy identity, insurer, type, status; versions hold coverage, premium, riders,
 
 ### 3.7 `advocacy_events` (Phase 09)
 
-Append-only: `event_type`, `event_date`, `points`, `client_id`, `referred_client_id`, `consent_state`, `thank_you_status`, `source`, `metadata`.
+Canonical advocacy lifecycle: introductions, referrals, testimonials workflow markers, thank-yous, consent events.
+
+| Field group | Examples |
+|-------------|----------|
+| Event | `event_type`, `event_date`, `safe_title`, `consent_state`, `visibility` |
+| Referral | `referred_person_label`, `has_contact_details`, `follow_up_status` |
+| Links | `linked_appointment_id`, `linked_service_request_id`, `linked_relationship_moment_id` |
+| Score | `points`, `score_eligible`, `active` |
+| Integrity | `version`, `idempotency_key`, `source_type`, `source_id` |
+
+Soft deactivate via `active=false` — no hard DELETE for advisers.
 
 ### 3.8 `advocacy_score_config` (Phase 09)
 
-Operator-configurable weights, category caps, max score — versioned.
+Operator-configurable weights, per-type `category_cap`, `max_yearly_score` — advisers SELECT-only.
+
+### 3.8b `crm_client_advocacy_preferences` (Phase 09)
+
+Per-client: `testimonial_consent`, `referral_ask_opt_out`, `permission_to_mention`, `do_not_ask`, `version`.
+
+### 3.8c `advocacy_domain_events` (Phase 09)
+
+Immutable audit: `consent_granted`, `consent_withdrawn`, `advocacy_event_created`, etc. Bounded `safe_metadata`.
 
 ### 3.9 `crm_communication_drafts` (Phase 10)
 

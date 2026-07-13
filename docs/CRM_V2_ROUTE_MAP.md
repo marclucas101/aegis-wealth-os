@@ -15,6 +15,7 @@ Primary nav labels: **Today**, **Relationships**, **Appointments**, **Service**,
 ├── /relationships                  Phase 02
 │   └── /[relationshipId]           Phase 02 — Relationship 360
 │       └── /moments              Phase 08 — relationship moments workspace
+│       └── /advocacy             Phase 09 — advocacy workspace
 ├── /appointments                   Phase 03
 │   ├── /inbox                      Phase 03 — client requests
 │   ├── /[appointmentId]            Phase 03 — detail
@@ -49,6 +50,8 @@ Primary nav labels: **Today**, **Relationships**, **Appointments**, **Service**,
 
 **Phase 08 status:** Relationship moments workspace at `/advisor-v2/relationships/[relationshipId]/moments` (views: upcoming, important dates, review rhythm, client preferences, festive suggestions, data quality). APIs: `GET/POST /api/advisor-v2/relationships/[id]/moments`, moment lifecycle routes, `GET/PATCH .../review-rhythm`. Gated by `crm_v2_relationship_moments` in addition to master + pilot. Client preferences at `/preferences` with `GET/PATCH /api/preferences` and `POST /api/preferences/review-request` gated by `crm_v2_client_profile`.
 
+**Phase 09 status:** Advocacy workspace at `/advisor-v2/relationships/[relationshipId]/advocacy` (views: history, introductions, referrals, testimonials, follow_up, consent, summary). APIs: `GET/POST /api/advisor-v2/relationships/[id]/advocacy`, `GET .../advocacy/summary`, `PATCH .../advocacy/[eventId]`, `POST .../advocacy/[eventId]/transition`. Gated by `crm_v2_advocacy` in addition to master + pilot. Client advocacy preferences at `/preferences/advocacy` with `GET/PATCH /api/preferences/advocacy` and `POST /api/preferences/advocacy/withdraw` gated by `crm_v2_advocacy` (`enabled` + `client_visible`).
+
 ---
 
 ## 2. Relationship 360 tabs
@@ -63,6 +66,7 @@ Route: `/advisor-v2/relationships/[relationshipId]?tab=`
 | `service` | 06 | tasks + commitments |
 | `documents` | 02 | document vault tab |
 | `profile` | 02, 08 | personal + moments |
+| `advocacy` | 09 | introductions, referrals, testimonials (engagement sub-link) |
 
 ---
 
@@ -108,6 +112,7 @@ Route: `/advisor-v2/relationships/[relationshipId]?tab=`
 | `/protection` | Client protection summary (confirmed only) | 07 | `crm_v2_protection_portfolio` |
 | `/protection/[policyId]` | Policy detail + correction request | 07 | `crm_v2_protection_portfolio` |
 | `/preferences` | Client relationship preferences + review request | 08 | `crm_v2_client_profile` |
+| `/preferences/advocacy` | Client advocacy consent preferences | 09 | `crm_v2_advocacy` |
 | `/insights` | Unchanged governed feed | — | existing |
 | `/dashboard`, `/my-plan`, `/roadmap`, etc. | Unchanged | — | existing |
 
@@ -148,7 +153,10 @@ Route: `/advisor-v2/relationships/[relationshipId]?tab=`
 | `/api/advisor-v2/relationships/[id]/moments/[momentId]/acknowledge` | POST | 08 | Acknowledge moment |
 | `/api/advisor-v2/relationships/[id]/moments/[momentId]/deactivate` | POST | 08 | Deactivate moment |
 | `/api/advisor-v2/relationships/[id]/review-rhythm` | GET, PATCH | 08 | Review cadence |
-| `/api/advisor-v2/advocacy/**` | * | 09 | Events, scores |
+| `/api/advisor-v2/relationships/[id]/advocacy` | GET, POST | 09 | Advocacy workspace + create event |
+| `/api/advisor-v2/relationships/[id]/advocacy/summary` | GET | 09 | Summary + yearly score |
+| `/api/advisor-v2/relationships/[id]/advocacy/[eventId]` | PATCH | 09 | Update event |
+| `/api/advisor-v2/relationships/[id]/advocacy/[eventId]/transition` | POST | 09 | Lifecycle transitions |
 | `/api/advisor-v2/communications/drafts` | * | 10 | CRM → governed bridge |
 | `/api/advisor-v2/today` | GET | 11 | Today projection |
 | `/api/advisor-v2/work-queue` | GET | 11 | Queue assembly |
@@ -169,6 +177,8 @@ Route: `/advisor-v2/relationships/[relationshipId]?tab=`
 | `/api/requests/[requestId]/cancel` | POST | 06 | `crm_v2_client_service` |
 | `/api/preferences` | GET, PATCH | 08 | `crm_v2_client_profile` |
 | `/api/preferences/review-request` | POST | 08 | `crm_v2_client_profile` (+ `crm_v2_client_service` for request write) |
+| `/api/preferences/advocacy` | GET, PATCH | 09 | `crm_v2_advocacy` |
+| `/api/preferences/advocacy/withdraw` | POST | 09 | `crm_v2_advocacy` |
 
 **Phase 05 adviser routes:**
 
