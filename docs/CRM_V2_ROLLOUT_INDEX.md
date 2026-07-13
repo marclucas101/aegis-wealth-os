@@ -37,7 +37,7 @@ Today | Relationships | Appointments | Service | Communications | More
 | **07** | `crm-v2-07-protection-portfolio` | Protection portfolio + verification | **Complete** — see Phase 07 docs below |
 | **08** | `crm-v2-08-relationship-moments` | Moments engine (birthdays, holidays, review rhythm) | **Implemented** — see Phase 08 docs below |
 | **09** | `crm-v2-09-advocacy` | Advocacy event tracking + yearly score | **Implemented** — see Phase 09 docs below |
-| **10** | `crm-v2-10-communications` | CRM → governed communications bridge | Pending |
+| **10** | `crm-v2-10-communications` | CRM → governed communications bridge | **Implemented** — see Phase 10 docs below |
 | **11** | `crm-v2-11-today-work-queue` | Today homepage + unified work queue | Pending |
 | **12** | `crm-v2-12-reports-operations` | Reports + operator diagnostics | Pending |
 | **13** | `crm-v2-13-pilot` | Controlled pilot | Pending |

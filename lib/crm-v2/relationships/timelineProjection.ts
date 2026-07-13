@@ -10,6 +10,7 @@ import {
 } from "@/lib/crm-v2/relationships/routes";
 import { buildMomentsWorkspaceHref } from "@/lib/crm-v2/moments/routes";
 import { buildAdvocacyWorkspaceHref } from "@/lib/crm-v2/advocacy/routes";
+import { buildCommunicationsWorkspaceHref } from "@/lib/crm-v2/communications/routes";
 import { createCrmMomentsAdmin } from "@/lib/crm-v2/moments/db";
 import type { CrmTimelineEntry } from "@/lib/crm-v2/relationships/types";
 
@@ -42,6 +43,26 @@ function momentEventTitle(eventType: string): string {
     review_requested: "Review requested",
   };
   return labels[eventType] ?? "Relationship moment activity";
+}
+
+function communicationEventTitle(eventType: string): string {
+  const titles: Record<string, string> = {
+    draft_created: "Communication draft created",
+    template_rendered: "Template applied to draft",
+    draft_updated: "Communication draft updated",
+    review_requested: "Communication submitted for review",
+    approved: "Communication approved",
+    sent_or_logged: "Communication sent or logged",
+    failed: "Communication delivery failed",
+    archived: "Communication archived",
+    client_replied: "Client replied to message",
+    preference_conflict_recorded: "Communication preference conflict",
+    follow_up_scheduled: "Communication follow-up scheduled",
+    follow_up_completed: "Communication follow-up completed",
+    cancelled: "Communication cancelled",
+    received: "Communication received",
+  };
+  return titles[eventType] ?? "Communication activity";
 }
 
 function advocacyEventTitle(eventType: string): string {
@@ -79,6 +100,7 @@ export async function loadCrmTimelineProjection(
     documentsResult,
     momentEventsResult,
     advocacyEventsResult,
+    communicationEventsResult,
   ] = await Promise.all([
     admin
       .from("meeting_sessions")
@@ -126,6 +148,12 @@ export async function loadCrmTimelineProjection(
       .limit(CRM_V2_TIMELINE_MAX_ENTRIES),
     admin
       .from("advocacy_domain_events")
+      .select("id, event_type, occurred_at, entity_type, entity_id")
+      .eq("client_id", clientId)
+      .order("occurred_at", { ascending: false })
+      .limit(CRM_V2_TIMELINE_MAX_ENTRIES),
+    admin
+      .from("crm_communication_domain_events")
       .select("id, event_type, occurred_at, entity_type, entity_id")
       .eq("client_id", clientId)
       .order("occurred_at", { ascending: false })
@@ -280,6 +308,25 @@ export async function loadCrmTimelineProjection(
       summary: "Advocacy activity",
       sourceLink: isAllowlistedRelationshipLink(href) ? href : null,
       visibility: row.event_type.startsWith("consent_") ? "client_visible" : "adviser",
+    });
+  }
+
+  for (const row of (communicationEventsResult.data ?? []) as Array<{
+    id: string;
+    event_type: string;
+    occurred_at: string;
+    entity_type: string;
+    entity_id: string;
+  }>) {
+    const href = `${buildCommunicationsWorkspaceHref()}?clientId=${clientId}`;
+    entries.push({
+      eventId: `communication_domain_event:${row.id}`,
+      eventType: "communication",
+      occurredAt: row.occurred_at,
+      title: communicationEventTitle(row.event_type),
+      summary: "Communication activity",
+      sourceLink: isAllowlistedRelationshipLink(href) ? href : null,
+      visibility: row.event_type === "client_replied" ? "client_visible" : "adviser",
     });
   }
 

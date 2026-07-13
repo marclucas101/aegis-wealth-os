@@ -30,7 +30,12 @@ import {
   CRM_ADVOCACY_PHASE_NOTICE,
   loadCrmAdvocacyEngagementLink,
 } from "@/lib/crm-v2/relationships/advocacyProjection";
+import {
+  CRM_COMMUNICATIONS_PHASE_NOTICE,
+  loadCrmCommunicationsEngagementLink,
+} from "@/lib/crm-v2/relationships/communicationsProjection";
 import { loadCrmAdvocacyEngagementSummary } from "@/lib/crm-v2/advocacy/advocacy";
+import { loadCrmCommunicationsEngagementSummary } from "@/lib/crm-v2/communications/communications";
 import { loadCrmTimelineProjection } from "@/lib/crm-v2/relationships/timelineProjection";
 import type {
   CrmFinancialPlanLink,
@@ -447,7 +452,7 @@ export async function loadCrmRelationship360(
   const context = await loadSupplementaryContext(client.id, client.advisor_user_id);
   const warnings: string[] = [...context.warnings];
 
-  const [timelineResult, serviceResult, documentsResult, protectionLink, protectionNotice, momentsLink, momentsSummary, advocacyLink, advocacySummary] =
+  const [timelineResult, serviceResult, documentsResult, protectionLink, protectionNotice, momentsLink, momentsSummary, advocacyLink, advocacySummary, communicationsLink, communicationsSummary] =
     await Promise.all([
     loadCrmTimelineProjection(client.id).catch(() => {
       warnings.push("timeline_unavailable");
@@ -485,6 +490,12 @@ export async function loadCrmRelationship360(
       statusLabel: CRM_NOT_ESTABLISHED_LABEL,
     })),
     loadCrmAdvocacyEngagementSummary(client.id).catch(() => CRM_NOT_ESTABLISHED_LABEL),
+    loadCrmCommunicationsEngagementLink(client.id).catch(() => ({
+      label: "Communications",
+      href: `/advisor-v2/communications?clientId=${client.id}`,
+      statusLabel: CRM_NOT_ESTABLISHED_LABEL,
+    })),
+    loadCrmCommunicationsEngagementSummary(client.id).catch(() => CRM_NOT_ESTABLISHED_LABEL),
   ]);
 
   const header = buildHeader(client, context, context.adviserName);
@@ -498,7 +509,7 @@ export async function loadCrmRelationship360(
       protectionNotice,
     },
     financialPlan: {
-      links: [...buildFinancialPlanLinks(client.id, context, protectionLink), momentsLink, advocacyLink],
+      links: [...buildFinancialPlanLinks(client.id, context, protectionLink), momentsLink, advocacyLink, communicationsLink],
     },
     engagement: timelineResult,
     service: {
@@ -518,6 +529,8 @@ export async function loadCrmRelationship360(
         CRM_MOMENTS_PHASE_NOTICE,
         "Advocacy tracking — Phase 09",
         CRM_ADVOCACY_PHASE_NOTICE,
+        "Communications — Phase 10",
+        CRM_COMMUNICATIONS_PHASE_NOTICE,
         "Household grouping — deferred per blueprint",
       ],
     },

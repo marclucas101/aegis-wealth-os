@@ -18,6 +18,7 @@ export const CRM_V2_RELATIONSHIP_MOMENTS_FEATURE_KEY =
 export const CRM_V2_CLIENT_PROFILE_FEATURE_KEY =
   "crm_v2_client_profile" as const;
 export const CRM_V2_ADVOCACY_FEATURE_KEY = "crm_v2_advocacy" as const;
+export const CRM_V2_COMMUNICATIONS_FEATURE_KEY = "crm_v2_communications" as const;
 
 export const CRM_V2_PILOT_USER_IDS_ENV = "CRM_V2_PILOT_USER_IDS" as const;
 
@@ -68,3 +69,9 @@ export const CRM_V2_ADVOCACY_MAX_EVENTS = 50;
 export const CRM_V2_ADVOCACY_MAX_TITLE_LENGTH = 200;
 export const CRM_V2_ADVOCACY_DEFAULT_PAGE_SIZE = 20;
 export const CRM_V2_ADVOCACY_SUMMARY_YEAR_WINDOW = 1;
+
+/** Communications bounds (Phase 10). */
+export const CRM_V2_COMMUNICATIONS_MAX_ITEMS = 50;
+export const CRM_V2_COMMUNICATIONS_MAX_SUBJECT_LENGTH = 200;
+export const CRM_V2_COMMUNICATIONS_MAX_BODY_LENGTH = 8000;
+export const CRM_V2_COMMUNICATIONS_DEFAULT_PAGE_SIZE = 20;
