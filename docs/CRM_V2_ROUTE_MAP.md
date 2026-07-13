@@ -32,8 +32,8 @@ Primary nav labels: **Today**, **Relationships**, **Appointments**, **Service**,
 │   ├── /drafts
 │   └── /history
 └── /more                           Phase 01 shell
-    ├── /reports                    Phase 12
-    ├── /operations                 Phase 12
+    ├── /reports                    Phase 12 — bounded adviser reports (projection)
+    ├── /operations                 Phase 12 — ops diagnostics (projection)
     ├── /templates                  Phase 10
     └── /settings                   Phase 01 (profile link-out)
 ```

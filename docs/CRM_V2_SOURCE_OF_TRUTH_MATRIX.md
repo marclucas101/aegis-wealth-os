@@ -93,6 +93,11 @@
 | `crm_v2_appointments_adviser` | Phase 03 adviser appointment module | Default disabled — migration `202606290003` |
 | `advisor_*` DB names | `adviser` UI copy | No rename migration |
 
+| Today workspace | **PROJ** | — | `loadAdviserTodayProjection` — no `today_items` table | 11 |
+| Adviser reports | **PROJ** | — | `loadAdviserReportsProjection` — no `report_results` table | 12 |
+| Operations diagnostics | **PROJ** | — | `loadAdviserOperationsProjection` — no `operations_items` table | 12 |
+| Feature controls (read) | **SOT REUSE** | `platform_feature_controls` | Operations visibility only — no new authority | 12 |
+
 ---
 
 ## Cash flow / goals dual SOT

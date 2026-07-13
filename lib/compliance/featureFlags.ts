@@ -198,6 +198,16 @@ export const FEATURE_DEFAULTS: Record<
     client_visible: false,
     adviser_visible: true,
   },
+  crm_v2_reports: {
+    enabled: false,
+    client_visible: false,
+    adviser_visible: true,
+  },
+  crm_v2_operations: {
+    enabled: false,
+    client_visible: false,
+    adviser_visible: true,
+  },
   adviser_work_queue: {
     enabled: false,
     client_visible: false,

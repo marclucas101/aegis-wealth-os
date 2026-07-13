@@ -17,6 +17,8 @@ import {
   CRM_V2_ADVOCACY_FEATURE_KEY,
   CRM_V2_COMMUNICATIONS_FEATURE_KEY,
   CRM_V2_TODAY_FEATURE_KEY,
+  CRM_V2_REPORTS_FEATURE_KEY,
+  CRM_V2_OPERATIONS_FEATURE_KEY,
 } from "@/lib/crm-v2/constants";
 import { loadFeatureControls } from "@/lib/compliance/featureFlags";
 import {
@@ -684,6 +686,84 @@ export async function assertCrmV2TodayAccess(): Promise<CrmV2TodayAccessResult> 
     masterEnabled: true,
     pilotModeEnabled: true,
     todayEnabled: true,
+  };
+}
+
+export type CrmV2ReportsAccessDeniedReason = CrmV2AccessDeniedReason;
+
+export type CrmV2ReportsAccessResult =
+  | { allowed: false; reason: CrmV2ReportsAccessDeniedReason; requestId: string }
+  | {
+      allowed: true;
+      authUser: User;
+      user: AppUserRow;
+      requestId: string;
+      masterEnabled: true;
+      pilotModeEnabled: true;
+      reportsEnabled: true;
+    };
+
+/**
+ * Central gate for CRM V2 adviser reports. Adviser-scoped; admin book-wide deferred in projection.
+ */
+export async function assertCrmV2ReportsAccess(): Promise<CrmV2ReportsAccessResult> {
+  const base = await assertCrmV2Access();
+  if (!base.allowed) {
+    return { allowed: false, reason: base.reason, requestId: base.requestId };
+  }
+
+  const reportsEnabled = await isFeatureEnabled(CRM_V2_REPORTS_FEATURE_KEY);
+  if (!reportsEnabled) {
+    return { allowed: false, reason: "feature_disabled", requestId: base.requestId };
+  }
+
+  return {
+    allowed: true,
+    authUser: base.authUser,
+    user: base.user,
+    requestId: base.requestId,
+    masterEnabled: true,
+    pilotModeEnabled: true,
+    reportsEnabled: true,
+  };
+}
+
+export type CrmV2OperationsAccessDeniedReason = CrmV2AccessDeniedReason;
+
+export type CrmV2OperationsAccessResult =
+  | { allowed: false; reason: CrmV2OperationsAccessDeniedReason; requestId: string }
+  | {
+      allowed: true;
+      authUser: User;
+      user: AppUserRow;
+      requestId: string;
+      masterEnabled: true;
+      pilotModeEnabled: true;
+      operationsEnabled: true;
+    };
+
+/**
+ * Central gate for CRM V2 operations diagnostics. Adviser and admin roles via requireAdvisorAccess.
+ */
+export async function assertCrmV2OperationsAccess(): Promise<CrmV2OperationsAccessResult> {
+  const base = await assertCrmV2Access();
+  if (!base.allowed) {
+    return { allowed: false, reason: base.reason, requestId: base.requestId };
+  }
+
+  const operationsEnabled = await isFeatureEnabled(CRM_V2_OPERATIONS_FEATURE_KEY);
+  if (!operationsEnabled) {
+    return { allowed: false, reason: "feature_disabled", requestId: base.requestId };
+  }
+
+  return {
+    allowed: true,
+    authUser: base.authUser,
+    user: base.user,
+    requestId: base.requestId,
+    masterEnabled: true,
+    pilotModeEnabled: true,
+    operationsEnabled: true,
   };
 }
 
