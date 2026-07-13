@@ -501,15 +501,16 @@ check("ui placeholder: foundation component has no fetch", () => {
 });
 
 check("ui placeholder: landing has no fake client totals", () => {
-  const landing = doc("app/advisor-v2/page.tsx");
+  const landing = doc("components/aegis/advisor-v2/AdviserCrmV2LandingContent.tsx");
   assert(!landing.includes("client total"), "fake totals");
   assert(!/\b\d+\s+clients?\b/i.test(landing), "numeric client count");
 });
 
 check("ui placeholder: landing is pilot home hub", () => {
-  const landing = doc("app/advisor-v2/page.tsx");
+  const landing = doc("components/aegis/advisor-v2/AdviserCrmV2LandingContent.tsx");
   assert(landing.includes("CRM_V2_PRIMARY_NAV"), "primary nav links on landing");
-  assert(!landing.includes('redirect("/advisor-v2/today")'), "no blind redirect to today");
+  const alias = doc("app/advisor-v2/page.tsx");
+  assert(alias.includes("AdviserCrmV2LandingContent"), "alias landing uses shared content");
 });
 
 // --- Compatibility (10 checks) ---

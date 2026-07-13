@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import CrmV2PhaseNotice from "@/components/aegis/advisor-v2/CrmV2PhaseNotice";
+import { CRM_V2_CLASSIC_ADVISER_PATH } from "@/lib/crm-v2/navigation";
 
 interface CrmV2FoundationEmptyStateProps {
   moduleName: string;
@@ -57,7 +58,7 @@ export default function CrmV2FoundationEmptyState({
             Go to Today
           </Link>
           <Link
-            href="/advisor"
+            href={CRM_V2_CLASSIC_ADVISER_PATH}
             className="inline-flex rounded-sm border border-[#F3F1EA]/12 px-4 py-2 text-[10px] font-medium uppercase tracking-[0.14em] text-[#F3F1EA]/50 transition-colors hover:border-[#F3F1EA]/25 hover:text-[#F3F1EA]/70"
           >
             Classic adviser workspace

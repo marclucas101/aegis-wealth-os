@@ -28,7 +28,7 @@ export default async function CrmV2PilotEntryBanner() {
           </p>
         </div>
         <Link
-          href="/advisor-v2"
+          href="/advisor"
           className="inline-flex shrink-0 items-center justify-center rounded-sm border border-[#D1A866]/35 bg-[#D1A866]/12 px-5 py-2.5 text-[10px] font-medium uppercase tracking-[0.16em] text-[#D1A866] transition-colors hover:border-[#D1A866]/50 hover:bg-[#D1A866]/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D1A866]/60"
         >
           Open CRM V2 Pilot

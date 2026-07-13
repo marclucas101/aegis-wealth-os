@@ -5,8 +5,12 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import AuthStatus from "@/components/aegis/auth/AuthStatus";
+import CrmV2AdviserParityNotice from "@/components/aegis/advisor-v2/CrmV2AdviserParityNotice";
 import CrmV2PilotBadge from "@/components/aegis/advisor-v2/CrmV2PilotBadge";
 import {
+  CRM_V2_CLASSIC_ADVISER_PATH,
+  CRM_V2_HOME_PATH,
+  CRM_V2_LEGACY_TOOLS_NAV,
   CRM_V2_MORE_NAV,
   CRM_V2_PRIMARY_NAV,
   isCrmV2NavActive,
@@ -21,17 +25,20 @@ function NavLink({
   href,
   label,
   active,
+  description,
   onNavigate,
 }: {
   href: string;
   label: string;
   active: boolean;
+  description?: string;
   onNavigate?: () => void;
 }) {
   return (
     <Link
       href={href}
       onClick={onNavigate}
+      title={description}
       aria-current={active ? "page" : undefined}
       className={`block rounded-sm px-3 py-2 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D1A866]/60 ${
         active
@@ -65,16 +72,21 @@ export default function AdviserCrmV2Shell({
     };
   }, [menuOpen]);
 
+  const allNavItems = [
+    ...CRM_V2_PRIMARY_NAV,
+    ...CRM_V2_MORE_NAV,
+    ...CRM_V2_LEGACY_TOOLS_NAV,
+  ];
+
   const resolvedTitle =
     pageTitle ??
-    (pathname === "/advisor-v2"
+    (pathname === CRM_V2_HOME_PATH || pathname === "/advisor-v2"
       ? "Adviser workspace"
-      : [...CRM_V2_PRIMARY_NAV, ...CRM_V2_MORE_NAV].find((item) =>
-          isCrmV2NavActive(pathname, item.href),
-        )?.label ?? "Adviser CRM V2");
+      : allNavItems.find((item) => isCrmV2NavActive(pathname, item.href))
+          ?.label ?? "Adviser CRM V2");
 
-  const moreActive = CRM_V2_MORE_NAV.some((item) =>
-    isCrmV2NavActive(pathname, item.href),
+  const moreActive = [...CRM_V2_MORE_NAV, ...CRM_V2_LEGACY_TOOLS_NAV].some(
+    (item) => isCrmV2NavActive(pathname, item.href),
   );
 
   const sidebar = (
@@ -93,9 +105,9 @@ export default function AdviserCrmV2Shell({
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label="CRM V2 primary">
         <NavLink
-          href="/advisor-v2"
+          href={CRM_V2_HOME_PATH}
           label="Home"
-          active={pathname === "/advisor-v2"}
+          active={isCrmV2NavActive(pathname, CRM_V2_HOME_PATH)}
           onNavigate={() => setMenuOpen(false)}
         />
         {CRM_V2_PRIMARY_NAV.map((item) => (
@@ -124,23 +136,43 @@ export default function AdviserCrmV2Shell({
             </span>
           </button>
           {moreOpen ? (
-            <div className="mt-1 space-y-1 pl-2" aria-label="CRM V2 more">
-              {CRM_V2_MORE_NAV.map((item) => (
-                <NavLink
-                  key={item.href}
-                  href={item.href}
-                  label={item.label}
-                  active={isCrmV2NavActive(pathname, item.href)}
-                  onNavigate={() => setMenuOpen(false)}
-                />
-              ))}
+            <div className="mt-1 space-y-3 pl-2" aria-label="CRM V2 more">
+              <div className="space-y-1">
+                <p className="px-3 pt-1 text-[9px] font-medium uppercase tracking-[0.18em] text-[#F3F1EA]/28">
+                  CRM V2
+                </p>
+                {CRM_V2_MORE_NAV.map((item) => (
+                  <NavLink
+                    key={item.href}
+                    href={item.href}
+                    label={item.label}
+                    active={isCrmV2NavActive(pathname, item.href)}
+                    onNavigate={() => setMenuOpen(false)}
+                  />
+                ))}
+              </div>
+              <div className="space-y-1">
+                <p className="px-3 pt-1 text-[9px] font-medium uppercase tracking-[0.18em] text-[#F3F1EA]/28">
+                  Classic tools
+                </p>
+                {CRM_V2_LEGACY_TOOLS_NAV.map((item) => (
+                  <NavLink
+                    key={`${item.href}-${item.label}`}
+                    href={item.href}
+                    label={item.label}
+                    description={item.description}
+                    active={isCrmV2NavActive(pathname, item.href)}
+                    onNavigate={() => setMenuOpen(false)}
+                  />
+                ))}
+              </div>
             </div>
           ) : null}
         </div>
       </nav>
       <div className="space-y-2 border-t border-[#D1A866]/10 p-3">
         <Link
-          href="/advisor"
+          href={CRM_V2_CLASSIC_ADVISER_PATH}
           className="block rounded-sm px-3 py-2 text-xs font-light text-[#F3F1EA]/45 transition-colors hover:bg-[#10283A]/50 hover:text-[#F3F1EA]/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D1A866]/60"
         >
           ← Back to classic adviser workspace
@@ -194,7 +226,7 @@ export default function AdviserCrmV2Shell({
             </div>
             <div className="hidden items-center gap-4 lg:flex">
               <Link
-                href="/advisor"
+                href={CRM_V2_CLASSIC_ADVISER_PATH}
                 className="text-xs font-light text-[#F3F1EA]/40 transition-colors hover:text-[#F3F1EA]/65"
               >
                 Classic workspace
@@ -207,6 +239,7 @@ export default function AdviserCrmV2Shell({
             id="crm-v2-main"
             className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10"
           >
+            <CrmV2AdviserParityNotice />
             {children}
           </main>
         </div>

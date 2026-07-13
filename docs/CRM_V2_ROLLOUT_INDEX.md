@@ -41,7 +41,7 @@ Today | Relationships | Appointments | Service | Communications | More
 | **11** | `crm-v2-11-today-work-queue` | Today homepage + unified work queue | **Complete** — see Phase 11 docs |
 | **12** | `crm-v2-12-reports-operations` | Reports + operator diagnostics | **Complete** — see Phase 12 docs |
 | **13** | `crm-v2-13-pilot-activation` | Staging pilot readiness (runbooks, diagnostics, acceptance) | **Complete** — see Phase 13 docs |
-| **14** | `crm-v2-14-cutover` | `/advisor` → CRM V2 cutover | Pending |
+| **14** | `crm-v2-14-cutover` | `/advisor` → CRM V2 workspace + legacy parity nav | **Complete** — see Phase 14 docs |
 | **15** | `crm-v2-15-legacy-retirement` | Legacy adviser portal retirement (conditional) | Deferred |
 
 ---
@@ -282,6 +282,19 @@ Today | Relationships | Appointments | Service | Communications | More
 | Document | Purpose |
 |----------|---------|
 | [CRM_V2_PHASE_13_5_PILOT_NAVIGATION_POLISH.md](./CRM_V2_PHASE_13_5_PILOT_NAVIGATION_POLISH.md) | Entry point, shell polish, empty states, gating, QA, rollback |
+
+### Phase 13.6 — pilot default adviser cutover
+
+| Document | Purpose |
+|----------|---------|
+| [CRM_V2_PHASE_13_6_PILOT_DEFAULT_ADVISER_CUTOVER.md](./CRM_V2_PHASE_13_6_PILOT_DEFAULT_ADVISER_CUTOVER.md) | `/advisor` redirect for pilot advisers, `/advisor/classic` fallback, loop-safe links |
+
+### Phase 14 — adviser workspace replacement
+
+| Document | Purpose |
+|----------|---------|
+| [CRM_V2_PHASE_14_ADVISER_WORKSPACE_REPLACEMENT.md](./CRM_V2_PHASE_14_ADVISER_WORKSPACE_REPLACEMENT.md) | `/advisor` CRM V2 primary entry, classic fallback, safety rules, QA, rollback |
+| [CRM_V2_PHASE_14_ADVISER_FEATURE_PARITY_INVENTORY.md](./CRM_V2_PHASE_14_ADVISER_FEATURE_PARITY_INVENTORY.md) | Legacy feature audit table and CRM V2 navigation mapping |
 
 ---
 

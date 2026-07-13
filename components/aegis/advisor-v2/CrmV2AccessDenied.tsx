@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { CRM_V2_CLASSIC_ADVISER_PATH } from "@/lib/crm-v2/navigation";
+
 export default function CrmV2AccessDenied() {
   return (
     <div className="relative overflow-hidden rounded-sm border border-[#D1A866]/20 bg-[#10283A]/50 p-8 sm:p-12">
@@ -20,7 +22,7 @@ export default function CrmV2AccessDenied() {
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
-            href="/advisor"
+            href={CRM_V2_CLASSIC_ADVISER_PATH}
             className="inline-flex rounded-sm border border-[#D1A866]/40 bg-[#D1A866]/10 px-6 py-2.5 text-[11px] font-medium uppercase tracking-[0.14em] text-[#D1A866] transition-colors hover:bg-[#D1A866]/20"
           >
             Open classic adviser workspace

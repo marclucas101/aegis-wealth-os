@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import RouteErrorFallback from "@/components/aegis/RouteErrorFallback";
+import { CRM_V2_CLASSIC_ADVISER_PATH } from "@/lib/crm-v2/navigation";
 
 export default function AdviserCrmV2Error({
   error,
@@ -30,10 +31,10 @@ export default function AdviserCrmV2Error({
       ) : null}
       <div className="mt-4 text-center">
         <Link
-          href="/advisor"
+          href={CRM_V2_CLASSIC_ADVISER_PATH}
           className="text-sm text-[#D1A866] hover:underline"
         >
-          Return to adviser portal
+          Return to classic adviser workspace
         </Link>
       </div>
     </div>
