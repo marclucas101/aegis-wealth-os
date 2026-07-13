@@ -45,7 +45,8 @@ Today | Relationships | Appointments | Service | Communications | More
 | **15** | `crm-v2-15-adviser-rebuild` | Adviser workspace rebuild + client-safe cutover | **Complete** — see Phase 15 docs |
 | **15.1** | `crm-v2-15-1-qa-alignment` | Shell/Today validation aligned with Phase 15 routing | **Complete** — see Phase 15 docs § 15.1 |
 | **16** | `crm-v2-16-route-consolidation` | Adviser-native `/advisor` routes + `/advisor-v2` compatibility redirects | **Complete** — see Phase 16 docs |
-| **17** | `crm-v2-17-legacy-retirement` | Legacy adviser portal retirement (conditional) | Deferred |
+| **17** | `crm-v2-17-burn-in-hardening` | Adviser burn-in regression hardening + client-safe preflight | **Ready for adviser-only burn-in after QA passes** — see Phase 17 docs |
+| **18** | `crm-v2-18-legacy-retirement` | Legacy adviser portal retirement (conditional) | Deferred |
 
 ---
 
@@ -251,6 +252,7 @@ Today | Relationships | Appointments | Service | Communications | More
 | `npm run qa:crm-v2-today` | 11 |
 | `npm run qa:crm-v2-reports-operations` | 12 |
 | `npm run qa:crm-v2-pilot-readiness` | 13 |
+| `npm run qa:adviser-workspace-regression` | 17 |
 
 ---
 
@@ -311,6 +313,12 @@ Today | Relationships | Appointments | Service | Communications | More
 |----------|---------|
 | [CRM_V2_PHASE_16_ADVISER_ROUTE_CONSOLIDATION_AUDIT.md](./CRM_V2_PHASE_16_ADVISER_ROUTE_CONSOLIDATION_AUDIT.md) | Route conflict audit and preservation plan |
 | [CRM_V2_PHASE_16_ADVISER_ROUTE_CONSOLIDATION.md](./CRM_V2_PHASE_16_ADVISER_ROUTE_CONSOLIDATION.md) | Canonical routes, redirects, QA, rollback |
+
+### Phase 17 — adviser burn-in hardening
+
+| Document | Purpose |
+|----------|---------|
+| [CRM_V2_PHASE_17_ADVISER_BURN_IN_HARDENING.md](./CRM_V2_PHASE_17_ADVISER_BURN_IN_HARDENING.md) | Burn-in runbook, client safety freeze, regression QA, go/no-go |
 
 ---
 

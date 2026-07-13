@@ -266,6 +266,42 @@ check("package script registered", () => {
   assert(read("package.json").includes("qa:crm-v2-today"), "npm script");
 });
 
+check("phase17 nav: primary routes canonical /advisor", () => {
+  const nav = read("lib/crm-v2/navigation.ts");
+  const primaryBlock = nav.slice(nav.indexOf("CRM_V2_PRIMARY_NAV"), nav.indexOf("CRM_V2_MORE_NAV"));
+  assert(!primaryBlock.includes('href: "/advisor-v2'), "alias in primary nav");
+  assert(primaryBlock.includes("CRM_V2_REPORTS_PATH"), "reports canonical");
+  assert(primaryBlock.includes("CRM_V2_OPERATIONS_PATH"), "operations canonical");
+});
+
+check("phase17 nav: Communications under More not primary", () => {
+  const nav = read("lib/crm-v2/navigation.ts");
+  const primaryBlock = nav.slice(nav.indexOf("CRM_V2_PRIMARY_NAV"), nav.indexOf("CRM_V2_MORE_NAV"));
+  const moreBlock = nav.slice(nav.indexOf("CRM_V2_MORE_NAV"), nav.indexOf("CRM_V2_TOOLS_NAV_GROUPS"));
+  assert(!primaryBlock.includes('label: "Communications"'), "Communications in primary");
+  assert(moreBlock.includes('label: "Communications"'), "Communications in more");
+});
+
+check("phase17 routing: today route builders use canonical paths", () => {
+  const routes = read("lib/crm-v2/today/routes.ts");
+  assert(routes.includes("CRM_V2_TODAY_PATH"), "today canonical");
+  assert(routes.includes("CRM_V2_SERVICE_PATH"), "service canonical");
+  assert(routes.includes("CRM_V2_RELATIONSHIPS_PATH"), "relationships canonical");
+  assert(routes.includes('return "/advisor/operations/google-calendar"'), "ops calendar canonical");
+  const builderBlock = routes.slice(routes.indexOf("export function buildTodayHref"));
+  assert(!builderBlock.includes('return "/advisor-v2'), "builders must not return alias paths");
+});
+
+check("phase17 routing: /advisor-v2 alias redirects not duplicate pages", () => {
+  const alias = read("app/advisor-v2/today/page.tsx");
+  assert(alias.includes("redirectToCanonicalAdviserRoute"), "alias redirects");
+  assert(!alias.includes("AdviserTodayClient"), "alias must not render today UI");
+});
+
+check("phase17 safety: classic fallback /advisor/classic exists", () => {
+  assert(existsSync(resolve(ROOT, "app/advisor/classic/page.tsx")), "classic missing");
+});
+
 const topics = [
   "existing today audit",
   "projection-only model",

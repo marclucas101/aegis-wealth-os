@@ -573,6 +573,63 @@ check("routing: shell home link uses CRM_V2_HOME_PATH", () => {
   assert(shell.includes('label="Home"'), "home nav item missing");
 });
 
+// --- Phase 17 navigation regression (8 checks) ---
+
+check("phase17 nav: primary hrefs canonical /advisor not /advisor-v2", () => {
+  const primaryBlock = doc("lib/crm-v2/navigation.ts").slice(
+    doc("lib/crm-v2/navigation.ts").indexOf("CRM_V2_PRIMARY_NAV"),
+    doc("lib/crm-v2/navigation.ts").indexOf("CRM_V2_MORE_NAV"),
+  );
+  assert(!primaryBlock.includes('href: "/advisor-v2'), "primary nav uses alias paths");
+  assert(primaryBlock.includes("CRM_V2_APPOINTMENTS_PATH"), "appointments uses workspace prefix");
+});
+
+check("phase17 nav: tools preserve legacy protection-report and clients roster", () => {
+  const tools = doc("lib/crm-v2/navigation.ts");
+  assert(tools.includes('href: "/advisor/protection-report"'), "protection report tool");
+  assert(tools.includes('href: "/advisor/clients"'), "clients roster tool");
+  assert(tools.includes('href: "/advisor/feedback"'), "feedback tool");
+});
+
+check("phase17 nav: client-context tools route to roster not fake IDs", () => {
+  const toolsBlock = doc("lib/crm-v2/navigation.ts").slice(
+    doc("lib/crm-v2/navigation.ts").indexOf("CRM_V2_TOOLS_NAV_GROUPS"),
+  );
+  assert(!UUID_RE.test(toolsBlock), "UUID in tools nav");
+  assert(!toolsBlock.includes("/advisor/clients/"), "deep client ID in tools nav");
+});
+
+check("phase17 nav: /advisor-v2 alias only in NAV_PATH_ALIASES not primary hrefs", () => {
+  const nav = doc("lib/crm-v2/navigation.ts");
+  const primaryBlock = nav.slice(nav.indexOf("CRM_V2_PRIMARY_NAV"), nav.indexOf("CRM_V2_MORE_NAV"));
+  assert(!primaryBlock.includes("/advisor-v2"), "alias in primary nav hrefs");
+  assert(nav.includes("NAV_PATH_ALIASES"), "alias map for active state");
+});
+
+check("phase17 nav: classic fallback reachable from shell", () => {
+  const shell = doc("components/aegis/advisor-v2/AdviserCrmV2Shell.tsx");
+  assert(
+    shell.includes("CRM_V2_CLASSIC_ADVISER_PATH") || shell.includes("/advisor/classic"),
+    "classic link missing",
+  );
+});
+
+check("phase17 nav: shell has no visible /advisor-v2 home link", () => {
+  const shell = doc("components/aegis/advisor-v2/AdviserCrmV2Shell.tsx");
+  assert(!shell.includes('href="/advisor-v2"'), "visible alias home link");
+});
+
+check("phase17 nav: Google Calendar Operations canonical path in tools", () => {
+  const nav = doc("lib/crm-v2/navigation.ts");
+  assert(nav.includes("CRM_V2_OPERATIONS_GOOGLE_CALENDAR_PATH"), "canonical ops calendar path");
+  assert(!nav.includes('href: "/advisor-v2/operations'), "alias in tools nav");
+});
+
+check("phase17 nav: legacy appointments preserved at /advisor/appointments", () => {
+  assert(existsSync("app/advisor/appointments/page.tsx"), "legacy appointments missing");
+  assert(doc("lib/crm-v2/navigation.ts").includes('href: "/advisor/appointments"'), "legacy link in tools");
+});
+
 // --- UI placeholders (12 checks) ---
 
 for (const route of ROUTE_PAGES) {
