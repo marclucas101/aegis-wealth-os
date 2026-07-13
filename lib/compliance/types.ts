@@ -125,6 +125,8 @@ export type PlatformFeatureKey =
   | "crm_v2_advocacy"
   | "crm_v2_communications"
   | "crm_v2_today"
+  | "crm_v2_reports"
+  | "crm_v2_operations"
   | "adviser_work_queue";
 
 export const PLATFORM_FEATURE_KEYS: readonly PlatformFeatureKey[] = [
@@ -165,6 +167,8 @@ export const PLATFORM_FEATURE_KEYS: readonly PlatformFeatureKey[] = [
   "crm_v2_advocacy",
   "crm_v2_communications",
   "crm_v2_today",
+  "crm_v2_reports",
+  "crm_v2_operations",
   "adviser_work_queue",
 ] as const;
 

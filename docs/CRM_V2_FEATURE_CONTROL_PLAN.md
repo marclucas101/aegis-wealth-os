@@ -85,6 +85,7 @@ Enabling `crm_v2_master` alone does not grant book-wide access.
 | 09 | Seed `crm_v2_advocacy` — disabled — **implemented** `202606290014_phase09_crm_v2_advocacy_feature_control.sql` (not applied). Single key: `adviser_visible=true`, `client_visible=true`. No separate `crm_v2_client_advocacy`. |
 | 10 | Seed `crm_v2_communications` — disabled — **implemented** `202606290016` (not applied) |
 | 11 | Seed `crm_v2_today`, `adviser_work_queue` — disabled — **implemented** `202606290018` (not applied) |
+| 12 | Seed `crm_v2_reports`, `crm_v2_operations` — disabled — **implemented** `202606290019` (not applied) |
 | ... | One seed per sub-flag at implementation phase |
 | 14 | Seed cutover flags — disabled until operator |
 
@@ -144,7 +145,7 @@ No schema deletion on rollback.
 ## 8. Admin API
 
 Existing: `PATCH /api/admin/feature-controls`  
-Phase 12 may add minimal UI; until then operator uses API/SQL per existing platform pattern.
+Phase 12 Reports and Operations UI implemented at `/advisor-v2/reports` and `/advisor-v2/operations` — feature-control seeds in `202606290019` (not applied).
 
 ---
 

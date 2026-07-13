@@ -38,8 +38,8 @@ Today | Relationships | Appointments | Service | Communications | More
 | **08** | `crm-v2-08-relationship-moments` | Moments engine (birthdays, holidays, review rhythm) | **Implemented** — see Phase 08 docs below |
 | **09** | `crm-v2-09-advocacy` | Advocacy event tracking + yearly score | **Implemented** — see Phase 09 docs below |
 | **10** | `crm-v2-10-communications` | CRM → governed communications bridge | **Implemented** — see Phase 10 docs below |
-| **11** | `crm-v2-11-today-work-queue` | Today homepage + unified work queue | Pending |
-| **12** | `crm-v2-12-reports-operations` | Reports + operator diagnostics | Pending |
+| **11** | `crm-v2-11-today-work-queue` | Today homepage + unified work queue | **Complete** — see Phase 11 docs |
+| **12** | `crm-v2-12-reports-operations` | Reports + operator diagnostics | **Complete** — see Phase 12 docs |
 | **13** | `crm-v2-13-pilot` | Controlled pilot | Pending |
 | **14** | `crm-v2-14-cutover` | `/advisor` → CRM V2 cutover | Pending |
 | **15** | `crm-v2-15-legacy-retirement` | Legacy adviser portal retirement (conditional) | Deferred |

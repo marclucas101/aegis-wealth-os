@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
 
-import { assertCrmV2GoogleCalendarAccess } from "@/lib/crm-v2/access";
+import { assertCrmV2OperationsAccess } from "@/lib/crm-v2/access";
 import { loadGoogleCalendarIntegrationStatus } from "@/lib/crm-v2/google-calendar/service";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function AdvisorV2OperationsGoogleCalendarPage() {
-  const access = await assertCrmV2GoogleCalendarAccess();
+  const access = await assertCrmV2OperationsAccess();
   if (!access.allowed) {
     redirect("/advisor-v2/operations");
   }

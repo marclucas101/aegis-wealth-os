@@ -1,0 +1,16 @@
+export const OPERATIONS_PROHIBITED_PANEL_FIELDS = [
+  "accessToken",
+  "refreshToken",
+  "token",
+  "secret",
+  "connectionString",
+  "rawProviderResponse",
+  "rawSqlError",
+  "policyNumber",
+  "storagePath",
+  "signedUrl",
+  "messageBody",
+  "privateNotes",
+  "nric",
+  "serviceRoleKey",
+] as const;

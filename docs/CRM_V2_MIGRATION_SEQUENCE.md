@@ -18,10 +18,11 @@ M07  Phase 09  advocacy_events, advocacy_score_config
 M08  Phase 10  crm_communication_drafts
 M09  Phase 05  calendar sync metadata extensions (if needed beyond existing columns)
 M10  Phase 11  crm_v2_today + adviser_work_queue flag seeds — **implemented** `202606290018` (not applied)
-M11  Phase 14  cutover flags seed
+M11  Phase 12  crm_v2_reports + crm_v2_operations flag seeds — **implemented** `202606290019` (not applied)
+M12  Phase 14  cutover flags seed
 ```
 
-**No migration in Phase 00, 02, 12, 13.**
+**No schema migration in Phase 00, 02, 12, 13.** Phase 12 ships feature-control seeds only (like Phase 11).
 
 Phase 02 uses existing `clients` — read-only APIs only.
 
@@ -206,6 +207,20 @@ Phase 02 uses existing `clients` — read-only APIs only.
 | Applied | **No** — operator approval required |
 | Idempotency | `ON CONFLICT (feature_key) DO NOTHING` |
 | Diagnostics | `preflight_202606290018_*`, `verify_202606290018_*`, `verify_202606290018_*_discrepancies.sql` |
+| Rollback | Disable flags; no schema to revert |
+| Risk | Low — no schema changes |
+
+### M11 — Phase 12: Reports and Operations feature seeds (**created, not applied**)
+
+| Item | Detail |
+|------|--------|
+| File | `supabase/migrations/202606290019_phase12_crm_v2_reports_operations_feature_control.sql` |
+| Keys | `crm_v2_reports`, `crm_v2_operations` |
+| Default | `enabled = false`; both `adviser_visible = true`, `client_visible = false` |
+| Tables | **None** — feature control seeds only |
+| Applied | **No** — operator approval required |
+| Idempotency | `ON CONFLICT (feature_key) DO NOTHING` |
+| Diagnostics | `preflight_202606290019_*`, `verify_202606290019_*`, `verify_202606290019_*_discrepancies.sql` |
 | Rollback | Disable flags; no schema to revert |
 | Risk | Low — no schema changes |
 
