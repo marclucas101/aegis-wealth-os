@@ -46,7 +46,8 @@ Today | Relationships | Appointments | Service | Communications | More
 | **15.1** | `crm-v2-15-1-qa-alignment` | Shell/Today validation aligned with Phase 15 routing | **Complete** — see Phase 15 docs § 15.1 |
 | **16** | `crm-v2-16-route-consolidation` | Adviser-native `/advisor` routes + `/advisor-v2` compatibility redirects | **Complete** — see Phase 16 docs |
 | **17** | `crm-v2-17-burn-in-hardening` | Adviser burn-in regression hardening + client-safe preflight | **Ready for adviser-only burn-in after QA passes** — see Phase 17 docs |
-| **18A** | `crm-v2-18a-client-appointment-request` | Client appointment request reintroduction + safety hardening | **Ready for controlled pilot after QA passes** — see Phase 18A docs |
+| **18A** | `crm-v2-18a-client-appointment-request` | Client appointment request reintroduction + safety hardening | **Complete** (tagged) — see Phase 18A docs |
+| **18B** | `phase18b-client-appointment-pilot-readiness` | Controlled client appointment staging pilot readiness | **READY FOR OPERATOR STAGING PILOT** — see Phase 18B docs (operator evidence outstanding) |
 | **18** | `crm-v2-18-legacy-retirement` | Legacy adviser portal retirement (conditional) | Deferred |
 
 ---
@@ -255,6 +256,7 @@ Today | Relationships | Appointments | Service | Communications | More
 | `npm run qa:crm-v2-pilot-readiness` | 13 |
 | `npm run qa:adviser-workspace-regression` | 17 |
 | `npm run qa:client-appointment-request` | 18A |
+| `npm run qa:client-appointment-pilot-readiness` | 18B |
 
 ---
 
@@ -328,6 +330,15 @@ Today | Relationships | Appointments | Service | Communications | More
 |----------|---------|
 | [CRM_V2_PHASE_18A_CLIENT_APPOINTMENT_REQUEST_AUDIT.md](./CRM_V2_PHASE_18A_CLIENT_APPOINTMENT_REQUEST_AUDIT.md) | Code audit — routes, gates, privacy, lifecycle |
 | [CRM_V2_PHASE_18A_CLIENT_APPOINTMENT_REQUEST_REINTRODUCTION.md](./CRM_V2_PHASE_18A_CLIENT_APPOINTMENT_REQUEST_REINTRODUCTION.md) | Scope, flags, client/adviser scripts, rollback, no-go |
+
+### Phase 18B — controlled client appointment pilot readiness
+
+| Document | Purpose |
+|----------|---------|
+| [CRM_V2_PHASE_18B_CLIENT_APPOINTMENT_PILOT_BASELINE_AUDIT.md](./CRM_V2_PHASE_18B_CLIENT_APPOINTMENT_PILOT_BASELINE_AUDIT.md) | Repository baseline vs Phase 18A tag |
+| [CRM_V2_PHASE_18B_CLIENT_APPOINTMENT_PILOT_RUNBOOK.md](./CRM_V2_PHASE_18B_CLIENT_APPOINTMENT_PILOT_RUNBOOK.md) | Operator staging checklist (25 steps) |
+| [CRM_V2_PHASE_18B_CLIENT_APPOINTMENT_PILOT_EVIDENCE_TEMPLATE.md](./CRM_V2_PHASE_18B_CLIENT_APPOINTMENT_PILOT_EVIDENCE_TEMPLATE.md) | Redacted evidence capture |
+| [CRM_V2_PHASE_18B_CLIENT_APPOINTMENT_PILOT_READINESS.md](./CRM_V2_PHASE_18B_CLIENT_APPOINTMENT_PILOT_READINESS.md) | Readiness decision and findings |
 
 ---
 
